@@ -1,0 +1,75 @@
+{% extends "admin/base_site.html" %}
+
+{% block extrahead %}
+<style>
+    .dashboard-container { padding: 20px; }
+    .stat-card {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .stat-card h3 {
+        margin: 0 0 10px 0;
+        color: #666;
+        font-size: 14px;
+        text-transform: uppercase;
+    }
+    .stat-card .value {
+        font-size: 28px;
+        font-weight: bold;
+        color: #333;
+    }
+    .stat-card .value.positive { color: #28a745; }
+    .stat-card .value.negative { color: #dc3545; }
+    .back-link {
+        display: inline-block;
+        margin-bottom: 20px;
+        padding: 10px 20px;
+        background: #007bff;
+        color: white;
+        text-decoration: none;
+        border-radius: 4px;
+    }
+    .back-link:hover { background: #0056b3; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <a href="{% url 'dashboard_admin:index' %}" class="back-link">← Back to Dashboard</a>
+    <h1>Today's Summary</h1>
+    <p>Date: {{ today }}</p>
+
+    <div class="stat-card">
+        <h3>Total Purchase Amount</h3>
+        <div class="value">₹{{ summary.total_purchase_amount|default:"0"|stringformat:".2f" }}</div>
+        <small>{{ summary.purchase_count|default:"0" }} purchases, {{ summary.total_packages_bought|default:"0" }} packages</small>
+    </div>
+
+    <div class="stat-card">
+        <h3>Total Sales Amount</h3>
+        <div class="value">₹{{ summary.total_sales_amount|default:"0"|stringformat:".2f" }}</div>
+        <small>{{ summary.sale_count|default:"0" }} sales, {{ summary.total_packages_sold|default:"0" }} packages</small>
+    </div>
+
+    <div class="stat-card">
+        <h3>Total Profit</h3>
+        <div class="value {% if summary.total_profit >= 0 %}positive{% else %}negative{% endif %}">
+            ₹{{ summary.total_profit|default:"0"|stringformat:".2f" }}
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <h3>Pending Purchase Amount</h3>
+        <div class="value negative">₹{{ summary.pending_purchase_amount|default:"0"|stringformat:".2f" }}</div>
+    </div>
+
+    <div class="stat-card">
+        <h3>Pending Sales Amount</h3>
+        <div class="value">₹{{ summary.pending_sales_amount|default:"0"|stringformat:".2f" }}</div>
+    </div>
+</div>
+{% endblock %}
+

@@ -20,6 +20,7 @@ defusedxml==0.7.1
 Django==6.0.2
 django-cors-headers==4.9.0
 django-tenants==3.10.0
+django-filter>=2.4.0
 djangorestframework==3.16.1
 djangorestframework_simplejwt==5.5.1
 executing==2.2.1
