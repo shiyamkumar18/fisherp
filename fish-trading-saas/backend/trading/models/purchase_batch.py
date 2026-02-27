@@ -1,0 +1,236 @@
+from decimal import Decimal
+from django.db import models
+from django.utils import timezone
+from django.core.exceptions import ValidationError
+
+from .fish import Fish
+from .fish_category import FishCategory
+from .supplier import Supplier
+
+
+class PurchaseBatch(models.Model):
+    """Purchase batch from suppliers/fishermen"""
+
+    PURCHASE_TYPE_CHOICES = [
+        ("auction", "Auction"),
+        ("package", "Boxes"),
+        ("bucket", "Bucket"),
+        ("kg", "Kg"),
+    ]
+
+    # Reference info
+    batch_number = models.CharField(max_length=50, unique=True, blank=True, null=True,
+                                  help_text="Auto-generated or manual batch reference")
+    purchase_type = models.CharField(max_length=15, choices=PURCHASE_TYPE_CHOICES)
+    
+    # Supplier info
+    supplier = models.ForeignKey(Supplier, on_delete=models.PROTECT, null=True, blank=True, related_name='purchase_batches')
+    fisherman_name = models.CharField(max_length=150, blank=True, null=True, 
+                                     help_text="Used if supplier not registered")
+    place_of_buying = models.CharField(max_length=200, blank=True, null=True)
+
+    # Fish details
+    fish = models.ForeignKey(Fish, on_delete=models.PROTECT, related_name='purchase_batches')
+    fish_category = models.ForeignKey(FishCategory, on_delete=models.SET_NULL, null=True, blank=True)
+
+    # Dates
+    date = models.DateField(default=timezone.now)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    # Quantity and weight
+    number_of_packages = models.PositiveIntegerField(help_text="Number of boxes/buckets/packages")
+    package_weight = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=Decimal("37.00"),
+        help_text="Weight per package in kg"
+    )
+    total_weight = models.DecimalField(max_digits=10, decimal_places=2, editable=False)
+
+    # Pricing
+    price_per_kg = models.DecimalField(max_digits=10, decimal_places=2, help_text="Buying price per kg")
+    fish_cost = models.DecimalField(max_digits=10, decimal_places=2, editable=False)
+
+    # Additional costs breakdown
+    labour_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0, help_text="Loading/unloading labor")
+    ice_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0, help_text="Ice for preservation")
+    transport_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0, help_text="Transportation charges")
+    commission_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0, help_text="Agent/broker commission")
+    other_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0, help_text="Miscellaneous expenses")
+    
+    # Cost calculations
+    total_expense = models.DecimalField(max_digits=10, decimal_places=2, editable=False)
+    actual_cost_per_kg = models.DecimalField(max_digits=10, decimal_places=2, editable=False)
+    cost_per_package = models.DecimalField(max_digits=10, decimal_places=2, editable=False)
+
+    # Payment tracking
+    amount_paid = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    pending_amount = models.DecimalField(max_digits=10, decimal_places=2, editable=False)
+    
+    # Status
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('partial', 'Partially Paid'),
+        ('paid', 'Fully Paid'),
+        ('cancelled', 'Cancelled'),
+    ]
+    status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='pending')
+    
+    # Notes
+    notes = models.TextField(blank=True, null=True)
+    
+    # Quality/Grade
+    quality_grade = models.CharField(max_length=20, blank=True, null=True, 
+                                     help_text="Quality grade of fish (A, B, C, etc.)")
+    
+    # Quality check fields
+    inspection_date = models.DateField(null=True, blank=True)
+    inspector_name = models.CharField(max_length=150, blank=True, null=True)
+    quality_score = models.DecimalField(max_digits=4, decimal_places=2, null=True, blank=True,
+                                        help_text="Quality score out of 10.00")
+    freshness_score = models.DecimalField(max_digits=4, decimal_places=2, null=True, blank=True,
+                                          help_text="Freshness score out of 10.00")
+    
+    # Photos and documents
+    fish_photo = models.ImageField(upload_to='purchase_photos/%Y/%m/', blank=True, null=True)
+    quality_certificate = models.FileField(upload_to='purchase_documents/%Y/%m/', blank=True, null=True)
+    invoice_document = models.FileField(upload_to='purchase_documents/%Y/%m/', blank=True, null=True)
+    
+    # Transport information
+    transport_vehicle_number = models.CharField(max_length=50, blank=True, null=True)
+    transport_driver_name = models.CharField(max_length=150, blank=True, null=True)
+    transport_driver_phone = models.CharField(max_length=15, blank=True, null=True)
+    arrival_time = models.DateTimeField(null=True, blank=True)
+    
+    # Expiry tracking
+    estimated_expiry_date = models.DateField(null=True, blank=True)
+    
+    # Tenant isolation - ForeignKey to User (tenant) with index for performance
+    tenant = models.ForeignKey('accounts.User', on_delete=models.CASCADE, related_name='purchase_batches',
+                               db_index=True,
+                               null=True, blank=True,
+                               help_text="Tenant/Owner of this purchase batch record")
+
+    def calculate_fields(self):
+        """Calculate all derived fields"""
+        # Handle None values for required fields
+        number_of_packages = self.number_of_packages if self.number_of_packages is not None else 0
+        package_weight = self.package_weight if self.package_weight is not None else Decimal("0.00")
+        price_per_kg = self.price_per_kg if self.price_per_kg is not None else Decimal("0.00")
+        
+        # Handle None values for optional cost fields
+        labour_cost = self.labour_cost if self.labour_cost is not None else Decimal("0.00")
+        ice_cost = self.ice_cost if self.ice_cost is not None else Decimal("0.00")
+        transport_cost = self.transport_cost if self.transport_cost is not None else Decimal("0.00")
+        commission_cost = self.commission_cost if self.commission_cost is not None else Decimal("0.00")
+        other_cost = self.other_cost if self.other_cost is not None else Decimal("0.00")
+        amount_paid = self.amount_paid if self.amount_paid is not None else Decimal("0.00")
+
+        self.total_weight = number_of_packages * package_weight
+        self.fish_cost = self.total_weight * price_per_kg
+
+        self.total_expense = (
+            self.fish_cost
+            + labour_cost
+            + ice_cost
+            + transport_cost
+            + commission_cost
+            + other_cost
+        )
+
+        if self.total_weight > 0:
+            self.actual_cost_per_kg = self.total_expense / self.total_weight
+        else:
+            self.actual_cost_per_kg = Decimal("0.00")
+
+        # Cost per box
+        self.cost_per_package = self.actual_cost_per_kg * package_weight
+
+        self.pending_amount = self.total_expense - amount_paid
+
+    def save(self, *args, **kwargs):
+        # Auto-generate batch number if not provided
+        if not self.batch_number:
+            from datetime import datetime
+            timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+            self.batch_number = f"BATCH-{timestamp}-{self.id or 'NEW'}"
+        
+        # This ensures clean() validation runs even when saving directly
+        self.full_clean()
+        self.calculate_fields()
+        
+        # Update status based on payment
+        if self.pending_amount <= 0 and self.total_expense > 0:
+            self.status = 'paid'
+        elif self.amount_paid > 0:
+            self.status = 'partial'
+        else:
+            self.status = 'pending'
+            
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        supplier_name = self.supplier.name if self.supplier else self.fisherman_name
+        return f"Batch #{self.batch_number or self.id} - {supplier_name} - {self.date}"
+
+    def clean(self):
+        """Validate all fields"""
+        # Validate number_of_packages
+        if self.number_of_packages is not None and self.number_of_packages <= 0:
+            raise ValidationError({'number_of_packages': 'Number of packages must be greater than 0.'})
+        
+        # Validate package_weight
+        if self.package_weight is not None and self.package_weight <= 0:
+            raise ValidationError({'package_weight': 'Package weight must be greater than 0.'})
+        
+        # Validate price_per_kg
+        if self.price_per_kg is not None and self.price_per_kg < 0:
+            raise ValidationError({'price_per_kg': 'Price per kg cannot be negative.'})
+        
+        # Validate all cost fields
+        cost_fields = ['labour_cost', 'ice_cost', 'transport_cost', 'commission_cost', 'other_cost']
+        for field in cost_fields:
+            value = getattr(self, field)
+            if value is not None and value < 0:
+                raise ValidationError({field: f'{field.replace("_", " ").title()} cannot be negative.'})
+        
+        # Validate amount_paid
+        if self.amount_paid is not None and self.amount_paid < 0:
+            raise ValidationError({'amount_paid': 'Amount paid cannot be negative.'})
+        
+        # Validate amount_paid <= total_expense (after calculating fields)
+        self.calculate_fields()
+        if self.amount_paid > self.total_expense:
+            raise ValidationError({'amount_paid': 'Amount paid cannot exceed total expense.'})
+
+    def get_remaining_packages(self):
+        """Calculate remaining packages available for sale in this batch."""
+        from django.db.models import Sum
+        from .sale import Sale
+        
+        sold = Sale.objects.filter(batch=self).aggregate(
+            total=Sum('number_of_packages_sold')
+        )['total'] or 0
+        return self.number_of_packages - sold
+    
+    def get_sold_packages(self):
+        """Get total packages sold from this batch"""
+        from django.db.models import Sum
+        from .sale import Sale
+        
+        return Sale.objects.filter(batch=self).aggregate(
+            total=Sum('number_of_packages_sold')
+        )['total'] or 0
+    
+    def get_sales_summary(self):
+        """Get summary of all sales from this batch"""
+        from django.db.models import Sum
+        from .sale import Sale
+        
+        return Sale.objects.filter(batch=self).aggregate(
+            total_revenue=Sum('total_revenue'),
+            total_cost=Sum('total_cost'),
+            total_profit=Sum('profit'),
+            total_packages=Sum('number_of_packages_sold')
+        )

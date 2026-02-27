@@ -1,0 +1,38 @@
+from django.db import models
+
+
+class FishCategory(models.Model):
+    """Category for different types of fish - Freshwater or Saltwater"""
+    CATEGORY_TYPE_CHOICES = [
+        ('freshwater', 'Freshwater'),
+        ('saltwater', 'Saltwater'),
+    ]
+    
+    name = models.CharField(max_length=100, unique=True)
+    category_type = models.CharField(max_length=20, choices=CATEGORY_TYPE_CHOICES, default='saltwater',
+                                     help_text="Whether this is freshwater or saltwater fish")
+    description = models.TextField(blank=True, null=True)
+    
+    # Visual and UI fields
+    icon = models.ImageField(upload_to='fish_category_icons/', blank=True, null=True, 
+                             help_text="Icon image for the category")
+    color_code = models.CharField(max_length=7, blank=True, null=True, 
+                                  help_text="Hex color code for UI (e.g., #FF5733)")
+    priority = models.PositiveIntegerField(default=0, 
+                                           help_text="Display order priority (lower = first)")
+    is_featured = models.BooleanField(default=False, 
+                                      help_text="Show this category in featured section")
+    
+    # Status
+    is_active = models.BooleanField(default=True, help_text="Active category")
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name_plural = "Fish Categories"
+        ordering = ['priority', 'name']
+
+    def __str__(self):
+        return f"{self.name} ({self.get_category_type_display()})"
