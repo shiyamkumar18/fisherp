@@ -5,24 +5,50 @@ from .models import FishCategory, Fish, Supplier, Buyer, PurchaseBatch, Sale, Pa
 
 class TenantIsolationAdminMixin:
     """
-    Mixin to provide tenant isolation for admin classes.
-    Ensures that non-superusers can only see/manage their own tenant's data.
+    Mixin to provide company-based tenant isolation for admin classes.
+    Ensures that non-superusers can only see/manage their own company's data.
     """
     
     def get_queryset(self, request):
-        """Filter by tenant for non-superusers"""
+        """Filter by company for non-superusers"""
         qs = super().get_queryset(request)
+        
+        # Superusers can see all
         if request.user.is_superuser:
             return qs
+        
+        # Platform operators can see all tenant data (for management)
+        if request.user.is_platform_operator:
+            return qs
+        
+        # For tenant users, filter by company
+        if request.user.company:
+            if 'company' in [f.name for f in qs.model._meta.get_fields()]:
+                return qs.filter(company=request.user.company)
+            return qs.filter(tenant__company=request.user.company)
+        
+        # Users without company can only see their own tenant records
         return qs.filter(tenant=request.user)
     
     def has_view_permission(self, request, obj=None):
         """Check if user can view objects"""
         if request.user.is_superuser:
             return True
+        
+        # Platform operators can view all
+        if request.user.is_platform_operator:
+            return True
+        
         if obj is not None:
-            # Check if object belongs to user's tenant
-            return obj.tenant == request.user
+            # Check if object belongs to user's company
+            if hasattr(obj, 'company') and obj.company and request.user.company:
+                return obj.company_id == request.user.company_id
+            if hasattr(obj, 'tenant') and obj.tenant:
+                if obj.tenant.company:
+                    return obj.tenant.company == request.user.company
+                return obj.tenant == request.user
+            return False
+        
         # For list view, check if user has any view permission
         return self.has_add_permission(request) or self.has_change_permission(request)
     
@@ -30,23 +56,50 @@ class TenantIsolationAdminMixin:
         """Check if user can change objects"""
         if request.user.is_superuser:
             return True
+        
+        # Platform operators can change all
+        if request.user.is_platform_operator:
+            return True
+        
         if obj is not None:
-            # Check if object belongs to user's tenant
-            return obj.tenant == request.user
+            # Check if object belongs to user's company
+            if hasattr(obj, 'company') and obj.company and request.user.company:
+                return obj.company_id == request.user.company_id
+            if hasattr(obj, 'tenant') and obj.tenant:
+                if obj.tenant.company:
+                    return obj.tenant.company == request.user.company
+                return obj.tenant == request.user
+            return False
+        
         return True  # Allow access to changelist
     
     def has_delete_permission(self, request, obj=None):
         """Check if user can delete objects"""
         if request.user.is_superuser:
             return True
+        
+        # Platform operators can delete all
+        if request.user.is_platform_operator:
+            return True
+        
         if obj is not None:
-            # Check if object belongs to user's tenant
-            return obj.tenant == request.user
+            # Check if object belongs to user's company
+            if hasattr(obj, 'company') and obj.company and request.user.company:
+                return obj.company_id == request.user.company_id
+            if hasattr(obj, 'tenant') and obj.tenant:
+                if obj.tenant.company:
+                    return obj.tenant.company == request.user.company
+                return obj.tenant == request.user
+            return False
+        
         return True  # Allow access to changelist
     
     def has_add_permission(self, request):
         """Check if user can add objects"""
-        return True  # Allow access to add form
+        # Platform operators cannot add tenant data
+        if request.user.is_platform_operator:
+            return False
+        return True
 
 
 @admin.register(FishCategory)

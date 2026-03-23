@@ -3,8 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {% if company_name %}
+    <title>{{ company_name }} - Login</title>
+    {% else %}
     <title>Fish Trading SaaS - Login</title>
+    {% endif %}
     <style>
+        :root {
+            --primary-color: {{ primary_color|default:"#667eea" }};
+            --primary-hover: {{ primary_hover|default:"#5568d3" }};
+        }
+        
         * {
             margin: 0;
             padding: 0;
@@ -17,7 +26,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, var(--primary-color) 0%, #764ba2 100%);
             padding: 20px;
         }
 
@@ -44,6 +53,16 @@
         .logo p {
             color: #666;
             font-size: 14px;
+        }
+
+        .tenant-badge {
+            display: inline-block;
+            background: var(--primary-color);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            margin-top: 8px;
         }
 
         .quick-login {
@@ -85,6 +104,11 @@
 
         .login-btn.trader {
             background: linear-gradient(135deg, #ee0979 0%, #ff6a00 100%);
+            color: white;
+        }
+
+        .login-btn.primary {
+            background: var(--primary-color);
             color: white;
         }
 
@@ -151,12 +175,12 @@
 
         .form-group input:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: var(--primary-color);
         }
 
         .submit-btn {
             padding: 14px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--primary-color);
             color: white;
             border: none;
             border-radius: 10px;
@@ -232,7 +256,7 @@
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--primary-color);
             color: white;
         }
 
@@ -279,17 +303,84 @@
             max-height: 100px;
             overflow-y: auto;
         }
+
+        .tenant-info {
+            text-align: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .tenant-info h2 {
+            color: #333;
+            font-size: 22px;
+            margin-bottom: 5px;
+        }
+
+        .tenant-info p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .back-link {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .back-link a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        .back-link a:hover {
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body>
     <div class="login-container">
+        {% if company_name %}
+        <div class="logo">
+            <h1>🐟 {{ company_name }}</h1>
+            <p>Management System</p>
+            {% if tenant_slug %}
+            <span class="tenant-badge">{{ tenant_slug }}</span>
+            {% endif %}
+        </div>
+        {% else %}
         <div class="logo">
             <h1>🐟 Fish Trading</h1>
             <p>Management System</p>
         </div>
+        {% endif %}
 
-        <div id="message"></div>
+        <div id="message">
+            {% if error %}
+            <div class="message error">{{ error }}</div>
+            {% endif %}
+        </div>
 
+        {% if tenant_slug %}
+        {# Tenant-specific login #}
+        <div class="manual-login">
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" placeholder="Enter your email">
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" placeholder="Enter password">
+            </div>
+            <button class="submit-btn primary" onclick="tenantLogin()">Login to {{ company_name|default:"Company" }}</button>
+        </div>
+
+        <div class="back-link">
+            <a href="/">← Back to main login</a>
+        </div>
+        {% else %}
+        {# Default multi-tenant login #}
         <div class="quick-login">
             <h3>One-Click Login</h3>
             <div class="login-buttons">
@@ -321,12 +412,15 @@
             </div>
             <button class="submit-btn" onclick="manualLogin()">Login</button>
         </div>
+        {% endif %}
 
+        {% if not show_register %}
         <div style="text-align: center; margin-top: 20px;">
             <p style="color: #666; font-size: 14px;">
-                New company? <a href="register.html" style="color: #667eea; text-decoration: none; font-weight: 600;">Register here</a>
+                New company? <a href="register.html" style="color: var(--primary-color); text-decoration: none; font-weight: 600;">Register here</a>
             </p>
         </div>
+        {% endif %}
 
         <div class="user-info" id="userInfo">
             <p><strong>Login Successful!</strong></p>
@@ -345,7 +439,17 @@
     </div>
 
     <script>
-        const API_URL = 'http://localhost:8001/api/auth/login/';
+        // Get tenant slug from context or URL
+        const tenantSlug = "{{ tenant_slug|default:'' }}";
+        
+        // Determine API URL based on tenant
+        function getApiUrl() {
+            if (tenantSlug) {
+                return `/api/login/${tenantSlug}/`;
+            }
+            // Use relative URL (same domain as frontend)
+            return `/api/auth/login/`;
+        }
 
         function showMessage(text, type) {
             const messageEl = document.getElementById('message');
@@ -372,10 +476,10 @@
             try {
                 setButtonLoading(btnClass, true);
 
-                // Use email as username for login
                 const loginData = { username: username, password: password };
-
-                const response = await fetch(API_URL, {
+                
+                const apiUrl = getApiUrl();
+                const response = await fetch(apiUrl, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -394,17 +498,29 @@
                     localStorage.setItem('user_id', data.user_id);
                     localStorage.setItem('username', data.username);
                     localStorage.setItem('role', data.role);
-                    localStorage.setItem('schema_name', data.schema_name);
+                    localStorage.setItem('schema_name', data.schema_name || tenantSlug);
                     localStorage.setItem('email', data.email);
+                    
+                    // Store tenant slug if provided
+                    if (data.tenant_slug) {
+                        localStorage.setItem('tenant_slug', data.tenant_slug);
+                    }
 
                     // Show user info
                     document.getElementById('infoUsername').textContent = data.username;
                     document.getElementById('infoRole').textContent = data.role;
-                    document.getElementById('infoSchema').textContent = data.schema_name;
+                    document.getElementById('infoSchema').textContent = data.schema_name || tenantSlug || 'N/A';
                     document.getElementById('tokenDisplay').textContent = data.access.substring(0, 50) + '...';
                     document.getElementById('userInfo').classList.add('show');
 
                     console.log('Login successful:', data);
+                    
+                    // Redirect if tenant-specific
+                    if (data.redirect_url) {
+                        setTimeout(() => {
+                            window.location.href = data.redirect_url;
+                        }, 1500);
+                    }
                 } else {
                     showMessage(data.error || 'Login failed', 'error');
                 }
@@ -433,13 +549,34 @@
             login(email, password, 'manual');
         }
 
+        // Tenant-specific login function
+        function tenantLogin() {
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+
+            if (!email || !password) {
+                showMessage('Please enter email and password', 'error');
+                return;
+            }
+
+            if (!tenantSlug) {
+                showMessage('Tenant not specified', 'error');
+                return;
+            }
+
+            login(email, password, 'primary');
+        }
+
         // Allow Enter key for manual login
         document.getElementById('password').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
-                manualLogin();
+                if (tenantSlug) {
+                    tenantLogin();
+                } else {
+                    manualLogin();
+                }
             }
         });
     </script>
 </body>
 </html>
-

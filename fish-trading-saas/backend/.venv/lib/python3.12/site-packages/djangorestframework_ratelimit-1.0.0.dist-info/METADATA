@@ -1,0 +1,63 @@
+Metadata-Version: 2.1
+Name: djangorestframework-ratelimit
+Version: 1.0.0
+Summary: Cache-based rate-limiting for Django and Django REST Framework
+Author-email: James Socol <me@jamessocol.com>, Ronan Boiteau <ronan@boiteau.eu>
+Maintainer-email: Ronan Boiteau <ronan@boiteau.eu>
+License: Copyright (c) 2022, James Socol
+        
+        Licensed under the Apache License, Version 2.0 (the "License");
+        you may not use this file except in compliance with the License.
+        You may obtain a copy of the License at
+        
+            http://www.apache.org/licenses/LICENSE-2.0
+        
+        Unless required by applicable law or agreed to in writing, software
+        distributed under the License is distributed on an "AS IS" BASIS,
+        WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+        See the License for the specific language governing permissions and
+        limitations under the License.
+        
+Project-URL: Documentation, https://github.com/ronanboiteau/djangorestframework-ratelimit/blob/main/README.md
+Project-URL: Repository, https://github.com/ronanboiteau/djangorestframework-ratelimit.git
+Project-URL: Issues, https://github.com/ronanboiteau/djangorestframework-ratelimit/issues
+Project-URL: Changelog, https://github.com/ronanboiteau/djangorestframework-ratelimit/blob/main/CHANGELOG.md
+Keywords: django,rest,framework,ratelimit,rate,limit
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Environment :: Web Environment
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Framework :: Django
+Classifier: Framework :: Django :: 3.2
+Classifier: Framework :: Django :: 4.0
+Classifier: Framework :: Django :: 4.1
+Classifier: Framework :: Django :: 4.2
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: django >=3.2
+
+# Django REST Framework Ratelimit
+
+Django REST Framework Ratelimit is a fork of [Django Ratelimit](https://github.com/jsocol/django-ratelimit) that adds support for rate limiting on Django REST Framework's `Request.data`
+
+## Usage
+
+Refer to the [Django Ratelimit v4.1.0 documentation](https://django-ratelimit.readthedocs.io/en/v4.1.0/).
+
+This fork simply adds support for the extra [ratelimit key](https://django-ratelimit.readthedocs.io/en/v4.1.0/keys.html) `data`. Example:
+
+```py
+from django_ratelimit.decorators import ratelimit
+
+ratelimit(key="data:username", rate="5/m", method="POST")
+```

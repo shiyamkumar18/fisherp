@@ -416,9 +416,10 @@
         try {
             // Build query string from filters
             const params = new URLSearchParams(currentFilters);
+            const token = getAccessToken();
             const response = await fetch(`/api/dashboard/tenant/?${params.toString()}`, {
                 headers: {
-                    'Authorization': 'Bearer ' + getCookie('access_token'),
+                    'Authorization': token ? `Bearer ${token}` : '',
                 }
             });
             
@@ -714,6 +715,10 @@
             }
         }
         return cookieValue;
+    }
+
+    function getAccessToken() {
+        return localStorage.getItem('access_token') || getCookie('access_token');
     }
     
     // Initialize dashboard

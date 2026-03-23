@@ -9,8 +9,16 @@ from datetime import timedelta
 from .models import DashboardManager
 from trading.models import Sale, Inventory, Fish, Buyer, Supplier, PurchaseBatch
 from accounts.permissions import (
-    IsPlatformMaintainer, IsTenantAdmin, CanViewFinancials
+    IsPlatformOperator, IsTenantAdmin, CanViewFinancials
 )
+
+
+def _tenant_scope_kwargs(user):
+    if user.is_superuser or user.is_platform_user:
+        return {}
+    if user.company_id:
+        return {'company': user.company}
+    return {'tenant': user}
 
 
 class FinancialOverviewView(APIView):
@@ -27,22 +35,23 @@ class FinancialOverviewView(APIView):
     
     def get(self, request):
         user = request.user
+        scope = _tenant_scope_kwargs(user)
         
-        # SalesStaff sees only their sales data
+        # Trader sees only their sales data
         if user.is_sales_staff:
             data = DashboardManager.get_today_summary(user)
             return Response({
-                'role': 'sales_staff',
+                'role': 'trader',
                 'today_sales': data.get('total_sales_amount', 0),
                 'sale_count': data.get('sale_count', 0),
                 'message': 'Limited view - contact admin for full dashboard'
             })
         
-        # StoreAccounts sees only purchase data
+        # Store sees only purchase data
         if user.is_store_accounts:
             data = DashboardManager.get_today_summary(user)
             return Response({
-                'role': 'store_accounts',
+                'role': 'store',
                 'today_purchases': data.get('total_purchase_amount', 0),
                 'purchase_count': data.get('purchase_count', 0),
                 'message': 'Limited view - contact admin for full dashboard'
@@ -209,17 +218,18 @@ class RiskAlertsView(APIView):
 
 
 class AdminDashboardView(APIView):
-    """Get platform-wide admin dashboard (superuser only)
+    """Get platform-wide admin dashboard (platform operator only)
     
     Permissions:
-    - PlatformMaintainer only
+    - Platform Operator only
     """
-    permission_classes = [permissions.IsAuthenticated, IsPlatformMaintainer]
+    permission_classes = [permissions.IsAuthenticated, IsPlatformOperator]
     
     def get(self, request):
-        if not request.user.is_superuser:
+        # Platform operators can access this
+        if not request.user.is_platform_operator:
             return Response(
-                {'error': 'Access denied. Admin only.'},
+                {'error': 'Access denied. Platform operator only.'},
                 status=status.HTTP_403_FORBIDDEN
             )
         data = DashboardManager.get_admin_dashboard(request.user)
@@ -396,19 +406,19 @@ class TenantAdminDashboardView(APIView):
         today = timezone.now().date()
         
         # KPI Cards
-        today_sales = Sale.objects.filter(tenant=user, date=today)
+        today_sales = Sale.objects.filter(date=today, **scope)
         today_sales_amount = today_sales.aggregate(total=Sum('total_revenue'))['total'] or Decimal('0.00')
         today_profit = today_sales.aggregate(total=Sum('profit'))['total'] or Decimal('0.00')
         
         # Receivables (pending payments)
         receivables = Sale.objects.filter(
-            tenant=user, 
+            **scope,
             pending_amount__gt=0
         ).aggregate(total=Sum('pending_amount'))['total'] or Decimal('0.00')
         
         # Inventory Value
         inventory_value = Decimal('0.00')
-        inventories = Inventory.objects.filter(tenant=user, remaining_packages__gt=0)
+        inventories = Inventory.objects.filter(remaining_packages__gt=0, **scope)
         for inv in inventories:
             if inv.purchase_batch:
                 cost = inv.purchase_batch.cost_per_package or Decimal('0.00')
@@ -429,7 +439,7 @@ class TenantAdminDashboardView(APIView):
         # Risk Alerts: Expiring Batches
         expiry_threshold = today + timedelta(days=3)
         expiring_batches = Inventory.objects.filter(
-            tenant=user,
+            **scope,
             expiry_date__isnull=False,
             expiry_date__lte=expiry_threshold,
             expiry_date__gte=today,
@@ -500,8 +510,9 @@ class BatchSpecificDashboardView(APIView):
         
         # Get batch (with tenant check)
         user = request.user
+        scope = _tenant_scope_kwargs(user)
         try:
-            batch = PurchaseBatch.objects.get(id=batch_id, tenant=user)
+            batch = PurchaseBatch.objects.get(id=batch_id, **scope)
         except PurchaseBatch.DoesNotExist:
             return Response(
                 {'error': 'Batch not found or access denied'},
@@ -565,18 +576,19 @@ class FilterOptionsView(APIView):
     
     def get(self, request):
         user = request.user
+        scope = _tenant_scope_kwargs(user)
         
         # Fish types
-        fish_types = Fish.objects.filter(tenant=user, is_active=True).values('id', 'name')[:50]
+        fish_types = Fish.objects.filter(is_active=True, **scope).values('id', 'name')[:50]
         
         # Buyers
-        buyers = Buyer.objects.filter(tenant=user, is_active=True).values('id', 'name')[:50]
+        buyers = Buyer.objects.filter(is_active=True, **scope).values('id', 'name')[:50]
         
         # Suppliers
-        suppliers = Supplier.objects.filter(tenant=user, is_active=True).values('id', 'name')[:50]
+        suppliers = Supplier.objects.filter(is_active=True, **scope).values('id', 'name')[:50]
         
         # Purchase Batches (open ones)
-        batches = PurchaseBatch.objects.filter(tenant=user).values(
+        batches = PurchaseBatch.objects.filter(**scope).values(
             'id', 'batch_number', 'fish__name', 'date', 'number_of_packages'
         ).order_by('-date')[:50]
         
@@ -586,4 +598,3 @@ class FilterOptionsView(APIView):
             'suppliers': list(suppliers),
             'batches': list(batches),
         })
-

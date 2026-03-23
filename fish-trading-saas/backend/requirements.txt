@@ -19,10 +19,11 @@ decorator==5.2.1
 defusedxml==0.7.1
 Django==6.0.2
 django-cors-headers==4.9.0
-django-tenants==3.10.0
 django-filter>=2.4.0
 djangorestframework==3.16.1
 djangorestframework_simplejwt==5.5.1
+djangorestframework-ratelimit==1.0.0
+drf-spectacular==0.27.0
 executing==2.2.1
 fastjsonschema==2.21.2
 fqdn==1.5.1
@@ -75,6 +76,7 @@ psycopg2-binary==2.9.11
 ptyprocess==0.7.0
 pure_eval==0.2.3
 pycparser==2.23
+pyotp==2.9.0
 Pygments==2.19.2
 PyJWT==2.11.0
 python-dateutil==2.9.0.post0
@@ -108,3 +110,5 @@ wcwidth==0.2.14
 webcolors==25.10.0
 webencodings==0.5.1
 websocket-client==1.9.0
+celery[redis]==5.4.0
+redis==5.0.8

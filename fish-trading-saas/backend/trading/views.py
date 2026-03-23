@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Q, Sum, Count
 from django.utils import timezone
+from django.db import transaction
 from decimal import Decimal
 
 from .models import FishCategory, Fish, Supplier, Buyer, PurchaseBatch, Sale, Payment, Inventory
@@ -13,11 +14,30 @@ from .serializers import (
     SupplierSerializer, BuyerSerializer, PurchaseBatchSerializer,
     SaleSerializer, PaymentSerializer, InventorySerializer
 )
+from backend.services.trading import SaleService, InventoryService
 from accounts.permissions import (
-    IsPlatformMaintainer, IsTenantAdmin, IsSalesStaff, IsStoreAccounts,
+    IsPlatformOperator, IsTenantAdmin, IsAccountant, IsSalesStaff, IsStoreAccounts,
     CanViewFinancials, CanCreateSale, CanCreatePurchase, CanRecordPayment,
-    CanViewOwnSalesOnly
+    CanDeleteRecord, CanEditSale, CanEditPurchase, CanEditPayment, HasAnyRole,
+    QuerysetProtectionMixin, TenantObjectPermission, is_impersonating, get_impersonated_tenant
 )
+
+
+def _user_company(user):
+    return user.company if getattr(user, 'company_id', None) else None
+
+
+# Removed _get_scoped_queryset - use CompanyManager.for_user() instead
+
+
+def _get_create_scope(request):
+    """
+    Set both company and tenant pointers while creating records.
+    """
+    if is_impersonating(request):
+        company = get_impersonated_tenant(request)
+        return {'company': company, 'tenant': company.admin if company else None}
+    return {'company': _user_company(request.user), 'tenant': request.user}
 
 
 class FishCategoryViewSet(viewsets.ModelViewSet):
@@ -25,8 +45,8 @@ class FishCategoryViewSet(viewsets.ModelViewSet):
     ViewSet for FishCategory - shared across all tenants
     
     Permissions:
-    - All authenticated users can view
-    - TenantAdmin and PlatformMaintainer can create/edit/delete
+    - Platform Operator: Read-only (metadata only)
+    - All tenant users: Full access
     """
     queryset = FishCategory.objects.all()
     serializer_class = FishCategorySerializer
@@ -36,18 +56,28 @@ class FishCategoryViewSet(viewsets.ModelViewSet):
     search_fields = ['name', 'description']
     ordering_fields = ['priority', 'name', 'created_at']
     ordering = ['priority', 'name']
+    
+    def get_queryset(self):
+        """FishCategory is shared - platform operators can view"""
+        if not self.request.user.is_authenticated:
+            return FishCategory.objects.none()
+        
+        # All authenticated users can view categories
+        return FishCategory.objects.all()
 
 
-class FishViewSet(viewsets.ModelViewSet):
+class FishViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.ModelViewSet):
     """
     ViewSet for Fish management with tenant isolation.
     
-    Permissions:
-    - TenantAdmin: Full access (create, read, update, delete)
-    - SalesStaff: Read-only access
-    - StoreAccounts: Read-only access
+    Security:
+    - Platform Operator: NO DIRECT ACCESS (returns empty)
+    - Tenant Admin: Full access
+    - Accountant: Full access
+    - Sales Staff: Read-only
+    - Store Accounts: Read-only
     
-    All fish data is isolated per tenant (User).
+    Platform operators must use impersonation to access.
     """
     serializer_class = FishSerializer
     permission_classes = [IsAuthenticated]
@@ -60,19 +90,17 @@ class FishViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         """Return permissions based on action"""
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            # Only TenantAdmin can write
-            return [IsTenantAdmin()]
+            return [HasAnyRole('is_tenant_admin', 'is_accountant')]
         return [IsAuthenticated()]
     
-    def get_queryset(self):
+def get_queryset(self):
         """
-        Return fish records only for the current tenant (authenticated user).
-        Superusers can see all fish records.
+        Return fish records with QUERYSET PROTECTION.
+        
+        Platform operators CANNOT see business data directly.
+        Must use impersonation to access tenant data.
         """
-        user = self.request.user
-        if user.is_superuser:
-            return Fish.objects.all()
-        return Fish.objects.filter(tenant=user)
+        return self.queryset.model.objects.for_user(self.request.user)
     
     def get_serializer_class(self):
         """Use different serializers for list vs detail views"""
@@ -80,9 +108,10 @@ class FishViewSet(viewsets.ModelViewSet):
             return FishListSerializer
         return FishSerializer
     
+@transaction.atomic
     def perform_create(self, serializer):
         """Automatically set the tenant to the current user"""
-        serializer.save(tenant=self.request.user)
+        serializer.save(**_get_create_scope(self.request))
     
     @action(detail=True, methods=['post'])
     def toggle_active(self, request, pk=None):
@@ -128,16 +157,16 @@ class FishViewSet(viewsets.ModelViewSet):
         return Response(stats)
 
 
-class SupplierViewSet(viewsets.ModelViewSet):
+class SupplierViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.ModelViewSet):
     """
     ViewSet for Supplier management with tenant isolation.
     
-    Permissions:
-    - TenantAdmin: Full access (create, read, update, delete)
-    - StoreAccounts: Full access (handle purchases and suppliers)
-    - SalesStaff: Read-only access
-    
-    All supplier data is isolated per tenant (User).
+    Security:
+    - Platform Operator: NO DIRECT ACCESS
+    - Tenant Admin: Full access
+    - Accountant: Full access
+    - Store Accounts: Full access
+    - Sales Staff: Read-only
     """
     serializer_class = SupplierSerializer
     permission_classes = [IsAuthenticated]
@@ -150,30 +179,24 @@ class SupplierViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         """Return permissions based on action"""
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            # TenantAdmin and StoreAccounts can write
-            return [IsTenantAdmin() | IsStoreAccounts()]
+            return [HasAnyRole('is_tenant_admin', 'is_accountant', 'is_store_accounts')]
         return [IsAuthenticated()]
     
     def get_queryset(self):
-        """
-        Return supplier records only for the current tenant (authenticated user).
-        Superusers can see all supplier records.
-        """
-        user = self.request.user
-        if user.is_superuser:
-            return Supplier.objects.all()
-        return Supplier.objects.filter(tenant=user)
+        """Queryset with platform operator protection."""
+        return self.queryset.model.objects.for_user(self.request.user)
     
+    @transaction.atomic
     def perform_create(self, serializer):
-        """Automatically set the tenant to the current user"""
-        serializer.save(tenant=self.request.user)
+        """Automatically set the tenant"""
+        serializer.save(**_get_create_scope(self.request))
     
     @action(detail=True, methods=['post'])
     def update_credit(self, request, pk=None):
         """Update supplier credit balance"""
         supplier = self.get_object()
         amount = request.data.get('amount', 0)
-        operation = request.data.get('operation', 'add')  # 'add' or 'subtract'
+        operation = request.data.get('operation', 'add')
         
         try:
             amount = Decimal(str(amount))
@@ -243,6 +266,8 @@ class SupplierViewSet(viewsets.ModelViewSet):
                 supplier=supplier,
                 reference_number=reference,
                 processed_by=request.user,
+                tenant=supplier.tenant,
+                company=supplier.company,
                 notes=f"Payment to supplier {supplier.name}"
             )
             
@@ -268,7 +293,6 @@ class SupplierViewSet(viewsets.ModelViewSet):
         """Get payment summary for supplier"""
         supplier = self.get_object()
         
-        # Get recent payments
         recent_payments = Payment.objects.filter(
             supplier=supplier,
             payment_type='purchase'
@@ -317,16 +341,14 @@ class SupplierViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-class BuyerViewSet(viewsets.ModelViewSet):
-    """
-    ViewSet for Buyer management with tenant isolation.
+
     
-    Permissions:
-    - TenantAdmin: Full access
-    - SalesStaff: Full access (add buyers, record payments)
-    - StoreAccounts: Read-only access
-    
-    All buyer data is isolated per tenant (User).
+    Security:
+    - Platform Operator: NO DIRECT ACCESS
+    - Tenant Admin: Full access
+    - Accountant: Full access
+    - Sales Staff: Full access (add buyers, record payments)
+    - Store Accounts: Read-only
     """
     queryset = Buyer.objects.all()
     serializer_class = BuyerSerializer
@@ -340,23 +362,16 @@ class BuyerViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         """Return permissions based on action"""
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            # TenantAdmin and SalesStaff can write
-            return [IsTenantAdmin() | IsSalesStaff()]
+            return [HasAnyRole('is_tenant_admin', 'is_accountant', 'is_sales_staff')]
         return [IsAuthenticated()]
     
     def get_queryset(self):
-        """
-        Return buyer records only for the current tenant (authenticated user).
-        Superusers can see all buyer records.
-        """
-        user = self.request.user
-        if user.is_superuser:
-            return Buyer.objects.all()
-        return Buyer.objects.filter(tenant=user)
+        """Queryset with platform operator protection."""
+        return self.queryset.model.objects.for_user(self.request.user)
     
     def perform_create(self, serializer):
-        """Automatically set the tenant to the current user"""
-        serializer.save(tenant=self.request.user)
+        """Automatically set the tenant"""
+        serializer.save(**_get_create_scope(self.request))
     
     @action(detail=True, methods=['post'])
     def update_credit(self, request, pk=None):
@@ -396,16 +411,16 @@ class BuyerViewSet(viewsets.ModelViewSet):
         })
 
 
-class PurchaseBatchViewSet(viewsets.ModelViewSet):
+class PurchaseBatchViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
     """
     ViewSet for PurchaseBatch management with tenant isolation.
     
-    Permissions:
-    - TenantAdmin: Full access
-    - StoreAccounts: Full access (add purchases)
-    - SalesStaff: Read-only access
-    
-    All purchase batch data is isolated per tenant (User).
+    Security:
+    - Platform Operator: NO DIRECT ACCESS
+    - Tenant Admin: Full access
+    - Accountant: Full access (edit before lock)
+    - Store Accounts: Full access (edit before lock)
+    - Sales Staff: Read-only
     """
     queryset = PurchaseBatch.objects.all()
     serializer_class = PurchaseBatchSerializer
@@ -418,24 +433,22 @@ class PurchaseBatchViewSet(viewsets.ModelViewSet):
     
     def get_permissions(self):
         """Return permissions based on action"""
-        if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            # TenantAdmin and StoreAccounts can write
-            return [IsTenantAdmin() | IsStoreAccounts()]
+        if self.action in ['create']:
+            return [HasAnyRole('is_tenant_admin', 'is_accountant', 'is_store_accounts')]
+        if self.action in ['update', 'partial_update']:
+            return [CanEditPurchase()]
+        if self.action in ['destroy']:
+            return [IsTenantAdmin()]
         return [IsAuthenticated()]
     
     def get_queryset(self):
-        """
-        Return purchase batch records only for the current tenant (authenticated user).
-        Superusers can see all purchase batch records.
-        """
-        user = self.request.user
-        if user.is_superuser:
-            return PurchaseBatch.objects.all()
-        return PurchaseBatch.objects.filter(tenant=user)
+        """Queryset with platform operator protection."""
+        return self.queryset.model.objects.for_user(self.request.user)
     
+    @transaction.atomic
     def perform_create(self, serializer):
-        """Automatically set the tenant to the current user"""
-        serializer.save(tenant=self.request.user)
+        """Automatically set the tenant"""
+        serializer.save(**_get_create_scope(self.request))
     
     @action(detail=True, methods=['get'])
     def sales_summary(self, request, pk=None):
@@ -464,16 +477,16 @@ class PurchaseBatchViewSet(viewsets.ModelViewSet):
         })
 
 
-class SaleViewSet(viewsets.ModelViewSet):
+class SaleViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
     """
     ViewSet for Sale management with tenant isolation.
     
-    Permissions:
-    - TenantAdmin: Full access
-    - SalesStaff: Full access (create sales, record payments)
-    - StoreAccounts: Read-only access
-    
-    All sale data is isolated per tenant (User).
+    Security:
+    - Platform Operator: NO DIRECT ACCESS
+    - Tenant Admin: Full access
+    - Accountant: Full access (edit before delivery)
+    - Sales Staff: Create only, edit same-day only
+    - Store Accounts: Read-only
     """
     queryset = Sale.objects.all()
     serializer_class = SaleSerializer
@@ -486,85 +499,79 @@ class SaleViewSet(viewsets.ModelViewSet):
     
     def get_permissions(self):
         """Return permissions based on action"""
-        if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            # TenantAdmin and SalesStaff can write
-            return [IsTenantAdmin() | IsSalesStaff()]
+        if self.action in ['create']:
+            return [HasAnyRole('is_tenant_admin', 'is_accountant', 'is_sales_staff')]
+        if self.action in ['update', 'partial_update']:
+            return [CanEditSale()]
+        if self.action in ['destroy']:
+            return [IsTenantAdmin()]
         return [IsAuthenticated()]
     
     def get_queryset(self):
-        """
-        Return sale records only for the current tenant (authenticated user).
-        Superusers can see all sale records.
-        """
-        user = self.request.user
-        if user.is_superuser:
-            return Sale.objects.all()
-        return Sale.objects.filter(tenant=user)
+        """Queryset with platform operator protection."""
+        return _get_scoped_queryset(Sale, self.request)
     
     def perform_create(self, serializer):
-        """Automatically set the tenant to the current user"""
-        serializer.save(tenant=self.request.user)
+        """Use SaleService for creation"""
+        service = SaleService(self.request.user)
+        data = serializer.validated_data
+        instance = service.create_sale(dict(data))
+        serializer = self.get_serializer(instance)
+    
+    def perform_update(self, serializer):
+        """Use SaleService for update"""
+        service = SaleService(self.request.user)
+        instance = service.update_sale(serializer.instance, serializer.validated_data)
+        serializer = self.get_serializer(instance)
     
     @action(detail=True, methods=['post'])
     def record_payment(self, request, pk=None):
-        """Record a payment for this sale"""
+        """Record payment using SaleService"""
         sale = self.get_object()
-        amount = request.data.get('amount', 0)
-        
-        try:
-            amount = Decimal(str(amount))
-            sale.amount_received += amount
-            sale.save()
-            return Response({
-                'status': 'success',
-                'amount_received': str(sale.amount_received),
-                'pending_amount': str(sale.pending_amount),
-                'payment_status': sale.payment_status
-            })
-        except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-    
+        service = SaleService(self.request.user)
+        payment = service.record_payment(
+            sale,
+            request.data.get('amount'),
+            request.data.get('payment_date'),
+            request.data.get('reference', '')
+        )
+        serializer = PaymentSerializer(payment)
+        return Response(serializer.data)
+
     @action(detail=True, methods=['post'])
     def mark_delivered(self, request, pk=None):
-        """Mark sale as delivered"""
+        """Mark delivered using SaleService"""
         sale = self.get_object()
-        sale.delivery_status = 'delivered'
-        sale.delivery_confirmed_at = timezone.now()
-        sale.delivered_by = request.data.get('delivered_by', request.user.get_full_name())
-        sale.save()
-        return Response({
-            'status': 'success',
-            'delivery_status': sale.delivery_status,
-            'delivered_at': sale.delivery_confirmed_at
-        })
-    
+        service = SaleService(self.request.user)
+        service.mark_delivered(sale, request.data.get('delivered_by', request.user.get_full_name()))
+        serializer = SaleSerializer(sale)
+        return Response(serializer.data)
+
     @action(detail=True, methods=['post'])
     def process_return(self, request, pk=None):
-        """Process a return for this sale"""
+        """Process return using SaleService"""
         sale = self.get_object()
-        sale.is_returned = True
-        sale.return_date = request.data.get('return_date')
-        sale.return_reason = request.data.get('return_reason', '')
-        sale.refund_amount = request.data.get('refund_amount', 0)
-        sale.save()
-        return Response({
-            'status': 'success',
-            'is_returned': sale.is_returned,
-            'refund_amount': str(sale.refund_amount)
-        })
+        service = SaleService(self.request.user)
+        service.process_return(
+            sale,
+            request.data.get('return_date'),
+            request.data.get('return_reason', ''),
+            request.data.get('refund_amount', 0)
+        )
+        serializer = SaleSerializer(sale)
+        return Response(serializer.data)
 
 
-class PaymentViewSet(viewsets.ModelViewSet):
+class PaymentViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
     """
     ViewSet for Payment management with tenant isolation.
     
-    Permissions:
-    - TenantAdmin: Full access
-    - SalesStaff: Can record customer payments
-    - StoreAccounts: Can record supplier payments
-    - All: Read-only access
-    
-    All payment data is isolated per tenant (User).
+    Security:
+    - Platform Operator: NO DIRECT ACCESS
+    - Tenant Admin: Full access
+    - Accountant: Full access (edit before cleared)
+    - Sales Staff: Customer payments only (edit before cleared)
+    - Store Accounts: Supplier payments only (edit before cleared)
     """
     queryset = Payment.objects.all()
     serializer_class = PaymentSerializer
@@ -577,24 +584,21 @@ class PaymentViewSet(viewsets.ModelViewSet):
     
     def get_permissions(self):
         """Return permissions based on action"""
-        if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            # All roles can record payments
-            return [IsTenantAdmin() | IsSalesStaff() | IsStoreAccounts()]
+        if self.action in ['create']:
+            return [HasAnyRole('is_tenant_admin', 'is_accountant', 'is_sales_staff', 'is_store_accounts')]
+        if self.action in ['update', 'partial_update']:
+            return [CanEditPayment()]
+        if self.action in ['destroy']:
+            return [IsTenantAdmin()]
         return [IsAuthenticated()]
     
     def get_queryset(self):
-        """
-        Return payment records only for the current tenant (authenticated user).
-        Superusers can see all payment records.
-        """
-        user = self.request.user
-        if user.is_superuser:
-            return Payment.objects.all()
-        return Payment.objects.filter(tenant=user)
+        """Queryset with platform operator protection."""
+        return _get_scoped_queryset(Payment, self.request)
     
     def perform_create(self, serializer):
-        """Automatically set the tenant to the current user"""
-        serializer.save(tenant=self.request.user)
+        """Automatically set the tenant"""
+        serializer.save(**_get_create_scope(self.request))
     
     @action(detail=True, methods=['post'])
     def approve(self, request, pk=None):
@@ -621,16 +625,16 @@ class PaymentViewSet(viewsets.ModelViewSet):
         })
 
 
-class InventoryViewSet(viewsets.ModelViewSet):
+class InventoryViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
     """
     ViewSet for Inventory management with tenant isolation.
     
-    Permissions:
-    - TenantAdmin: Full access
-    - StoreAccounts: Full access (update inventory, mark spoiled)
-    - SalesStaff: Read-only access
-    
-    All inventory data is isolated per tenant (User).
+    Security:
+    - Platform Operator: NO DIRECT ACCESS
+    - Tenant Admin: Full access
+    - Accountant: Full access
+    - Store Accounts: Full access (update inventory, mark spoiled)
+    - Sales Staff: Read-only
     """
     queryset = Inventory.objects.all()
     serializer_class = InventorySerializer
@@ -644,57 +648,48 @@ class InventoryViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         """Return permissions based on action"""
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            # TenantAdmin and StoreAccounts can write
-            return [IsTenantAdmin() | IsStoreAccounts()]
+            return [HasAnyRole('is_tenant_admin', 'is_accountant', 'is_store_accounts')]
         return [IsAuthenticated()]
     
     def get_queryset(self):
-        """
-        Return inventory records only for the current tenant (authenticated user).
-        Superusers can see all inventory records.
-        """
-        user = self.request.user
-        if user.is_superuser:
-            return Inventory.objects.all()
-        return Inventory.objects.filter(tenant=user)
+        """Queryset with platform operator protection."""
+        return _get_scoped_queryset(Inventory, self.request)
     
     def perform_create(self, serializer):
-        """Automatically set the tenant to the current user"""
-        serializer.save(tenant=self.request.user)
+        """Use InventoryService for creation"""
+        service = InventoryService(self.request.user)
+        data = serializer.validated_data
+        instance = service.create_inventory(dict(data))
+        serializer = self.get_serializer(instance)
+    
+    def perform_update(self, serializer):
+        """Use InventoryService for update"""
+        service = InventoryService(self.request.user)
+        serializer.save()  # serializer handles fields, service for business logic
+
     
     @action(detail=True, methods=['post'])
     def update_temperature(self, request, pk=None):
-        """Update storage temperature"""
+        """Update temperature using InventoryService"""
         inventory = self.get_object()
-        temperature = request.data.get('temperature')
-        
-        if temperature is not None:
-            inventory.current_temperature = temperature
-            inventory.temperature_last_checked = timezone.now()
-            inventory.save()
-            return Response({
-                'status': 'success',
-                'current_temperature': str(inventory.current_temperature),
-                'last_checked': inventory.temperature_last_checked
-            })
-        return Response({'error': 'Temperature value required'}, status=status.HTTP_400_BAD_REQUEST)
+        service = InventoryService(self.request.user)
+        service.update_temperature(inventory, request.data.get('temperature'))
+        serializer = self.get_serializer(inventory)
+        return Response(serializer.data)
     
     @action(detail=True, methods=['post'])
     def move_stock(self, request, pk=None):
-        """Move stock to different location"""
+        """Move stock using InventoryService"""
         inventory = self.get_object()
-        inventory.storage_location = request.data.get('storage_location', inventory.storage_location)
-        inventory.bin_number = request.data.get('bin_number', inventory.bin_number)
-        inventory.rack_number = request.data.get('rack_number', inventory.rack_number)
-        inventory.last_moved_at = timezone.now()
-        inventory.last_moved_by = request.user.get_full_name()
-        inventory.save()
-        return Response({
-            'status': 'success',
-            'new_location': inventory.storage_location,
-            'bin': inventory.bin_number,
-            'rack': inventory.rack_number
-        })
+        service = InventoryService(self.request.user)
+        service.move_stock(
+            inventory,
+            request.data.get('storage_location'),
+            request.data.get('bin_num'),
+            request.data.get('rack_num')
+        )
+        serializer = self.get_serializer(inventory)
+        return Response(serializer.data)
     
     @action(detail=False, methods=['get'])
     def low_stock(self, request):

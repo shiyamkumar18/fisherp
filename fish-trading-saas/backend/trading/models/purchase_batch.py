@@ -1,4 +1,5 @@
 from decimal import Decimal
+import uuid
 from django.db import models
 from django.utils import timezone
 from django.core.exceptions import ValidationError
@@ -6,12 +7,14 @@ from django.core.exceptions import ValidationError
 from .fish import Fish
 from .fish_category import FishCategory
 from .supplier import Supplier
+from services.base import CompanyManager
 
 
 class PurchaseBatch(models.Model):
     """Purchase batch from suppliers/fishermen"""
 
     PURCHASE_TYPE_CHOICES = [
+        ("direct", "Direct"),
         ("auction", "Auction"),
         ("package", "Boxes"),
         ("bucket", "Bucket"),
@@ -111,6 +114,25 @@ class PurchaseBatch(models.Model):
                                db_index=True,
                                null=True, blank=True,
                                help_text="Tenant/Owner of this purchase batch record")
+    company = models.ForeignKey(
+        'companies.Company',
+        on_delete=models.CASCADE,
+        related_name='purchase_batch_records',
+        db_index=True,
+        null=True,
+        blank=True,
+        help_text="Company this purchase batch belongs to",
+    )
+    
+    is_deleted = models.BooleanField(default=False)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+    
+    objects = CompanyManager()
+    all_objects = models.Manager()
+    
+    class Meta:
+        pass
+
 
     def calculate_fields(self):
         """Calculate all derived fields"""
@@ -153,12 +175,25 @@ class PurchaseBatch(models.Model):
         # Auto-generate batch number if not provided
         if not self.batch_number:
             from datetime import datetime
-            timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
-            self.batch_number = f"BATCH-{timestamp}-{self.id or 'NEW'}"
+            timestamp = datetime.now().strftime('%Y%m%d%H%M%S%f')
+            self.batch_number = f"BATCH-{timestamp}-{uuid.uuid4().hex[:6]}"
+
+        # Keep company and tenant pointers aligned for backward compatibility.
+        if not self.company_id and self.tenant_id and self.tenant.company_id:
+            self.company = self.tenant.company
+        if not self.tenant_id and self.company_id and self.company.admin_id:
+            self.tenant = self.company.admin
+
+        # Preserve explicit pending amount when provided by callers.
+        explicit_pending = self.pending_amount
         
         # This ensures clean() validation runs even when saving directly
         self.full_clean()
         self.calculate_fields()
+
+        if explicit_pending is not None and explicit_pending >= 0:
+            self.pending_amount = explicit_pending
+            self.amount_paid = self.total_expense - explicit_pending
         
         # Update status based on payment
         if self.pending_amount <= 0 and self.total_expense > 0:
@@ -203,6 +238,8 @@ class PurchaseBatch(models.Model):
         self.calculate_fields()
         if self.amount_paid > self.total_expense:
             raise ValidationError({'amount_paid': 'Amount paid cannot exceed total expense.'})
+        if self.tenant_id and self.company_id and self.tenant.company_id and self.tenant.company_id != self.company_id:
+            raise ValidationError({'company': 'Company must match tenant owner company.'})
 
     def get_remaining_packages(self):
         """Calculate remaining packages available for sale in this batch."""
@@ -234,3 +271,7 @@ class PurchaseBatch(models.Model):
             total_profit=Sum('profit'),
             total_packages=Sum('number_of_packages_sold')
         )
+
+    def get_cost_per_package(self):
+        """Backward-compatible helper used by tests/services."""
+        return self.cost_per_package

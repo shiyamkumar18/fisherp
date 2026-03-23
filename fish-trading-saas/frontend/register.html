@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fish ERP - Register Company</title>
+    <link rel="stylesheet" href="css/auth-modern.css">
+</head>
+<body class="auth-page">
+    <div class="register-shell">
+        <div class="register-head">
+            <h1>Register Your Company</h1>
+            <p>Create a tenant account and start managing fish trading operations.</p>
+        </div>
+
+        <div id="message"></div>
+
+        <form id="registerForm">
+            <div class="register-grid">
+                <section class="register-section">
+                    <h3>Company Details</h3>
+
+                    <div class="form-group">
+                        <label for="company_name">Company Name *</label>
+                        <input class="form-input" type="text" id="company_name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="city">City</label>
+                        <input class="form-input" type="text" id="city">
+                    </div>
+                    <div class="form-group">
+                        <label for="phone">Phone</label>
+                        <input class="form-input" type="text" id="phone">
+                    </div>
+                    <div class="form-group">
+                        <label for="gst_number">GST Number</label>
+                        <input class="form-input" type="text" id="gst_number">
+                    </div>
+                </section>
+
+                <section class="register-section">
+                    <h3>Admin Details</h3>
+
+                    <div class="form-group">
+                        <label for="full_name">Full Name</label>
+                        <input class="form-input" type="text" id="full_name">
+                    </div>
+                    <div class="form-group">
+                        <label for="email">Email *</label>
+                        <input class="form-input" type="email" id="email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="admin_phone">Phone</label>
+                        <input class="form-input" type="text" id="admin_phone">
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Password *</label>
+                        <input class="form-input" type="password" id="password" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="confirm_password">Confirm Password *</label>
+                        <input class="form-input" type="password" id="confirm_password" required>
+                    </div>
+                </section>
+            </div>
+
+            <div class="register-actions">
+                <button class="btn-login" type="submit">
+                    <span class="btn-text">Register Company</span>
+                    <span class="btn-loading">Registering...</span>
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        const API_URL = `${window.location.origin}/api/auth/register/`;
+        const form = document.getElementById('registerForm');
+        const submitBtn = form.querySelector('.btn-login');
+
+        function showMessage(text, type) {
+            const messageEl = document.getElementById('message');
+            messageEl.innerHTML = `<div class="message ${type}">${text}</div>`;
+        }
+
+        function collectData() {
+            return {
+                company_name: document.getElementById('company_name').value.trim(),
+                city: document.getElementById('city').value.trim(),
+                phone: document.getElementById('phone').value.trim(),
+                gst_number: document.getElementById('gst_number').value.trim(),
+                full_name: document.getElementById('full_name').value.trim(),
+                email: document.getElementById('email').value.trim(),
+                admin_phone: document.getElementById('admin_phone').value.trim(),
+                password: document.getElementById('password').value,
+                confirm_password: document.getElementById('confirm_password').value
+            };
+        }
+
+        form.addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const data = collectData();
+
+            if (!data.company_name || !data.email || !data.password || !data.confirm_password) {
+                showMessage('Please fill all required fields.', 'error');
+                return;
+            }
+
+            if (data.password !== data.confirm_password) {
+                showMessage('Passwords do not match.', 'error');
+                return;
+            }
+
+            submitBtn.classList.add('loading');
+            submitBtn.disabled = true;
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    showMessage(result.error || 'Registration failed. Please try again.', 'error');
+                    return;
+                }
+
+                showMessage('Company registered successfully. Redirecting to login...', 'success');
+                setTimeout(() => {
+                    window.location.href = '/web/login/';
+                }, 1800);
+            } catch (error) {
+                console.error('Registration error:', error);
+                showMessage('Unable to reach server. Check backend and try again.', 'error');
+            } finally {
+                submitBtn.classList.remove('loading');
+                submitBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,14 +1,14 @@
 from django.db import models
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django_tenants.models import TenantMixin, DomainMixin
 
 User = get_user_model()
 
 
-class Company(TenantMixin):
+class Company(models.Model):
+    """Company/Tenant model for the SaaS application"""
     name = models.CharField(max_length=200)
-    slug = models.CharField(max_length=100, unique=True, help_text="URL-friendly company identifier")
+    slug = models.CharField(max_length=100, unique=True, help_text="URL-friendly company identifier", default="public")
     phone = models.CharField(max_length=15, blank=True, null=True)
     email = models.EmailField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -66,7 +66,7 @@ class Company(TenantMixin):
     settings = models.JSONField(default=dict, blank=True, 
                                 help_text="Company-specific settings and preferences")
     
-    # Admin User (Tenant Admin)
+    # Admin User (Company Admin)
     admin = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
@@ -80,10 +80,6 @@ class Company(TenantMixin):
     is_active = models.BooleanField(default=True)
     is_verified = models.BooleanField(default=False, help_text="Verified company")
     verification_date = models.DateTimeField(null=True, blank=True)
-    
-    # Important for django-tenants
-    auto_create_schema = True
-    auto_drop_schema = True
 
     class Meta:
         ordering = ["-created_at"]
@@ -105,20 +101,51 @@ class Company(TenantMixin):
         }
     
     def get_user_count(self):
-        """Get number of users in this company/tenant"""
-        from django.contrib.auth import get_user_model
-        User = get_user_model()
-        return User.objects.filter(schema_name=self.slug).count()
+        """Get number of users in this company"""
+        return User.objects.filter(company=self).count()
     
     def can_add_user(self, max_users=3):
         """Check if more users can be added"""
         return self.get_user_count() < max_users
+    
+    @property
+    def login_url(self):
+        """Get the tenant-specific login URL"""
+        return f"/login/{self.slug}/"
+    
+    @property
+    def register_url(self):
+        """Get the tenant-specific registration URL"""
+        return f"/register/{self.slug}/"
+    
+    @property
+    def is_tenant_active(self):
+        """Check if tenant is active and verified"""
+        return self.is_active and self.is_verified
+    
+    def get_login_context(self):
+        """Get context for login page rendering"""
+        return {
+            'company_name': self.name,
+            'company_slug': self.slug,
+            'login_url': self.login_url,
+            'register_url': self.register_url,
+            'is_active': self.is_tenant_active,
+            'logo_url': self.logo.url if self.logo else None,
+            'primary_color': self.settings.get('primary_color', '#667eea'),
+        }
 
 
-class Domain(DomainMixin):
-    """Domain configuration for tenant"""
-    is_primary = models.BooleanField(default=True, help_text="Primary domain for this tenant")
+class Domain(models.Model):
+    """Domain configuration for company (simplified for non-multi-tenant)"""
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='domains')
+    domain = models.CharField(max_length=253, unique=True, help_text="Domain name")
+    is_primary = models.BooleanField(default=True, help_text="Primary domain for this company")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ['-is_primary', '-created_at']
+    
+    def __str__(self):
+        return self.domain
+

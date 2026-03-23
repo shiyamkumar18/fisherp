@@ -1,10 +1,12 @@
 from decimal import Decimal
+import uuid
 from django.db import models
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 
 from .purchase_batch import PurchaseBatch
 from .buyer import Buyer
+from services.base import CompanyManager
 
 
 class Sale(models.Model):
@@ -96,6 +98,20 @@ class Sale(models.Model):
                                db_index=True,
                                null=True, blank=True,
                                help_text="Tenant/Owner of this sale record")
+    company = models.ForeignKey(
+        'companies.Company',
+        on_delete=models.CASCADE,
+        related_name='sale_records',
+        db_index=True,
+        null=True,
+        blank=True,
+        help_text="Company this sale belongs to",
+    )
+    
+    is_deleted = models.BooleanField(default=False, help_text="Soft delete flag")
+    
+    objects = CompanyManager()
+    all_objects = models.Manager()
 
     def clean(self):
         """Validate all fields"""
@@ -134,6 +150,8 @@ class Sale(models.Model):
                 raise ValidationError({
                     'number_of_packages_sold': f'Cannot sell {self.number_of_packages_sold} packages. Only {remaining} packages remaining in this batch.'
                 })
+        if self.tenant_id and self.company_id and self.tenant.company_id and self.tenant.company_id != self.company_id:
+            raise ValidationError({'company': 'Company must match tenant owner company.'})
 
     def calculate_fields(self):
         """Calculate all financial fields"""
@@ -142,7 +160,6 @@ class Sale(models.Model):
         number_of_packages_sold = self.number_of_packages_sold if self.number_of_packages_sold is not None else 0
         selling_weight_per_package = self.selling_weight_per_package if self.selling_weight_per_package is not None else Decimal("0.00")
         selling_price_per_kg = self.selling_price_per_kg if self.selling_price_per_kg is not None else Decimal("0.00")
-        batch_cost_per_package = self.batch.cost_per_package if self.batch and self.batch.cost_per_package is not None else Decimal("0.00")
         amount_received = self.amount_received if self.amount_received is not None else Decimal("0.00")
 
         # Revenue
@@ -152,8 +169,9 @@ class Sale(models.Model):
             * selling_price_per_kg
         )
 
-        # Cost (based on batch cost per package)
-        self.total_cost = number_of_packages_sold * batch_cost_per_package
+        # Cost based on purchase price and sold weight.
+        batch_buy_price = self.batch.price_per_kg if self.batch and self.batch.price_per_kg is not None else Decimal("0.00")
+        self.total_cost = number_of_packages_sold * selling_weight_per_package * batch_buy_price
 
         self.profit = self.total_revenue - self.total_cost
         
@@ -173,12 +191,24 @@ class Sale(models.Model):
         # Auto-generate invoice number if not provided
         if not self.invoice_number:
             from datetime import datetime
-            timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
-            self.invoice_number = f"INV-{timestamp}-{self.id or 'NEW'}"
+            timestamp = datetime.now().strftime('%Y%m%d%H%M%S%f')
+            self.invoice_number = f"INV-{timestamp}-{uuid.uuid4().hex[:6]}"
+
+        # Keep company and tenant pointers aligned for backward compatibility.
+        if not self.company_id and self.tenant_id and self.tenant.company_id:
+            self.company = self.tenant.company
+        if not self.tenant_id and self.company_id and self.company.admin_id:
+            self.tenant = self.company.admin
+
+        explicit_pending = self.pending_amount
         
         # This ensures clean() validation runs even when saving directly
         self.full_clean()
         self.calculate_fields()
+
+        if explicit_pending is not None and explicit_pending >= 0:
+            self.pending_amount = explicit_pending
+            self.amount_received = self.total_revenue - explicit_pending
         
         # Update payment status
         if self.pending_amount <= 0 and self.total_revenue > 0:
@@ -192,3 +222,10 @@ class Sale(models.Model):
 
     def __str__(self):
         return f"Sale #{self.invoice_number or self.id} - {self.buyer.name} - {self.date}"
+
+    def get_profit_per_kg(self):
+        """Backward-compatible helper used by tests/services."""
+        total_weight = self.number_of_packages_sold * self.selling_weight_per_package
+        if total_weight <= 0:
+            return Decimal("0.00")
+        return self.profit / total_weight
