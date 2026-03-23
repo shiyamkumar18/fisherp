@@ -1,8 +1,10 @@
 from decimal import Decimal
 from django.db import models
+from django.core.exceptions import ValidationError
 
 from .fish import Fish
 from .purchase_batch import PurchaseBatch
+from services.base import CompanyManager
 
 
 class Inventory(models.Model):
@@ -61,6 +63,20 @@ class Inventory(models.Model):
                                db_index=True,
                                null=True, blank=True,
                                help_text="Tenant/Owner of this inventory record")
+    company = models.ForeignKey(
+        'companies.Company',
+        on_delete=models.CASCADE,
+        related_name='inventory_records',
+        db_index=True,
+        null=True,
+        blank=True,
+        help_text="Company this inventory belongs to",
+    )
+    
+    is_deleted = models.BooleanField(default=False, help_text="Soft delete flag")
+    
+    objects = CompanyManager()
+    all_objects = models.Manager()
 
     class Meta:
         verbose_name_plural = "Inventories"
@@ -68,28 +84,47 @@ class Inventory(models.Model):
         indexes = [
             models.Index(fields=['tenant', 'status']),
             models.Index(fields=['tenant', 'expiry_date']),
+            models.Index(fields=['company', 'status']),
+            models.Index(fields=['company', 'expiry_date']),
         ]
 
     def __str__(self):
         return f"{self.fish.name} - {self.remaining_packages} packages remaining"
+
+    def save(self, *args, **kwargs):
+        # Keep company and tenant pointers aligned for backward compatibility.
+        if not self.company_id and self.tenant_id and self.tenant.company_id:
+            self.company = self.tenant.company
+        if not self.tenant_id and self.company_id and self.company.admin_id:
+            self.tenant = self.company.admin
+        if self.tenant_id and self.company_id and self.tenant.company_id and self.tenant.company_id != self.company_id:
+            raise ValidationError({'company': 'Company must match tenant owner company.'})
+        super().save(*args, **kwargs)
     
+
+    from django.db import transaction
+    from django.db.models import F
+    
+    @transaction.atomic
     def update_stock(self, packages_sold):
-        """Update stock after sale"""
-        self.sold_packages += packages_sold
-        self.remaining_packages = self.initial_packages - self.sold_packages
+        """Update stock after sale with atomic updates"""
+        inventory = Inventory.objects.select_for_update().get(pk=self.pk)
+        inventory.sold_packages = F('sold_packages') + packages_sold
+        inventory.remaining_packages = F('initial_packages') - F('sold_packages')
         
         # Update weight proportionally
-        if self.initial_packages > 0:
-            weight_per_package = self.initial_weight_kg / self.initial_packages
-            self.remaining_weight_kg = self.remaining_packages * weight_per_package
+        if inventory.initial_packages > 0:
+            weight_per_package = inventory.initial_weight_kg / inventory.initial_packages
+            inventory.remaining_weight_kg = inventory.remaining_packages * weight_per_package
         
         # Update status
-        if self.remaining_packages <= 0:
-            self.status = 'out_of_stock'
-        elif self.remaining_packages <= self.reorder_level:
-            self.status = 'low_stock'
+        if inventory.remaining_packages <= 0:
+            inventory.status = 'out_of_stock'
+        elif inventory.remaining_packages <= self.reorder_level:
+            inventory.status = 'low_stock'
         
-        self.save(update_fields=['sold_packages', 'remaining_packages', 'remaining_weight_kg', 'status'])
+        inventory.save(update_fields=['sold_packages', 'remaining_packages', 'remaining_weight_kg', 'status'])
+
     
     def check_expiry_alert(self):
         """Check if expiry alert should be triggered"""
@@ -102,3 +137,8 @@ class Inventory(models.Model):
     def needs_reorder(self):
         """Check if stock needs reordering"""
         return self.remaining_packages <= self.reorder_level
+
+    def get_stock_value(self):
+        """Backward-compatible stock valuation helper."""
+        price_per_kg = self.purchase_batch.price_per_kg if self.purchase_batch else Decimal("0.00")
+        return self.remaining_weight_kg * price_per_kg

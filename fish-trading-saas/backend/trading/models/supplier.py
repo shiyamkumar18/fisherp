@@ -1,6 +1,9 @@
 from decimal import Decimal
 from django.db import models
 from django.utils import timezone
+from django.core.exceptions import ValidationError
+
+from services.base import CompanyManager
 
 
 class Supplier(models.Model):
@@ -66,7 +69,22 @@ class Supplier(models.Model):
     # Tenant isolation - ForeignKey to User (tenant) with index for performance
     tenant = models.ForeignKey('accounts.User', on_delete=models.CASCADE, related_name='suppliers',
                                db_index=True,
+                               null=True, blank=True,
                                help_text="Tenant/Owner of this supplier record")
+    company = models.ForeignKey(
+        'companies.Company',
+        on_delete=models.CASCADE,
+        related_name='supplier_records',
+        db_index=True,
+        null=True,
+        blank=True,
+        help_text="Company this supplier belongs to",
+    )
+    
+    is_deleted = models.BooleanField(default=False, help_text="Soft delete flag")
+    
+    objects = CompanyManager()
+    all_objects = models.Manager()
     
     # Payment Terms & Tracking
     payment_terms = models.CharField(max_length=15, choices=PAYMENT_TERM_CHOICES, default='immediate',
@@ -99,18 +117,21 @@ class Supplier(models.Model):
         indexes = [
             models.Index(fields=['tenant', 'name']),
             models.Index(fields=['tenant', 'is_active']),
+            models.Index(fields=['company', 'name']),
+            models.Index(fields=['company', 'is_active']),
         ]
 
     def __str__(self):
-        return f"{self.name} ({self.phone or 'No Phone'})"
+        return self.name
     
     def save(self, *args, **kwargs):
-        # Auto-set tenant from user if not provided (fallback security)
-        if not self.tenant_id:
-            from django.contrib.auth import get_user_model
-            User = get_user_model()
-            # This is a fallback - in practice tenant should always be set by the view
-            pass
+        # Keep company and tenant pointers aligned for backward compatibility.
+        if not self.company_id and self.tenant_id and self.tenant.company_id:
+            self.company = self.tenant.company
+        if not self.tenant_id and self.company_id and self.company.admin_id:
+            self.tenant = self.company.admin
+        if self.tenant_id and self.company_id and self.tenant.company_id and self.tenant.company_id != self.company_id:
+            raise ValidationError({'company': 'Company must match tenant owner company.'})
         super().save(*args, **kwargs)
     
     def update_credit_balance(self):
@@ -125,12 +146,12 @@ class Supplier(models.Model):
         
         purchases = PurchaseBatch.objects.filter(supplier=self).aggregate(
             total=Sum('total_expense'),
-            paid=Sum('amount_paid')
+            pending=Sum('pending_amount')
         )
         
         self.total_purchases = purchases['total'] or Decimal('0.00')
-        self.total_paid = purchases['paid'] or Decimal('0.00')
-        self.outstanding_amount = self.total_purchases - self.total_paid
+        self.outstanding_amount = purchases['pending'] or Decimal('0.00')
+        self.total_paid = self.total_purchases - self.outstanding_amount
         
         # Update last purchase date
         last_purchase = PurchaseBatch.objects.filter(supplier=self).order_by('-date').first()
@@ -155,6 +176,8 @@ class Supplier(models.Model):
         """Get current payment status"""
         if self.outstanding_amount <= 0:
             return 'paid'
+        elif self.total_paid > 0 or self.outstanding_amount > 0:
+            return 'partial'
         elif self.is_payment_overdue():
             return 'overdue'
         else:

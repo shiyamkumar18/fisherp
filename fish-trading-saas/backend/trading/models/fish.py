@@ -3,6 +3,7 @@ from django.db import models
 from django.core.exceptions import ValidationError
 
 from .fish_category import FishCategory
+from services.base import CompanyManager
 
 
 class Fish(models.Model):
@@ -29,6 +30,20 @@ class Fish(models.Model):
     tenant = models.ForeignKey('accounts.User', on_delete=models.CASCADE, related_name='fish',
                                db_index=True,
                                help_text="Tenant/Owner of this fish record")
+    company = models.ForeignKey(
+        'companies.Company',
+        on_delete=models.CASCADE,
+        related_name='fish_records',
+        db_index=True,
+        null=True,
+        blank=True,
+        help_text="Company this fish belongs to",
+    )
+    
+    is_deleted = models.BooleanField(default=False, help_text="Soft delete flag")
+    
+    objects = CompanyManager()
+    all_objects = models.Manager()
     
     # Pricing
     min_price_per_kg = models.DecimalField(max_digits=10, decimal_places=2, default=0, 
@@ -50,6 +65,8 @@ class Fish(models.Model):
         indexes = [
             models.Index(fields=['tenant', 'name']),
             models.Index(fields=['tenant', 'is_active']),
+            models.Index(fields=['company', 'name']),
+            models.Index(fields=['company', 'is_active']),
         ]
 
     def __str__(self):
@@ -61,11 +78,14 @@ class Fish(models.Model):
             raise ValidationError({'box_weight_kg': 'Box weight is required when unit type is box.'})
     
     def save(self, *args, **kwargs):
-        # Auto-set tenant from user if not provided (fallback security)
-        # Note: FishCategory is shared (no tenant), so we don't try to get tenant from category
-        if not self.tenant_id:
-            # Tenant should be set by the view or serializer, not auto-derived from category
-            pass
+        # Keep company and tenant pointers aligned for backward compatibility.
+        if not self.company_id and self.tenant_id and self.tenant.company_id:
+            self.company = self.tenant.company
+        if not self.tenant_id and self.company_id and self.company.admin_id:
+            self.tenant = self.company.admin
+
+        if self.tenant_id and self.company_id and self.tenant.company_id and self.tenant.company_id != self.company_id:
+            raise ValidationError({'company': 'Company must match tenant owner company.'})
         self.full_clean()
         super().save(*args, **kwargs)
     

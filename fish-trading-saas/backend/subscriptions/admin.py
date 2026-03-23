@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import SubscriptionTier, Subscription
+from .models import SubscriptionTier, Subscription, SubscriptionAddOn, SubscriptionAddOnPurchase
 
 
 class TenantIsolationAdminMixin:
@@ -13,8 +13,10 @@ class TenantIsolationAdminMixin:
         qs = super().get_queryset(request)
         if request.user.is_superuser:
             return qs
-        # Filter by tenant if the model has tenant field
-        if hasattr(self.model, '_meta') and 'tenant' in [f.name for f in self.model._meta.get_fields()]:
+        model_fields = {f.name for f in self.model._meta.get_fields()}
+        if request.user.company and 'company' in model_fields:
+            return qs.filter(company=request.user.company)
+        if 'tenant' in model_fields:
             return qs.filter(tenant=request.user)
         return qs
     
@@ -23,7 +25,8 @@ class TenantIsolationAdminMixin:
         if request.user.is_superuser:
             return True
         if obj is not None:
-            # Check if object has tenant and belongs to user's tenant
+            if hasattr(obj, 'company') and obj.company and request.user.company:
+                return obj.company_id == request.user.company_id
             if hasattr(obj, 'tenant') and obj.tenant:
                 return obj.tenant == request.user
             return True
@@ -34,6 +37,8 @@ class TenantIsolationAdminMixin:
         if request.user.is_superuser:
             return True
         if obj is not None:
+            if hasattr(obj, 'company') and obj.company and request.user.company:
+                return obj.company_id == request.user.company_id
             if hasattr(obj, 'tenant') and obj.tenant:
                 return obj.tenant == request.user
             return True
@@ -44,13 +49,14 @@ class TenantIsolationAdminMixin:
         if request.user.is_superuser:
             return True
         if obj is not None:
+            if hasattr(obj, 'company') and obj.company and request.user.company:
+                return obj.company_id == request.user.company_id
             if hasattr(obj, 'tenant') and obj.tenant:
                 return obj.tenant == request.user
             return True
         return True
     
     def has_add_permission(self, request):
-        """Check if user can add objects"""
         return True
 
 
@@ -71,11 +77,10 @@ class SubscriptionTierAdmin(admin.ModelAdmin):
         'is_active', 
         'is_recommended',
         'allow_api_access', 
-        'allow_analytics',
-        'allow_advanced_reporting',
+        'allow_advanced_analytics',
         'allow_multi_location',
         'allow_custom_integrations',
-        'priority_support'
+        'allow_priority_support'
     )
     search_fields = ('name', 'description')
     ordering = ('display_order', 'price_monthly')
@@ -87,25 +92,85 @@ class SubscriptionTierAdmin(admin.ModelAdmin):
         ('Pricing', {
             'fields': ('price_monthly', 'price_yearly', 'trial_days')
         }),
-        ('Usage Limits', {
+        ('User Limits', {
             'fields': (
                 'max_users', 
                 'max_storage_gb',
-                'max_purchases_per_month',
-                'max_sales_per_month',
-                'max_products',
-                'max_suppliers',
-                'max_buyers'
             )
         }),
-        ('Feature Flags', {
+        ('Basic Plan Features', {
             'fields': (
-                'allow_api_access',
-                'allow_analytics',
-                'allow_advanced_reporting',
+                # Purchase & Sale
+                'allow_purchase_entry',
+                'allow_sale_entry',
+                'allow_auto_profit_calculation',
+                'allow_batch_based_selling',
+                'allow_payment_tracking',
+                # Inventory
+                'allow_inventory',
+                'allow_remaining_stock_update',
+                'allow_expiry_tracking',
+                'allow_low_stock_alert',
+                # Dashboard
+                'allow_today_sales',
+                'allow_today_profit',
+                'allow_outstanding_receivables',
+                'allow_inventory_value',
+                'allow_sales_trend',
+                # Users & Access
+                'allow_tenant_admin',
+                'allow_staff_users',
+                'allow_role_based_access',
+            )
+        }),
+        ('Premium Plan Features', {
+            'fields': (
+                # Analytics
+                'allow_advanced_analytics',
+                'allow_profit_by_fish',
+                'allow_profit_by_supplier',
+                'allow_batch_profit_analysis',
+                'allow_monthly_comparison',
+                # Credit & Risk
+                'allow_credit_risk_alert',
+                'allow_overdue_alert',
+                'allow_advanced_receivable',
+                # Quality & Commission
+                'allow_quality_grading',
+                'allow_commission_tracking',
+                'allow_supplier_performance',
+                # AI Features
+                'allow_ai_alerts',
+                'allow_expiry_risk_alert',
+                'allow_demand_prediction',
+                'allow_profit_anomaly_detection',
+                # Reports
+                'allow_csv_export',
+                'allow_pdf_reports',
+            )
+        }),
+        ('Enterprise Plan Features', {
+            'fields': (
+                # Multi-location
                 'allow_multi_location',
-                'allow_custom_integrations',
-                'priority_support'
+                'allow_stock_transfer',
+                # Advanced Compliance
+                'allow_advanced_gst',
+                'allow_detailed_tax_reporting',
+                'allow_audit_logs',
+                'allow_activity_history',
+                # Logistics
+                'allow_driver_tracking',
+                'allow_delivery_tracking',
+                'allow_transport_management',
+                # Cold Storage
+                'allow_temperature_monitoring',
+                'allow_storage_alerts',
+                # Technical
+                'allow_api_access',
+                'allow_custom_domain',
+                'allow_priority_support',
+                'allow_dedicated_onboarding',
             )
         }),
     )
@@ -200,3 +265,42 @@ class SubscriptionAdmin(TenantIsolationAdminMixin, admin.ModelAdmin):
         'updated_at',
         'days_remaining'
     )
+
+
+@admin.register(SubscriptionAddOn)
+class SubscriptionAddOnAdmin(admin.ModelAdmin):
+    list_display = (
+        'name',
+        'addon_type',
+        'price_monthly',
+        'price_yearly',
+        'is_active',
+        'display_order'
+    )
+    list_filter = (
+        'is_active',
+        'addon_type'
+    )
+    search_fields = ('name', 'description')
+    ordering = ('display_order', 'price_monthly')
+
+
+@admin.register(SubscriptionAddOnPurchase)
+class SubscriptionAddOnPurchaseAdmin(TenantIsolationAdminMixin, admin.ModelAdmin):
+    list_display = (
+        'subscription',
+        'addon',
+        'status',
+        'start_date',
+        'expiry_date',
+        'price_paid'
+    )
+    list_filter = (
+        'status',
+        'addon'
+    )
+    search_fields = (
+        'subscription__tier__name',
+        'addon__name'
+    )
+    date_hierarchy = 'start_date'

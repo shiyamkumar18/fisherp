@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from django.utils import timezone
 
 from .models import FishCategory, Fish, Supplier, Buyer, PurchaseBatch, Sale, Payment, Inventory
+from companies.models import Company
 
 User = get_user_model()
 
@@ -1110,12 +1111,26 @@ class TradingPermissionTest(APITestCase):
     """Test permission classes for trading endpoints"""
     
     def setUp(self):
+        self.company = Company.objects.create(name='Trading Co', slug='trading-co')
+
         # Create tenant admin
         self.tenant_admin = User.objects.create_user(
             username='trading_admin',
             email='admin@trading.com',
             password='testpass123',
-            role='tenant_admin'
+            role='tenant_admin',
+            company=self.company,
+        )
+        self.company.admin = self.tenant_admin
+        self.company.save(update_fields=['admin'])
+        
+        # Create accountant
+        self.accountant = User.objects.create_user(
+            username='trading_accountant',
+            email='accountant@trading.com',
+            password='testpass123',
+            role='accountant',
+            company=self.company,
         )
         
         # Create sales staff
@@ -1123,7 +1138,8 @@ class TradingPermissionTest(APITestCase):
             username='sales_staff',
             email='sales@trading.com',
             password='testpass123',
-            role='sales_staff'
+            role='sales_staff',
+            company=self.company,
         )
         
         # Create store accounts
@@ -1131,7 +1147,8 @@ class TradingPermissionTest(APITestCase):
             username='store_accounts',
             email='store@trading.com',
             password='testpass123',
-            role='store_accounts'
+            role='store_accounts',
+            company=self.company,
         )
         
         self.category = FishCategory.objects.create(name="Perm Cat", category_type="saltwater")
@@ -1141,6 +1158,9 @@ class TradingPermissionTest(APITestCase):
             unit_type="kg",
             tenant=self.tenant_admin
         )
+        
+        self.supplier = Supplier.objects.create(name="Perm Supplier", tenant=self.tenant_admin)
+        self.buyer = Buyer.objects.create(name="Perm Buyer", tenant=self.tenant_admin)
     
     def test_tenant_admin_can_create_fish(self):
         """Test tenant admin can create fish"""
@@ -1149,6 +1169,19 @@ class TradingPermissionTest(APITestCase):
         url = '/api/fish/'
         data = {
             'name': 'New Fish',
+            'category': self.category.id,
+            'unit_type': 'kg'
+        }
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+    
+    def test_accountant_can_create_fish(self):
+        """Test accountant can create fish"""
+        self.client.force_authenticate(user=self.accountant)
+        
+        url = '/api/fish/'
+        data = {
+            'name': 'Accountant Fish',
             'category': self.category.id,
             'unit_type': 'kg'
         }
@@ -1174,6 +1207,105 @@ class TradingPermissionTest(APITestCase):
             'unit_type': 'kg'
         }
         response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+    
+    def test_store_accounts_cannot_create_fish(self):
+        """Test store accounts cannot create fish"""
+        self.client.force_authenticate(user=self.store_accounts)
+        
+        url = '/api/fish/'
+        data = {
+            'name': 'New Fish',
+            'category': self.category.id,
+            'unit_type': 'kg'
+        }
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+    
+    def test_sales_staff_cannot_create_sale(self):
+        """Test sales staff CAN create sales"""
+        self.client.force_authenticate(user=self.sales_staff)
+        
+        batch = PurchaseBatch.objects.create(
+            purchase_type="direct",
+            supplier=self.supplier,
+            fish=self.fish,
+            number_of_packages=10,
+            package_weight=Decimal("20.00"),
+            price_per_kg=Decimal("30.00"),
+            tenant=self.tenant_admin
+        )
+        
+        url = '/api/sales/'
+        data = {
+            'batch': batch.id,
+            'buyer': self.buyer.id,
+            'number_of_packages_sold': 5,
+            'selling_weight_per_package': '15.00',
+            'selling_price_per_kg': '50.00'
+        }
+        response = self.client.post(url, data, format='json')
+        # Sales staff CAN create sales
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+    
+    def test_store_cannot_create_sale(self):
+        """Test store accounts cannot create sales"""
+        self.client.force_authenticate(user=self.store_accounts)
+        
+        batch = PurchaseBatch.objects.create(
+            purchase_type="direct",
+            supplier=self.supplier,
+            fish=self.fish,
+            number_of_packages=10,
+            package_weight=Decimal("20.00"),
+            price_per_kg=Decimal("30.00"),
+            tenant=self.tenant_admin
+        )
+        
+        url = '/api/sales/'
+        data = {
+            'batch': batch.id,
+            'buyer': self.buyer.id,
+            'number_of_packages_sold': 5,
+            'selling_weight_per_package': '15.00',
+            'selling_price_per_kg': '50.00'
+        }
+        response = self.client.post(url, data, format='json')
+        # Store accounts CANNOT create sales
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+    
+    def test_store_can_create_purchase(self):
+        """Test store accounts can create purchases"""
+        self.client.force_authenticate(user=self.store_accounts)
+        
+        url = '/api/purchase-batches/'
+        data = {
+            'purchase_type': 'direct',
+            'supplier': self.supplier.id,
+            'fish': self.fish.id,
+            'number_of_packages': 5,
+            'package_weight': '20.00',
+            'price_per_kg': '30.00'
+        }
+        response = self.client.post(url, data, format='json')
+        # Store accounts CAN create purchases
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+    
+    def test_sales_staff_cannot_create_purchase(self):
+        """Test sales staff cannot create purchases"""
+        self.client.force_authenticate(user=self.sales_staff)
+        
+        url = '/api/purchase-batches/'
+        data = {
+            'purchase_type': 'direct',
+            'supplier': self.supplier.id,
+            'fish': self.fish.id,
+            'number_of_packages': 5,
+            'package_weight': '20.00',
+            'price_per_kg': '30.00'
+        }
+        response = self.client.post(url, data, format='json')
+        # Sales staff CANNOT create purchases
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
 
@@ -1375,6 +1507,7 @@ class SaleModelMethodTest(TestCase):
         self.assertEqual(profit_kg, Decimal("20.00"))  # 60 - 40
 
 
+
 class InventoryModelMethodTest(TestCase):
     """Test inventory model methods"""
     
@@ -1431,3 +1564,70 @@ class InventoryModelMethodTest(TestCase):
         value = self.inventory.get_stock_value()
         
         self.assertGreater(value, Decimal("0.00"))
+    
+    
+import threading
+from concurrent.futures import ThreadPoolExecutor
+from django.db import transaction
+
+class InventoryConcurrencyTest(TestCase):
+    """Test inventory update concurrency"""
+    
+    def setUp(self):
+        super().setUp()
+        self.category = FishCategory.objects.create(name="Concurrent Cat")
+        self.tenant = User.objects.create_user(username='concurrency_test', password='test123')
+        self.fish = Fish.objects.create(
+            name="Concurrent Fish",
+            category=self.category,
+            unit_type="kg",
+            tenant=self.tenant
+        )
+        self.supplier = Supplier.objects.create(name="Concurrent Supplier")
+        self.batch = PurchaseBatch.objects.create(
+            purchase_type="direct",
+            supplier=self.supplier,
+            fish=self.fish,
+            number_of_packages=100,
+            package_weight=Decimal("37.00"),
+            price_per_kg=Decimal("45.00"),
+            tenant=self.tenant
+        )
+        self.inventory = Inventory.objects.create(
+            fish=self.fish,
+            purchase_batch=self.batch,
+            initial_packages=100,
+            remaining_packages=100,
+            initial_weight_kg=Decimal("3700.00"),
+            remaining_weight_kg=Decimal("3700.00"),
+            reorder_level=10,
+            tenant=self.tenant
+        )
+    
+    def concurrent_update(self, packages):
+        self.inventory.update_stock(packages)
+    
+    def test_concurrent_stock_updates(self):
+        """Test multiple concurrent stock updates don't cause race conditions"""
+        num_threads = 10
+        packages_per_thread = 5
+        
+        threads = []
+        for _ in range(num_threads):
+            t = threading.Thread(target=self.concurrent_update, args=(packages_per_thread,))
+            t.start()
+            threads.append(t)
+        
+        for t in threads:
+            t.join()
+        
+        # Refresh from DB
+        self.inventory.refresh_from_db()
+        
+        expected_sold = num_threads * packages_per_thread
+        expected_remaining = 100 - expected_sold
+        
+        self.assertEqual(self.inventory.sold_packages, expected_sold)
+        self.assertEqual(self.inventory.remaining_packages, expected_remaining)
+        self.assertLessEqual(expected_remaining, self.inventory.remaining_weight_kg / 37, "Weight consistency")
+

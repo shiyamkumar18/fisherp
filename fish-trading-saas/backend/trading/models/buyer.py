@@ -1,7 +1,9 @@
 from decimal import Decimal
 from django.db import models
+from django.core.exceptions import ValidationError
 
 from .fish import Fish
+from services.base import CompanyManager
 
 
 class Buyer(models.Model):
@@ -11,6 +13,7 @@ class Buyer(models.Model):
         ('wholesale', 'Wholesale Buyer'),
         ('export', 'Export'),
         ('restaurant', 'Restaurant/Hotel'),
+        ('hotel', 'Hotel'),
     ]
     
     REFERRAL_SOURCE_CHOICES = [
@@ -73,6 +76,20 @@ class Buyer(models.Model):
                                db_index=True,
                                null=True, blank=True,
                                help_text="Tenant/Owner of this buyer record")
+    company = models.ForeignKey(
+        'companies.Company',
+        on_delete=models.CASCADE,
+        related_name='buyer_records',
+        db_index=True,
+        null=True,
+        blank=True,
+        help_text="Company this buyer belongs to",
+    )
+    
+    is_deleted = models.BooleanField(default=False, help_text="Soft delete flag")
+    
+    objects = CompanyManager()
+    all_objects = models.Manager()
 
     class Meta:
         ordering = ['name']
@@ -82,10 +99,22 @@ class Buyer(models.Model):
             models.Index(fields=['tenant', 'name']),
             models.Index(fields=['tenant', 'is_active']),
             models.Index(fields=['tenant', 'is_preferred']),
+            models.Index(fields=['company', 'name']),
+            models.Index(fields=['company', 'is_active']),
         ]
 
     def __str__(self):
         return f"{self.name} ({self.get_buyer_type_display()})"
+
+    def save(self, *args, **kwargs):
+        # Keep company and tenant pointers aligned for backward compatibility.
+        if not self.company_id and self.tenant_id and self.tenant.company_id:
+            self.company = self.tenant.company
+        if not self.tenant_id and self.company_id and self.company.admin_id:
+            self.tenant = self.company.admin
+        if self.tenant_id and self.company_id and self.tenant.company_id and self.tenant.company_id != self.company_id:
+            raise ValidationError({'company': 'Company must match tenant owner company.'})
+        super().save(*args, **kwargs)
     
     def update_credit_balance(self):
         """Recalculate current credit balance"""
@@ -94,6 +123,6 @@ class Buyer(models.Model):
     
     def get_total_pending(self):
         """Get total pending amount from all sales"""
-        return self.sales.aggregate(
+        return self.sales.filter(payment_status__in=['pending', 'partial']).aggregate(
             total=models.Sum('pending_amount')
         )['total'] or Decimal("0.00")

@@ -28,8 +28,10 @@ class DashboardManager:
     @staticmethod
     def _get_tenant_filter(user):
         """Get tenant filter based on user - returns Q object"""
-        if user.is_superuser:
+        if user.is_superuser or user.is_platform_user:
             return Q()  # No filter for superusers
+        if user.company_id:
+            return Q(company=user.company)
         return Q(tenant=user)
     
     @staticmethod
@@ -182,9 +184,9 @@ class DashboardManager:
         
         while current_date <= end_date:
             day_sales = Sale.objects.filter(
-                tenant_filter, 
+                tenant_filter,
+                additional_filters,
                 date=current_date,
-                **additional_filters
             ).aggregate(
                 revenue=Sum('total_revenue'),
                 profit=Sum('profit'),
@@ -1152,8 +1154,11 @@ class DashboardManager:
         
         # Get fish that belong to the tenant
         fish_query = Fish.objects.all()
-        if user and not user.is_superuser:
-            fish_query = fish_query.filter(tenant=user)
+        if user and not user.is_superuser and not user.is_platform_user:
+            if user.company_id:
+                fish_query = fish_query.filter(company=user.company)
+            else:
+                fish_query = fish_query.filter(tenant=user)
         
         result = []
         for fish in fish_query:
@@ -1200,4 +1205,3 @@ class DashboardManager:
             'pending_from_buyers': sales_pending,
             'net_pending': sales_pending - purchase_pending,
         }
-

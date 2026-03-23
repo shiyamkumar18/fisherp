@@ -107,12 +107,13 @@ class DashboardAdminSite(admin.AdminSite):
             pending_purchases = PurchaseBatch.objects.filter(pending_amount__gt=0)
             pending_sales = Sale.objects.filter(pending_amount__gt=0)
         else:
+            scope = {'company': request.user.company} if request.user.company_id else {'tenant': request.user}
             pending_purchases = PurchaseBatch.objects.filter(
-                tenant=request.user, 
+                **scope,
                 pending_amount__gt=0
             )
             pending_sales = Sale.objects.filter(
-                tenant=request.user, 
+                **scope,
                 pending_amount__gt=0
             )
         
@@ -127,4 +128,3 @@ class DashboardAdminSite(admin.AdminSite):
 
 # Create instance of custom admin site
 dashboard_site = DashboardAdminSite(name='dashboard_admin')
-

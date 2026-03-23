@@ -14,6 +14,14 @@ from functools import wraps
 from rest_framework import status
 
 
+def _subscription_qs_for_user(user):
+    from subscriptions.models import Subscription
+    qs = Subscription.objects.filter(status='active').order_by('-created_at')
+    if user.company_id:
+        return qs.filter(company=user.company)
+    return qs.filter(tenant=user)
+
+
 class SubscriptionEnforcementMiddleware:
     """
     Middleware to enforce subscription validity for tenant operations.
@@ -53,6 +61,8 @@ class SubscriptionEnforcementMiddleware:
         # Skip for superusers (they manage the platform)
         if request.user.is_superuser:
             return self.get_response(request)
+        if getattr(request.user, 'is_platform_user', False):
+            return self.get_response(request)
         
         # Check subscription status
         subscription_error = self._check_subscription(request)
@@ -81,11 +91,8 @@ class SubscriptionEnforcementMiddleware:
         user = request.user
         
         try:
-            # Get active subscription for this tenant
-            subscription = Subscription.objects.filter(
-                tenant=user,
-                status='active'
-            ).first()
+            # Get active subscription for this company (legacy fallback to tenant user).
+            subscription = _subscription_qs_for_user(user).first()
             
             if not subscription:
                 return JsonResponse({
@@ -160,8 +167,9 @@ class SubscriptionEnforcementMiddleware:
             current_month = timezone.now().month
             if subscription.purchases_this_month > tier.max_purchases_per_month:
                 # Count actual purchases this month
+                scope_filter = {'company': subscription.company} if subscription.company_id else {'tenant': subscription.tenant}
                 purchases_this_month = PurchaseBatch.objects.filter(
-                    tenant=subscription.tenant,
+                    **scope_filter,
                     created_at__month=current_month
                 ).count()
                 
@@ -179,8 +187,9 @@ class SubscriptionEnforcementMiddleware:
             from trading.models import Sale
             
             current_month = timezone.now().month
+            scope_filter = {'company': subscription.company} if subscription.company_id else {'tenant': subscription.tenant}
             sales_this_month = Sale.objects.filter(
-                tenant=subscription.tenant,
+                **scope_filter,
                 created_at__month=current_month
             ).count()
             
@@ -214,10 +223,7 @@ def require_active_subscription(view_func):
             return view_func(request, *args, **kwargs)
         
         # Check for active subscription
-        subscription = Subscription.objects.filter(
-            tenant=request.user,
-            status='active'
-        ).first()
+        subscription = _subscription_qs_for_user(request.user).first()
         
         if not subscription:
             return JsonResponse({
@@ -256,10 +262,7 @@ def check_subscription_status(user):
             'message': 'Superuser bypass'
         }
     
-    subscription = Subscription.objects.filter(
-        tenant=user,
-        status='active'
-    ).first()
+    subscription = _subscription_qs_for_user(user).first()
     
     if not subscription:
         return {
@@ -283,4 +286,3 @@ def check_subscription_status(user):
         'error': None,
         'message': 'Subscription is active'
     }
-

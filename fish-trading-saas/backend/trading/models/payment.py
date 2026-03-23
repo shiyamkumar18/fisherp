@@ -1,11 +1,15 @@
 from decimal import Decimal
+import uuid
+from datetime import date, datetime
 from django.db import models
 from django.utils import timezone
+from django.core.exceptions import ValidationError
 
 from .purchase_batch import PurchaseBatch
 from .sale import Sale
 from .supplier import Supplier
 from .buyer import Buyer
+from services.base import CompanyManager
 
 
 class Payment(models.Model):
@@ -39,7 +43,7 @@ class Payment(models.Model):
     
     # Payment details
     amount = models.DecimalField(max_digits=12, decimal_places=2)
-    date = models.DateField(default=timezone.now)
+    date = models.DateField(default=timezone.localdate)
     reference_number = models.CharField(max_length=100, blank=True, null=True, help_text="Cheque/Transaction ID")
     
     # Bank details
@@ -75,6 +79,20 @@ class Payment(models.Model):
                                db_index=True,
                                null=True, blank=True,
                                help_text="Tenant/Owner of this payment record")
+    company = models.ForeignKey(
+        'companies.Company',
+        on_delete=models.CASCADE,
+        related_name='payment_records',
+        db_index=True,
+        null=True,
+        blank=True,
+        help_text="Company this payment belongs to",
+    )
+    
+    is_deleted = models.BooleanField(default=False, help_text="Soft delete flag")
+    
+    objects = CompanyManager()
+    all_objects = models.Manager()
 
     class Meta:
         ordering = ['-date', '-created_at']
@@ -85,7 +103,20 @@ class Payment(models.Model):
     def save(self, *args, **kwargs):
         # Auto-generate receipt number if not provided
         if not self.receipt_number:
-            from datetime import datetime
-            timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
-            self.receipt_number = f"RCP-{timestamp}-{self.id or 'NEW'}"
+            timestamp = datetime.now().strftime('%Y%m%d%H%M%S%f')
+            self.receipt_number = f"RCP-{timestamp}-{uuid.uuid4().hex[:6]}"
+
+        # Keep company and tenant pointers aligned for backward compatibility.
+        if not self.company_id and self.tenant_id and self.tenant.company_id:
+            self.company = self.tenant.company
+        if not self.tenant_id and self.company_id and self.company.admin_id:
+            self.tenant = self.company.admin
+        if self.tenant_id and self.company_id and self.tenant.company_id and self.tenant.company_id != self.company_id:
+            raise ValidationError({'company': 'Company must match tenant owner company.'})
+
+        # Normalize datetime inputs for a DateField.
+        if isinstance(self.date, datetime):
+            self.date = self.date.date()
+        if self.date is None:
+            self.date = date.today()
         super().save(*args, **kwargs)
