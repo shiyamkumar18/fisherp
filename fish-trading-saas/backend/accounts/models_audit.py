@@ -3,6 +3,27 @@ from django.conf import settings
 from companies.models import Company
 
 
+class ImpersonationLogManager(models.Manager):
+    """Manager helpers for creating auditable impersonation sessions."""
+
+    def log_impersonation_start(self, platform_user, tenant, reason, ip_address=None, user_agent="", **kwargs):
+        log = self.create(
+            platform_user=platform_user,
+            tenant=tenant,
+            reason=reason,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            **kwargs,
+        )
+        AuditLog.log_impersonation_start(
+            platform_user=platform_user,
+            tenant=tenant,
+            reason=reason,
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+        return log
+
 class AuditLog(models.Model):
     """
     Global audit log for tracking all user actions.
@@ -124,7 +145,7 @@ class AuditLog(models.Model):
         return f"{self.user} - {self.action} on {self.model_name} at {self.timestamp}"
     
     @classmethod
-    def log_create(cls, user, model_name, object_id, object_repr, tenant=None, **kwargs):
+    def log_create(cls, user, model_name, object_id=None, object_repr="", tenant=None, **kwargs):
         """Helper to log create actions"""
         return cls.objects.create(
             user=user,
@@ -137,7 +158,7 @@ class AuditLog(models.Model):
         )
     
     @classmethod
-    def log_update(cls, user, model_name, object_id, object_repr, changes, tenant=None, **kwargs):
+    def log_update(cls, user, model_name, object_id=None, object_repr="", changes=None, tenant=None, **kwargs):
         """Helper to log update actions"""
         return cls.objects.create(
             user=user,
@@ -146,12 +167,12 @@ class AuditLog(models.Model):
             model_name=model_name,
             object_id=object_id,
             object_repr=object_repr,
-            changes=changes,
+            changes=changes or {},
             **kwargs
         )
     
     @classmethod
-    def log_delete(cls, user, model_name, object_id, object_repr, tenant=None, **kwargs):
+    def log_delete(cls, user, model_name, object_id=None, object_repr="", tenant=None, **kwargs):
         """Helper to log delete actions"""
         return cls.objects.create(
             user=user,
@@ -193,7 +214,7 @@ class AuditLog(models.Model):
     def log_impersonation_start(cls, platform_user, tenant, reason, ip_address=None, **kwargs):
         """Helper to log impersonation start"""
         return cls.objects.create(
-            user=tenant,  # The tenant being impersonated
+            user=getattr(tenant, 'admin', None),
             tenant=tenant,
             action='impersonate_start',
             model_name='Impersonation',
@@ -208,7 +229,7 @@ class AuditLog(models.Model):
     def log_impersonation_end(cls, platform_user, tenant, **kwargs):
         """Helper to log impersonation end"""
         return cls.objects.create(
-            user=tenant,
+            user=getattr(tenant, 'admin', None),
             tenant=tenant,
             action='impersonate_end',
             model_name='Impersonation',
@@ -256,6 +277,15 @@ class ImpersonationLog(models.Model):
         related_name='impersonation_logs',
         help_text="Tenant being impersonated"
     )
+
+    impersonated_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='impersonated_sessions',
+        help_text="Specific tenant user being impersonated"
+    )
     
     reason = models.TextField(
         help_text="Reason for impersonation (required)"
@@ -278,6 +308,14 @@ class ImpersonationLog(models.Model):
     user_agent = models.TextField(
         blank=True,
         help_text="Browser/user agent at start"
+    )
+
+    session_id = models.CharField(
+        max_length=64,
+        blank=True,
+        default="",
+        db_index=True,
+        help_text="Session identifier used for this impersonation audit trail"
     )
     
     is_active = models.BooleanField(
@@ -311,6 +349,8 @@ class ImpersonationLog(models.Model):
         blank=True,
         help_text="When this impersonation was approved"
     )
+
+    objects = ImpersonationLogManager()
     
     class Meta:
         ordering = ['-start_time']

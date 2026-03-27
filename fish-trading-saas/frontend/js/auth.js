@@ -28,7 +28,7 @@ const Auth = {
     isAuthenticated: () => {
         const token = localStorage.getItem('token');
         if (!token) {
-            window.location.href = '/web/login/';
+            window.location.href = '/login.html';
             return false;
         }
         return true;
@@ -144,7 +144,7 @@ const Auth = {
         localStorage.removeItem('two_factor_enabled');
         localStorage.removeItem('subscriptionTier');
         localStorage.removeItem('subscriptionFeatures');
-        window.location.href = '/web/login/';
+        window.location.href = '/login.html';
     },
     
     // Check role permission

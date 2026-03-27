@@ -1,0 +1,22 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Local databases and logs
+*.sqlite3
+logs/
+*.log
+
+# Environment files
+.env
+.env.*
+
+# OS/editor noise
+.DS_Store
+*.swp
+*.tmp

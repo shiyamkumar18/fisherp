@@ -1,11 +1,10 @@
 from decimal import Decimal
 from django.utils import timezone
 from django.db import transaction
-from rest_framework import serializers
-from .base_service import BaseService
+from django.core.exceptions import ValidationError
+from ..base import BaseService
 from trading.models import Sale, Payment
-from trading.serializers import SaleSerializer
-from accounts.permissions import _user_company, _get_create_scope
+from trading.helpers import _user_company
 
 class SaleService(BaseService):
     def __init__(self, user):
@@ -13,48 +12,61 @@ class SaleService(BaseService):
     
     @transaction.atomic
     def create_sale(self, data):
-        \"\"\"Create sale with scoping.\"\"\"
-        data.update(_get_create_scope(self.user.request if hasattr(self.user, 'request') else {}))
-        serializer = SaleSerializer(data=data)
-        serializer.is_valid(raise_exception=True)
-        return serializer.save()
+        """Create sale with scoping."""
+        data.update({
+            'tenant': self.user,
+            'company': _user_company(self.user),
+        })
+        return Sale.objects.create(**data)
     
     @transaction.atomic
     def update_sale(self, instance, data):
-        \"\"\"Atomic update.\"\"\"
-        serializer = SaleSerializer(instance, data=data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
+        """Atomic update."""
+        for field, value in data.items():
+            setattr(instance, field, value)
+        instance.save()
         return instance
     
+    @transaction.atomic
     def record_payment(self, sale, amount, payment_date=None, reference=''):
-        \"\"\"Record payment for sale.\"\"\"
+        """Record payment for sale."""
         amount = Decimal(str(amount))
+        if amount <= 0:
+            raise ValidationError({'amount': 'Payment amount must be greater than 0.'})
+
+        locked_sale = Sale.objects.select_for_update().get(pk=sale.pk)
         payment = Payment.objects.create(
             payment_type='sale',
             payment_mode='bank_transfer',  # default
             amount=amount,
             date=payment_date or timezone.now().date(),
-            sale=sale,  # assuming FK
+            sale=locked_sale,
             reference_number=reference,
             processed_by=self.user,
-            tenant=sale.tenant,
-            company=sale.company,
-            notes=f'Payment for sale {sale.invoice_number}'
+            tenant=locked_sale.tenant,
+            company=locked_sale.company,
+            buyer=locked_sale.buyer,
+            notes=f'Payment for sale {locked_sale.invoice_number}'
         )
-        sale.amount_received += amount
-        sale.save()
+
+        locked_sale.amount_received = (locked_sale.amount_received or Decimal('0.00')) + amount
+        locked_sale.save()
+        locked_sale.refresh_from_db(fields=['amount_received', 'pending_amount', 'payment_status'])
+
+        sale.amount_received = locked_sale.amount_received
+        sale.pending_amount = locked_sale.pending_amount
+        sale.payment_status = locked_sale.payment_status
         return payment
     
     def mark_delivered(self, sale, delivered_by=None):
-        \"\"\"Mark as delivered.\"\"\"
+        """Mark as delivered."""
         sale.delivery_status = 'delivered'
         sale.delivery_confirmed_at = timezone.now()
         sale.delivered_by = delivered_by or self.user.get_full_name()
         sale.save()
     
     def process_return(self, sale, return_date, reason, refund_amount=0):
-        \"\"\"Process return.\"\"\"
+        """Process return."""
         sale.is_returned = True
         sale.return_date = return_date
         sale.return_reason = reason
@@ -62,7 +74,6 @@ class SaleService(BaseService):
         sale.save()
     
     def get_queryset(self):
-        \"\"\"Scoped sales for user.\"\"\"
+        """Scoped sales for user."""
         from trading.models import Sale
         return Sale.objects.for_user(self.user)
-

@@ -5,9 +5,12 @@ from rest_framework import status
 from decimal import Decimal
 from datetime import datetime, timedelta
 from django.utils import timezone
+from django.core.exceptions import ValidationError
+from unittest.mock import patch
 
 from .models import FishCategory, Fish, Supplier, Buyer, PurchaseBatch, Sale, Payment, Inventory
 from companies.models import Company
+from services.trading.sale_service import SaleService
 
 User = get_user_model()
 
@@ -1631,3 +1634,390 @@ class InventoryConcurrencyTest(TestCase):
         self.assertEqual(self.inventory.remaining_packages, expected_remaining)
         self.assertLessEqual(expected_remaining, self.inventory.remaining_weight_kg / 37, "Weight consistency")
 
+
+class RoleBasedTradingVisibilityAPITest(APITestCase):
+    """Verify trading endpoints are both tenant-scoped and role-scoped."""
+
+    def setUp(self):
+        self.company_a = Company.objects.create(name='Alpha Seafoods', slug='alpha-seafoods')
+        self.company_b = Company.objects.create(name='Beta Seafoods', slug='beta-seafoods')
+
+        self.platform_operator = User.objects.create_user(
+            username='platform_trading',
+            email='platform-trading@example.com',
+            password='testpass123',
+            role='platform_operator',
+        )
+
+        self.tenant_admin = User.objects.create_user(
+            username='tenant_admin_trading_alpha',
+            email='tenant-admin-trading-alpha@example.com',
+            password='testpass123',
+            company=self.company_a,
+            role='tenant_admin',
+        )
+        self.company_a.admin = self.tenant_admin
+        self.company_a.save(update_fields=['admin'])
+
+        self.accountant = User.objects.create_user(
+            username='accountant_trading_alpha',
+            email='accountant-trading-alpha@example.com',
+            password='testpass123',
+            company=self.company_a,
+            role='accountant',
+        )
+        self.trader = User.objects.create_user(
+            username='trader_trading_alpha',
+            email='trader-trading-alpha@example.com',
+            password='testpass123',
+            company=self.company_a,
+            role='trader',
+        )
+        self.store = User.objects.create_user(
+            username='store_trading_alpha',
+            email='store-trading-alpha@example.com',
+            password='testpass123',
+            company=self.company_a,
+            role='store',
+        )
+
+        self.other_tenant_admin = User.objects.create_user(
+            username='tenant_admin_trading_beta',
+            email='tenant-admin-trading-beta@example.com',
+            password='testpass123',
+            company=self.company_b,
+            role='tenant_admin',
+        )
+        self.company_b.admin = self.other_tenant_admin
+        self.company_b.save(update_fields=['admin'])
+
+        self.category = FishCategory.objects.create(name='Visibility Category', category_type='saltwater')
+
+        self.fish_a = Fish.objects.create(
+            name='Alpha Fish',
+            category=self.category,
+            unit_type='kg',
+            tenant=self.tenant_admin,
+        )
+        self.fish_b = Fish.objects.create(
+            name='Beta Fish',
+            category=self.category,
+            unit_type='kg',
+            tenant=self.other_tenant_admin,
+        )
+
+        self.supplier_a = Supplier.objects.create(
+            name='Alpha Supplier',
+            phone='1111111111',
+            tenant=self.tenant_admin,
+        )
+        self.supplier_b = Supplier.objects.create(
+            name='Beta Supplier',
+            phone='2222222222',
+            tenant=self.other_tenant_admin,
+        )
+
+        self.buyer_a = Buyer.objects.create(
+            name='Alpha Buyer',
+            phone='3333333333',
+            tenant=self.tenant_admin,
+        )
+        self.buyer_b = Buyer.objects.create(
+            name='Beta Buyer',
+            phone='4444444444',
+            tenant=self.other_tenant_admin,
+        )
+
+        self.batch_a = PurchaseBatch.objects.create(
+            purchase_type='direct',
+            supplier=self.supplier_a,
+            fish=self.fish_a,
+            number_of_packages=12,
+            package_weight=Decimal('10.00'),
+            price_per_kg=Decimal('20.00'),
+            tenant=self.tenant_admin,
+        )
+        self.batch_b = PurchaseBatch.objects.create(
+            purchase_type='direct',
+            supplier=self.supplier_b,
+            fish=self.fish_b,
+            number_of_packages=8,
+            package_weight=Decimal('9.00'),
+            price_per_kg=Decimal('18.00'),
+            tenant=self.other_tenant_admin,
+        )
+
+        self.sale_a = Sale.objects.create(
+            batch=self.batch_a,
+            buyer=self.buyer_a,
+            number_of_packages_sold=3,
+            selling_weight_per_package=Decimal('9.00'),
+            selling_price_per_kg=Decimal('30.00'),
+            tenant=self.tenant_admin,
+        )
+        self.sale_b = Sale.objects.create(
+            batch=self.batch_b,
+            buyer=self.buyer_b,
+            number_of_packages_sold=2,
+            selling_weight_per_package=Decimal('8.00'),
+            selling_price_per_kg=Decimal('28.00'),
+            tenant=self.other_tenant_admin,
+        )
+
+        self.inventory_a = Inventory.objects.create(
+            fish=self.fish_a,
+            purchase_batch=self.batch_a,
+            initial_packages=12,
+            remaining_packages=9,
+            initial_weight_kg=Decimal('120.00'),
+            remaining_weight_kg=Decimal('90.00'),
+            tenant=self.tenant_admin,
+        )
+        self.inventory_b = Inventory.objects.create(
+            fish=self.fish_b,
+            purchase_batch=self.batch_b,
+            initial_packages=8,
+            remaining_packages=6,
+            initial_weight_kg=Decimal('72.00'),
+            remaining_weight_kg=Decimal('54.00'),
+            tenant=self.other_tenant_admin,
+        )
+
+        self.sale_payment = Payment.objects.create(
+            payment_type='sale',
+            payment_mode='cash',
+            amount=Decimal('100.00'),
+            sale=self.sale_a,
+            buyer=self.buyer_a,
+            tenant=self.tenant_admin,
+        )
+        self.credit_payment = Payment.objects.create(
+            payment_type='credit',
+            payment_mode='upi',
+            amount=Decimal('50.00'),
+            buyer=self.buyer_a,
+            tenant=self.tenant_admin,
+        )
+        self.refund_payment = Payment.objects.create(
+            payment_type='refund',
+            payment_mode='cash',
+            amount=Decimal('10.00'),
+            sale=self.sale_a,
+            buyer=self.buyer_a,
+            tenant=self.tenant_admin,
+        )
+        self.purchase_payment = Payment.objects.create(
+            payment_type='purchase',
+            payment_mode='bank_transfer',
+            amount=Decimal('80.00'),
+            purchase_batch=self.batch_a,
+            supplier=self.supplier_a,
+            tenant=self.tenant_admin,
+        )
+        self.advance_payment = Payment.objects.create(
+            payment_type='advance',
+            payment_mode='cash',
+            amount=Decimal('20.00'),
+            supplier=self.supplier_a,
+            tenant=self.tenant_admin,
+        )
+        self.other_company_payment = Payment.objects.create(
+            payment_type='sale',
+            payment_mode='cash',
+            amount=Decimal('200.00'),
+            sale=self.sale_b,
+            buyer=self.buyer_b,
+            tenant=self.other_tenant_admin,
+        )
+
+    def _get(self, user, path):
+        client = APIClient()
+        client.force_authenticate(user=user)
+        return client.get(path)
+
+    def _results(self, response):
+        data = response.data
+        if isinstance(data, dict) and 'results' in data:
+            return data['results']
+        return data
+
+    def test_tenant_admin_only_sees_company_sales(self):
+        response = self._get(self.tenant_admin, '/api/trading/sales/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        sale_ids = {item['id'] for item in self._results(response)}
+        self.assertEqual(sale_ids, {self.sale_a.id})
+
+    def test_accountant_can_access_core_tenant_datasets(self):
+        sales_response = self._get(self.accountant, '/api/trading/sales/')
+        batches_response = self._get(self.accountant, '/api/trading/purchase-batches/')
+        inventory_response = self._get(self.accountant, '/api/trading/inventory/')
+        payments_response = self._get(self.accountant, '/api/trading/payments/')
+
+        self.assertEqual(sales_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(batches_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(inventory_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(payments_response.status_code, status.HTTP_200_OK)
+        self.assertEqual({item['id'] for item in self._results(payments_response)}, {
+            self.sale_payment.id,
+            self.credit_payment.id,
+            self.refund_payment.id,
+            self.purchase_payment.id,
+            self.advance_payment.id,
+        })
+
+    def test_trader_only_sees_sales_side_records(self):
+        buyers_response = self._get(self.trader, '/api/trading/buyers/')
+        suppliers_response = self._get(self.trader, '/api/trading/suppliers/')
+        batches_response = self._get(self.trader, '/api/trading/purchase-batches/')
+        payments_response = self._get(self.trader, '/api/trading/payments/')
+
+        self.assertEqual(buyers_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(suppliers_response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(batches_response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual({item['id'] for item in self._results(buyers_response)}, {self.buyer_a.id})
+        self.assertEqual(payments_response.status_code, status.HTTP_200_OK)
+        self.assertEqual({item['payment_type'] for item in self._results(payments_response)}, {
+            'sale', 'credit', 'refund'
+        })
+
+    def test_store_only_sees_purchase_side_records(self):
+        buyers_response = self._get(self.store, '/api/trading/buyers/')
+        suppliers_response = self._get(self.store, '/api/trading/suppliers/')
+        sales_response = self._get(self.store, '/api/trading/sales/')
+        batches_response = self._get(self.store, '/api/trading/purchase-batches/')
+        payments_response = self._get(self.store, '/api/trading/payments/')
+
+        self.assertEqual(buyers_response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(suppliers_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(sales_response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(batches_response.status_code, status.HTTP_200_OK)
+        self.assertEqual({item['id'] for item in self._results(suppliers_response)}, {self.supplier_a.id})
+        self.assertEqual({item['payment_type'] for item in self._results(payments_response)}, {
+            'purchase', 'advance'
+        })
+
+    def test_platform_operator_cannot_access_trading_data_without_impersonation(self):
+        sales_response = self._get(self.platform_operator, '/api/trading/sales/')
+        inventory_response = self._get(self.platform_operator, '/api/trading/inventory/')
+
+        self.assertEqual(sales_response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(inventory_response.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class SaleBusinessRulesTest(TestCase):
+    def setUp(self):
+        self.tenant = User.objects.create_user(
+            username='sale_rules_user',
+            email='sale-rules@example.com',
+            password='testpass123',
+            role='tenant_admin',
+        )
+        self.category = FishCategory.objects.create(name='Rule Category')
+        self.fish = Fish.objects.create(
+            name='Rule Fish',
+            category=self.category,
+            unit_type='kg',
+            tenant=self.tenant,
+        )
+        self.supplier = Supplier.objects.create(name='Rule Supplier', tenant=self.tenant)
+        self.buyer = Buyer.objects.create(name='Rule Buyer', tenant=self.tenant)
+        self.batch = PurchaseBatch.objects.create(
+            purchase_type='direct',
+            supplier=self.supplier,
+            fish=self.fish,
+            number_of_packages=20,
+            package_weight=Decimal('25.00'),
+            price_per_kg=Decimal('30.00'),
+            tenant=self.tenant,
+        )
+
+    def test_sale_rejects_simultaneous_flat_and_percent_discount(self):
+        sale = Sale(
+            batch=self.batch,
+            buyer=self.buyer,
+            number_of_packages_sold=2,
+            selling_weight_per_package=Decimal('25.00'),
+            selling_price_per_kg=Decimal('50.00'),
+            discount_amount=Decimal('10.00'),
+            discount_percent=Decimal('5.00'),
+            tenant=self.tenant,
+        )
+
+        with self.assertRaises(ValidationError):
+            sale.full_clean()
+
+    def test_sale_validates_percentage_ranges(self):
+        sale = Sale(
+            batch=self.batch,
+            buyer=self.buyer,
+            number_of_packages_sold=2,
+            selling_weight_per_package=Decimal('25.00'),
+            selling_price_per_kg=Decimal('50.00'),
+            tax_percent=Decimal('150.00'),
+            tenant=self.tenant,
+        )
+
+        with self.assertRaises(ValidationError):
+            sale.full_clean()
+
+    def test_sale_pending_amount_tracks_final_amount(self):
+        sale = Sale.objects.create(
+            batch=self.batch,
+            buyer=self.buyer,
+            number_of_packages_sold=2,
+            selling_weight_per_package=Decimal('25.00'),
+            selling_price_per_kg=Decimal('50.00'),
+            discount_percent=Decimal('10.00'),
+            tax_percent=Decimal('5.00'),
+            amount_received=Decimal('400.00'),
+            tenant=self.tenant,
+        )
+
+        self.assertEqual(sale.final_amount, Decimal('2362.50'))
+        self.assertEqual(sale.pending_amount, Decimal('1962.50'))
+
+
+class SaleServiceAtomicityTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username='sale_service_user',
+            email='sale-service@example.com',
+            password='testpass123',
+            role='tenant_admin',
+        )
+        self.category = FishCategory.objects.create(name='Atomic Category')
+        self.fish = Fish.objects.create(
+            name='Atomic Fish',
+            category=self.category,
+            unit_type='kg',
+            tenant=self.user,
+        )
+        self.supplier = Supplier.objects.create(name='Atomic Supplier', tenant=self.user)
+        self.buyer = Buyer.objects.create(name='Atomic Buyer', tenant=self.user)
+        self.batch = PurchaseBatch.objects.create(
+            purchase_type='direct',
+            supplier=self.supplier,
+            fish=self.fish,
+            number_of_packages=10,
+            package_weight=Decimal('20.00'),
+            price_per_kg=Decimal('25.00'),
+            tenant=self.user,
+        )
+        self.sale = Sale.objects.create(
+            batch=self.batch,
+            buyer=self.buyer,
+            number_of_packages_sold=2,
+            selling_weight_per_package=Decimal('20.00'),
+            selling_price_per_kg=Decimal('40.00'),
+            tenant=self.user,
+        )
+
+    def test_record_payment_rolls_back_payment_when_sale_update_fails(self):
+        service = SaleService(self.user)
+
+        with patch.object(Sale, 'save', side_effect=ValidationError('boom')):
+            with self.assertRaises(ValidationError):
+                service.record_payment(self.sale, Decimal('100.00'))
+
+        self.assertEqual(Payment.objects.count(), 0)

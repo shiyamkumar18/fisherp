@@ -211,29 +211,30 @@ class Command(BaseCommand):
 
         custom_perms = [
             # Platform management
-            {'name': 'Can manage tenants', 'codename': 'can_manage_tenants', 'model': 'companies', 'description': 'Can create, edit, and suspend tenant companies'},
-            {'name': 'Can manage subscriptions', 'codename': 'can_manage_subscriptions', 'model': 'subscriptions', 'description': 'Can manage subscription tiers and plans'},
-            {'name': 'Can view platform reports', 'codename': 'can_view_platform_reports', 'model': 'accounts', 'description': 'Can view platform-wide analytics'},
+            {'name': 'Can manage tenants', 'codename': 'can_manage_tenants', 'model': 'companies.Company', 'description': 'Can create, edit, and suspend tenant companies'},
+            {'name': 'Can manage subscriptions', 'codename': 'can_manage_subscriptions', 'model': 'subscriptions.Subscription', 'description': 'Can manage subscription tiers and plans'},
+            {'name': 'Can view platform reports', 'codename': 'can_view_platform_reports', 'model': 'accounts.User', 'description': 'Can view platform-wide analytics'},
             
             # Tenant management
-            {'name': 'Can manage tenant users', 'codename': 'can_manage_users', 'model': 'accounts', 'description': 'Can add, edit, and remove tenant users'},
-            {'name': 'Can view financial reports', 'codename': 'can_view_reports', 'model': 'trading', 'description': 'Can view financial reports and analytics'},
-            {'name': 'Can export data', 'codename': 'can_export_data', 'model': 'trading', 'description': 'Can export data to CSV/PDF'},
+            {'name': 'Can manage tenant users', 'codename': 'can_manage_users', 'model': 'accounts.User', 'description': 'Can add, edit, and remove tenant users'},
+            {'name': 'Can view financial reports', 'codename': 'can_view_reports', 'model': 'trading.Sale', 'description': 'Can view financial reports and analytics'},
+            {'name': 'Can export data', 'codename': 'can_export_data', 'model': 'trading.Sale', 'description': 'Can export data to CSV/PDF'},
             
             # Inventory management
-            {'name': 'Can manage inventory', 'codename': 'can_manage_inventory', 'model': 'trading', 'description': 'Can update stock levels and manage inventory'},
-            {'name': 'Can manage fish storage', 'codename': 'can_manage_storage', 'model': 'trading', 'description': 'Can manage fish storage and temperature'},
+            {'name': 'Can manage inventory', 'codename': 'can_manage_inventory', 'model': 'trading.Inventory', 'description': 'Can update stock levels and manage inventory'},
+            {'name': 'Can manage fish storage', 'codename': 'can_manage_storage', 'model': 'trading.Inventory', 'description': 'Can manage fish storage and temperature'},
             
             # Trade management
-            {'name': 'Can manage trades', 'codename': 'can_manage_trades', 'model': 'trading', 'description': 'Can create and manage purchases and sales'},
-            {'name': 'Can view supplier costs', 'codename': 'can_view_supplier_costs', 'model': 'trading', 'description': 'Can view supplier cost details'},
-            {'name': 'Can view profit margins', 'codename': 'can_view_profit', 'model': 'trading', 'description': 'Can view profit margins and calculations'},
+            {'name': 'Can manage trades', 'codename': 'can_manage_trades', 'model': 'trading.Sale', 'description': 'Can create and manage purchases and sales'},
+            {'name': 'Can view supplier costs', 'codename': 'can_view_supplier_costs', 'model': 'trading.Supplier', 'description': 'Can view supplier cost details'},
+            {'name': 'Can view profit margins', 'codename': 'can_view_profit', 'model': 'trading.Sale', 'description': 'Can view profit margins and calculations'},
         ]
 
         for perm_data in custom_perms:
-            # Get or create content type
             try:
-                ct = ContentType.objects.get_for_model(apps.get_model(perm_data['model']))
+                # Get the model class using app_label.model_name
+                model = apps.get_model(perm_data['model'])
+                ct = ContentType.objects.get_for_model(model)
                 
                 perm, created = Permission.objects.get_or_create(
                     codename=perm_data['codename'],
@@ -251,6 +252,8 @@ class Command(BaseCommand):
                 # Assign to appropriate groups
                 self.assign_custom_permission(perm, perm_data['codename'])
                 
+            except LookupError:
+                self.stdout.write(self.style.WARNING(f'   Model not found for {perm_data["codename"]}: {perm_data["model"]}'))
             except Exception as e:
                 self.stdout.write(self.style.WARNING(f'   Error creating {perm_data["codename"]}: {e}'))
 

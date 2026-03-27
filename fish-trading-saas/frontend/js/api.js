@@ -86,7 +86,7 @@ function handleUnauthorized() {
     localStorage.removeItem('username');
     localStorage.removeItem('userRole');
     localStorage.removeItem('role');
-    window.location.href = '/web/login/';
+    window.location.href = '/login.html';
 }
 
 // Export for use in other modules

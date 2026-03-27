@@ -13,8 +13,6 @@ from services.base import CompanyManager
 
 
 class Payment(models.Model):
-    """Track payments made or received"""
-    
     PAYMENT_TYPE_CHOICES = [
         ('purchase', 'Purchase Payment'),
         ('sale', 'Sale Payment'),
@@ -22,7 +20,6 @@ class Payment(models.Model):
         ('advance', 'Advance Payment'),
         ('credit', 'Credit Repayment'),
     ]
-    
     PAYMENT_MODE_CHOICES = [
         ('cash', 'Cash'),
         ('bank_transfer', 'Bank Transfer'),
@@ -31,33 +28,21 @@ class Payment(models.Model):
         ('card', 'Card'),
         ('credit', 'Credit'),
     ]
-    
+
     payment_type = models.CharField(max_length=15, choices=PAYMENT_TYPE_CHOICES)
     payment_mode = models.CharField(max_length=15, choices=PAYMENT_MODE_CHOICES, default='cash')
-    
-    # References (nullable - can be standalone payment)
     purchase_batch = models.ForeignKey(PurchaseBatch, on_delete=models.CASCADE, null=True, blank=True, related_name='payments')
     sale = models.ForeignKey(Sale, on_delete=models.CASCADE, null=True, blank=True, related_name='payments')
     supplier = models.ForeignKey(Supplier, on_delete=models.CASCADE, null=True, blank=True, related_name='payments')
     buyer = models.ForeignKey(Buyer, on_delete=models.CASCADE, null=True, blank=True, related_name='payments')
-    
-    # Payment details
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     date = models.DateField(default=timezone.localdate)
     reference_number = models.CharField(max_length=100, blank=True, null=True, help_text="Cheque/Transaction ID")
-    
-    # Bank details
     bank_name = models.CharField(max_length=100, blank=True, null=True)
     account_number = models.CharField(max_length=50, blank=True, null=True)
-    
-    # Status
     is_cleared = models.BooleanField(default=True, help_text="For cheques - has it cleared?")
     cleared_date = models.DateField(null=True, blank=True)
-    
-    # Notes
     notes = models.TextField(blank=True, null=True)
-    
-    # Receipt and approval
     receipt_number = models.CharField(max_length=50, unique=True, blank=True, null=True)
     receipt_image = models.ImageField(upload_to='payment_receipts/%Y/%m/', blank=True, null=True)
     approval_status = models.CharField(max_length=15, choices=[
@@ -69,28 +54,17 @@ class Payment(models.Model):
                                     related_name='approved_payments')
     processed_by = models.ForeignKey('accounts.User', on_delete=models.SET_NULL, null=True, blank=True,
                                      related_name='processed_payments')
-    
-    # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
-    # Tenant isolation - ForeignKey to User (tenant) with index for performance
     tenant = models.ForeignKey('accounts.User', on_delete=models.CASCADE, related_name='payments',
-                               db_index=True,
-                               null=True, blank=True,
+                               db_index=True, null=True, blank=True,
                                help_text="Tenant/Owner of this payment record")
-    company = models.ForeignKey(
-        'companies.Company',
-        on_delete=models.CASCADE,
-        related_name='payment_records',
-        db_index=True,
-        null=True,
-        blank=True,
-        help_text="Company this payment belongs to",
-    )
-    
+    company = models.ForeignKey('companies.Company', on_delete=models.CASCADE,
+                                related_name='payment_records', db_index=True,
+                                null=True, blank=True,
+                                help_text="Company this payment belongs to")
     is_deleted = models.BooleanField(default=False, help_text="Soft delete flag")
-    
+
     objects = CompanyManager()
     all_objects = models.Manager()
 
@@ -99,14 +73,12 @@ class Payment(models.Model):
 
     def __str__(self):
         return f"{self.get_payment_type_display()} - {self.amount} - {self.date}"
-    
+
     def save(self, *args, **kwargs):
-        # Auto-generate receipt number if not provided
         if not self.receipt_number:
             timestamp = datetime.now().strftime('%Y%m%d%H%M%S%f')
             self.receipt_number = f"RCP-{timestamp}-{uuid.uuid4().hex[:6]}"
 
-        # Keep company and tenant pointers aligned for backward compatibility.
         if not self.company_id and self.tenant_id and self.tenant.company_id:
             self.company = self.tenant.company
         if not self.tenant_id and self.company_id and self.company.admin_id:
@@ -114,7 +86,6 @@ class Payment(models.Model):
         if self.tenant_id and self.company_id and self.tenant.company_id and self.tenant.company_id != self.company_id:
             raise ValidationError({'company': 'Company must match tenant owner company.'})
 
-        # Normalize datetime inputs for a DateField.
         if isinstance(self.date, datetime):
             self.date = self.date.date()
         if self.date is None:

@@ -450,7 +450,3 @@ class InventoryAdmin(TenantIsolationAdminMixin, admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
-
-
-
-# End of trading admin configuration

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tenant Dashboard - Fish Trading SaaS</title>
+    <link rel="stylesheet" href="../css/base.css">
+    <link rel="stylesheet" href="../css/layout.css">
+    <link rel="stylesheet" href="../css/components.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script src="../js/app.js" defer></script>
+    <script src="../js/ui.js" defer></script>
+</head>
+<body class="dashboard-shell tenant-shell">
+    <div class="top-bar">
+        <div class="top-bar__left">
+            <button class="mobile-menu-toggle" id="menuToggle" type="button" aria-label="Toggle navigation">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="brand-mark">FT</div>
+            <div class="brand-copy">
+                <span class="brand-kicker">Tenant Workspace</span>
+                <strong class="brand-name">Fish Trading Control Room</strong>
+                <span class="brand-subcopy">A sharper view of sales, stock, and purchasing.</span>
+            </div>
+        </div>
+
+        <div class="top-bar__right">
+            <div class="workspace-pill">
+                <i class="fas fa-water"></i>
+                <span id="workspaceLabel">Tenant Workspace</span>
+            </div>
+            <div class="user-pill">
+                <i class="fas fa-user-circle"></i>
+                <span id="user-role">Loading role...</span>
+            </div>
+            <button class="btn btn-ghost btn-sm" type="button" onclick="App.logout()">Logout</button>
+        </div>
+    </div>
+
+    <div class="shell-layout">
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+        <nav class="sidebar" id="sidebar" aria-label="Primary navigation"></nav>
+
+        <main class="main-content" id="main-content">
+            <div class="page-loading">
+                <div class="loading-spinner">Preparing your workspace...</div>
+            </div>
+        </main>
+    </div>
+
+    <div id="modalOverlay">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+            <button class="modal-close" type="button" onclick="UI.closeModal()" aria-label="Close modal">
+                <i class="fas fa-times"></i>
+            </button>
+            <h2 class="modal-header" id="modalTitle">Details</h2>
+            <div id="modalBody"></div>
+            <div id="modalFooter" class="hero-actions"></div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            App.protectRoute('tenant');
+            App.initShell();
+            window.UI?.init?.();
+            App.loadPage('dashboard');
+        });
+    </script>
+</body>
+</html>

@@ -47,7 +47,15 @@ class User(AbstractUser):
         null=True,
         blank=True,
         related_name='users',
-        help_text="Company this user belongs to"
+        help_text="Company this user belongs to",
+        db_index=True
+    )
+    
+    # Platform flag - explicit for queries/JWT (CRITICAL for SaaS)
+    is_platform_user = models.BooleanField(
+        default=False,
+        help_text="Platform-level user (not tenant-bound)",
+        db_index=True
     )
     
     # ====================
@@ -86,10 +94,12 @@ class User(AbstractUser):
 
         if self.role in PLATFORM_ROLES:
             # Platform users are global and must not be bound to a tenant.
+            self.is_platform_user = True
             self.company = None
             if not self.schema_name:
                 self.schema_name = 'public'
         elif self.role in TENANT_ROLES:
+            self.is_platform_user = False
             # Tenant users must be linked to a company.
             if not self.company_id:
                 # Compatibility bridge: if legacy code provides schema_name, derive company from it.
@@ -153,8 +163,12 @@ class User(AbstractUser):
     
     @property
     def is_platform_user(self):
-        """Check if user is a platform-level user (not tenant user)"""
-        return self.is_superuser or self.role in PLATFORM_ROLES
+        """Backward-compatible platform flag backed by the model field."""
+        return self.__dict__.get('is_platform_user', False) or self.is_superuser or self.role in PLATFORM_ROLES
+
+    @is_platform_user.setter
+    def is_platform_user(self, value):
+        self.__dict__['is_platform_user'] = bool(value)
     
     @property
     def is_tenant_admin(self):

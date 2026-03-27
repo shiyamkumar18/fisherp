@@ -1,0 +1,42 @@
+<!-- Inventory Stock Page - Spec 6 -->
+<div class="page-header">
+    <h1 class="page-title">Inventory</h1>
+</div>
+
+<div class="table-container">
+    <div class="table-header">
+        Inventory Stock
+        <div style="float: right;">
+            <select>
+                <option>All Status</option>
+                <option>In Stock</option>
+                <option>Low Stock</option>
+                <option>Expiring</option>
+            </select>
+        </div>
+    </div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Fish</th>
+                <th>Packages Remaining</th>
+                <th>Weight (kg)</th>
+                <th>Status</th>
+                <th>Expiry</th>
+                <th>Value</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="inventoryTable">
+            <tr>
+                <td colspan="7" class="text-center">Loading...</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<script>
+function filterInventory(status) {
+    // Filter logic
+}
+</script>

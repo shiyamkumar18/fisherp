@@ -2,7 +2,6 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import views
 
-# Create a router and register our viewsets with it
 router = DefaultRouter()
 router.register(r'fish-categories', views.FishCategoryViewSet, basename='fishcategory')
 router.register(r'fish', views.FishViewSet, basename='fish')
@@ -13,7 +12,6 @@ router.register(r'sales', views.SaleViewSet, basename='sale')
 router.register(r'payments', views.PaymentViewSet, basename='payment')
 router.register(r'inventory', views.InventoryViewSet, basename='inventory')
 
-# The API URLs are now determined automatically by the router
 urlpatterns = [
     path('', include(router.urls)),
 ]

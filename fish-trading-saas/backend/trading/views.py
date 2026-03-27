@@ -1,33 +1,37 @@
+# trading/views.py
 from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from django.core.exceptions import ValidationError
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Q, Sum, Count
 from django.utils import timezone
 from django.db import transaction
 from decimal import Decimal
 
-from .models import FishCategory, Fish, Supplier, Buyer, PurchaseBatch, Sale, Payment, Inventory
+from .models.fish_category import FishCategory
+from .models.fish import Fish
+from .models.supplier import Supplier
+from .models.buyer import Buyer
+from .models.purchase_batch import PurchaseBatch
+from .models.sale import Sale
+from .models.payment import Payment
+from .models.inventory import Inventory
 from .serializers import (
     FishCategorySerializer, FishSerializer, FishListSerializer,
     SupplierSerializer, BuyerSerializer, PurchaseBatchSerializer,
     SaleSerializer, PaymentSerializer, InventorySerializer
 )
-from backend.services.trading import SaleService, InventoryService
+from services.trading import SaleService, InventoryService
 from accounts.permissions import (
     IsPlatformOperator, IsTenantAdmin, IsAccountant, IsSalesStaff, IsStoreAccounts,
     CanViewFinancials, CanCreateSale, CanCreatePurchase, CanRecordPayment,
     CanDeleteRecord, CanEditSale, CanEditPurchase, CanEditPayment, HasAnyRole,
     QuerysetProtectionMixin, TenantObjectPermission, is_impersonating, get_impersonated_tenant
 )
-
-
-def _user_company(user):
-    return user.company if getattr(user, 'company_id', None) else None
-
-
-# Removed _get_scoped_queryset - use CompanyManager.for_user() instead
+from .helpers import _user_company   # <-- new import
 
 
 def _get_create_scope(request):
@@ -40,14 +44,41 @@ def _get_create_scope(request):
     return {'company': _user_company(request.user), 'tenant': request.user}
 
 
-class FishCategoryViewSet(viewsets.ModelViewSet):
+def _scoped_queryset(request, model):
     """
-    ViewSet for FishCategory - shared across all tenants
-    
-    Permissions:
-    - Platform Operator: Read-only (metadata only)
-    - All tenant users: Full access
+    Return a tenant-scoped queryset and block direct platform access.
     """
+    user = request.user
+    if user.is_superuser:
+        return model.objects.all()
+    if user.is_platform_user:
+        if is_impersonating(request):
+            company = get_impersonated_tenant(request)
+            return model.objects.filter(company=company)
+        raise PermissionDenied("Platform users must impersonate a tenant to access business data.")
+    return model.objects.for_user(user)
+
+
+def _filter_role_visible_payments(queryset, user):
+    """
+    Limit payment visibility by role.
+    Sales staff only see customer-side collections.
+    Store users only see supplier-side payments.
+    Finance/admin roles can see everything in tenant scope.
+    """
+    if user.is_tenant_admin or user.is_accountant:
+        return queryset
+    if user.is_sales_staff:
+        return queryset.filter(payment_type__in=['sale', 'credit', 'refund'])
+    if user.is_store_accounts:
+        return queryset.filter(payment_type__in=['purchase', 'advance'])
+    return queryset.none()
+
+
+# ========== Viewsets ==========
+
+class FishCategoryViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.ModelViewSet):
+    """FishCategory ViewSet with tenant isolation."""
     queryset = FishCategory.objects.all()
     serializer_class = FishCategorySerializer
     permission_classes = [IsAuthenticated]
@@ -56,29 +87,13 @@ class FishCategoryViewSet(viewsets.ModelViewSet):
     search_fields = ['name', 'description']
     ordering_fields = ['priority', 'name', 'created_at']
     ordering = ['priority', 'name']
-    
+
     def get_queryset(self):
-        """FishCategory is shared - platform operators can view"""
-        if not self.request.user.is_authenticated:
-            return FishCategory.objects.none()
-        
-        # All authenticated users can view categories
         return FishCategory.objects.all()
 
 
 class FishViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.ModelViewSet):
-    """
-    ViewSet for Fish management with tenant isolation.
-    
-    Security:
-    - Platform Operator: NO DIRECT ACCESS (returns empty)
-    - Tenant Admin: Full access
-    - Accountant: Full access
-    - Sales Staff: Read-only
-    - Store Accounts: Read-only
-    
-    Platform operators must use impersonation to access.
-    """
+    queryset = Fish.objects.all()
     serializer_class = FishSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
@@ -86,36 +101,26 @@ class FishViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.Mode
     search_fields = ['name', 'category__name']
     ordering_fields = ['name', 'created_at', 'avg_price_per_kg']
     ordering = ['name']
-    
+
     def get_permissions(self):
-        """Return permissions based on action"""
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [HasAnyRole('is_tenant_admin', 'is_accountant')]
         return [IsAuthenticated()]
-    
-def get_queryset(self):
-        """
-        Return fish records with QUERYSET PROTECTION.
-        
-        Platform operators CANNOT see business data directly.
-        Must use impersonation to access tenant data.
-        """
-        return self.queryset.model.objects.for_user(self.request.user)
-    
+
+    def get_queryset(self):
+        return _scoped_queryset(self.request, Fish)
+
     def get_serializer_class(self):
-        """Use different serializers for list vs detail views"""
         if self.action == 'list':
             return FishListSerializer
         return FishSerializer
-    
-@transaction.atomic
+
+    @transaction.atomic
     def perform_create(self, serializer):
-        """Automatically set the tenant to the current user"""
         serializer.save(**_get_create_scope(self.request))
-    
+
     @action(detail=True, methods=['post'])
     def toggle_active(self, request, pk=None):
-        """Toggle the active status of a fish"""
         fish = self.get_object()
         fish.is_active = not fish.is_active
         fish.save()
@@ -124,10 +129,9 @@ def get_queryset(self):
             'is_active': fish.is_active,
             'message': f'Fish {fish.name} is now {"active" if fish.is_active else "inactive"}'
         })
-    
+
     @action(detail=False, methods=['get'])
     def by_category(self, request):
-        """Get fish grouped by category"""
         categories = FishCategory.objects.filter(is_active=True)
         result = []
         for category in categories:
@@ -138,12 +142,10 @@ def get_queryset(self):
                 'fish': FishListSerializer(fish_list, many=True).data
             })
         return Response(result)
-    
+
     @action(detail=False, methods=['get'])
     def statistics(self, request):
-        """Get statistics about fish inventory"""
         queryset = self.get_queryset()
-        
         stats = {
             'total_fish_types': queryset.count(),
             'active_fish_types': queryset.filter(is_active=True).count(),
@@ -158,16 +160,7 @@ def get_queryset(self):
 
 
 class SupplierViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.ModelViewSet):
-    """
-    ViewSet for Supplier management with tenant isolation.
-    
-    Security:
-    - Platform Operator: NO DIRECT ACCESS
-    - Tenant Admin: Full access
-    - Accountant: Full access
-    - Store Accounts: Full access
-    - Sales Staff: Read-only
-    """
+    queryset = Supplier.objects.all()
     serializer_class = SupplierSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
@@ -175,29 +168,26 @@ class SupplierViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.
     search_fields = ['name', 'phone', 'email', 'place_of_origin', 'id_number', 'bank_name']
     ordering_fields = ['name', 'rating', 'outstanding_amount', 'created_at']
     ordering = ['name']
-    
+
     def get_permissions(self):
-        """Return permissions based on action"""
+        if self.action in ['list', 'retrieve', 'with_outstanding', 'overdue_payments', 'payment_summary']:
+            return [HasAnyRole('is_tenant_admin', 'is_accountant', 'is_store_accounts')]
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [HasAnyRole('is_tenant_admin', 'is_accountant', 'is_store_accounts')]
         return [IsAuthenticated()]
-    
+
     def get_queryset(self):
-        """Queryset with platform operator protection."""
-        return self.queryset.model.objects.for_user(self.request.user)
-    
+        return _scoped_queryset(self.request, Supplier)
+
     @transaction.atomic
     def perform_create(self, serializer):
-        """Automatically set the tenant"""
         serializer.save(**_get_create_scope(self.request))
-    
+
     @action(detail=True, methods=['post'])
     def update_credit(self, request, pk=None):
-        """Update supplier credit balance"""
         supplier = self.get_object()
         amount = request.data.get('amount', 0)
         operation = request.data.get('operation', 'add')
-        
         try:
             amount = Decimal(str(amount))
             if operation == 'add':
@@ -205,21 +195,19 @@ class SupplierViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.
             elif operation == 'subtract':
                 supplier.total_credit_repaid += amount
             else:
-                return Response({'error': 'Invalid operation. Use "add" or "subtract"'}, 
-                              status=status.HTTP_400_BAD_REQUEST)
-            
+                return Response({'error': 'Invalid operation. Use "add" or "subtract"'},
+                                status=status.HTTP_400_BAD_REQUEST)
             supplier.update_credit_balance()
             return Response({
                 'status': 'success',
                 'current_credit_balance': str(supplier.current_credit_balance),
-                'message': f'Credit updated successfully'
+                'message': 'Credit updated successfully'
             })
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-    
+
     @action(detail=True, methods=['post'])
     def verify(self, request, pk=None):
-        """Mark supplier as verified"""
         supplier = self.get_object()
         supplier.is_verified = True
         supplier.save()
@@ -228,10 +216,9 @@ class SupplierViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.
             'is_verified': supplier.is_verified,
             'message': f'Supplier {supplier.name} has been verified'
         })
-    
+
     @action(detail=True, methods=['post'])
     def update_outstanding(self, request, pk=None):
-        """Recalculate outstanding amount from purchase batches"""
         supplier = self.get_object()
         supplier.update_outstanding()
         return Response({
@@ -242,22 +229,18 @@ class SupplierViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.
             'payment_status': supplier.get_payment_status(),
             'message': 'Outstanding amount recalculated successfully'
         })
-    
+
     @action(detail=True, methods=['post'])
     def record_payment(self, request, pk=None):
-        """Record a payment to supplier"""
         supplier = self.get_object()
         amount = request.data.get('amount', 0)
         payment_date = request.data.get('payment_date')
         reference = request.data.get('reference', '')
-        
         try:
             amount = Decimal(str(amount))
             if amount <= 0:
-                return Response({'error': 'Payment amount must be greater than 0'}, 
-                              status=status.HTTP_400_BAD_REQUEST)
-            
-            # Create payment record
+                return Response({'error': 'Payment amount must be greater than 0'},
+                                status=status.HTTP_400_BAD_REQUEST)
             payment = Payment.objects.create(
                 payment_type='purchase',
                 payment_mode=request.data.get('payment_mode', 'bank_transfer'),
@@ -270,13 +253,10 @@ class SupplierViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.
                 company=supplier.company,
                 notes=f"Payment to supplier {supplier.name}"
             )
-            
-            # Update supplier totals
             supplier.total_paid += amount
             supplier.outstanding_amount = supplier.total_purchases - supplier.total_paid
             supplier.last_payment_date = payment.date
             supplier.save()
-            
             return Response({
                 'status': 'success',
                 'payment_id': payment.id,
@@ -287,17 +267,14 @@ class SupplierViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.
             })
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-    
+
     @action(detail=True, methods=['get'])
     def payment_summary(self, request, pk=None):
-        """Get payment summary for supplier"""
         supplier = self.get_object()
-        
         recent_payments = Payment.objects.filter(
             supplier=supplier,
             payment_type='purchase'
         ).order_by('-date')[:10]
-        
         payment_data = [{
             'id': p.id,
             'receipt_number': p.receipt_number,
@@ -307,7 +284,6 @@ class SupplierViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.
             'reference_number': p.reference_number,
             'is_cleared': p.is_cleared
         } for p in recent_payments]
-        
         return Response({
             'supplier_id': supplier.id,
             'supplier_name': supplier.name,
@@ -321,18 +297,15 @@ class SupplierViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.
             'payment_due_date': supplier.payment_due_date,
             'recent_payments': payment_data
         })
-    
+
     @action(detail=False, methods=['get'])
     def with_outstanding(self, request):
-        """Get all suppliers with outstanding balance"""
         queryset = self.get_queryset().filter(outstanding_amount__gt=0)
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
-    
+
     @action(detail=False, methods=['get'])
     def overdue_payments(self, request):
-        """Get suppliers with overdue payments"""
-        from django.utils import timezone
         queryset = self.get_queryset().filter(
             outstanding_amount__gt=0,
             payment_due_date__lt=timezone.now().date()
@@ -341,15 +314,7 @@ class SupplierViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.
         return Response(serializer.data)
 
 
-
-    
-    Security:
-    - Platform Operator: NO DIRECT ACCESS
-    - Tenant Admin: Full access
-    - Accountant: Full access
-    - Sales Staff: Full access (add buyers, record payments)
-    - Store Accounts: Read-only
-    """
+class BuyerViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.ModelViewSet):
     queryset = Buyer.objects.all()
     serializer_class = BuyerSerializer
     permission_classes = [IsAuthenticated]
@@ -358,28 +323,25 @@ class SupplierViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.
     search_fields = ['name', 'phone', 'email', 'business_name', 'gst_number']
     ordering_fields = ['name', 'rating', 'total_purchases', 'created_at']
     ordering = ['name']
-    
+
     def get_permissions(self):
-        """Return permissions based on action"""
+        if self.action in ['list', 'retrieve']:
+            return [HasAnyRole('is_tenant_admin', 'is_accountant', 'is_sales_staff')]
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [HasAnyRole('is_tenant_admin', 'is_accountant', 'is_sales_staff')]
         return [IsAuthenticated()]
-    
+
     def get_queryset(self):
-        """Queryset with platform operator protection."""
-        return self.queryset.model.objects.for_user(self.request.user)
-    
+        return _scoped_queryset(self.request, Buyer)
+
     def perform_create(self, serializer):
-        """Automatically set the tenant"""
         serializer.save(**_get_create_scope(self.request))
-    
+
     @action(detail=True, methods=['post'])
     def update_credit(self, request, pk=None):
-        """Update buyer credit balance"""
         buyer = self.get_object()
         amount = request.data.get('amount', 0)
         operation = request.data.get('operation', 'add')
-        
         try:
             amount = Decimal(str(amount))
             if operation == 'add':
@@ -387,9 +349,8 @@ class SupplierViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.
             elif operation == 'subtract':
                 buyer.total_credit_repaid += amount
             else:
-                return Response({'error': 'Invalid operation'}, 
-                              status=status.HTTP_400_BAD_REQUEST)
-            
+                return Response({'error': 'Invalid operation'},
+                                status=status.HTTP_400_BAD_REQUEST)
             buyer.update_credit_balance()
             return Response({
                 'status': 'success',
@@ -397,10 +358,9 @@ class SupplierViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.
             })
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-    
+
     @action(detail=True, methods=['post'])
     def mark_preferred(self, request, pk=None):
-        """Toggle preferred customer status"""
         buyer = self.get_object()
         buyer.is_preferred = not buyer.is_preferred
         buyer.save()
@@ -412,16 +372,6 @@ class SupplierViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.
 
 
 class PurchaseBatchViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
-    """
-    ViewSet for PurchaseBatch management with tenant isolation.
-    
-    Security:
-    - Platform Operator: NO DIRECT ACCESS
-    - Tenant Admin: Full access
-    - Accountant: Full access (edit before lock)
-    - Store Accounts: Full access (edit before lock)
-    - Sales Staff: Read-only
-    """
     queryset = PurchaseBatch.objects.all()
     serializer_class = PurchaseBatchSerializer
     permission_classes = [IsAuthenticated]
@@ -430,9 +380,10 @@ class PurchaseBatchViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
     search_fields = ['batch_number', 'fisherman_name', 'place_of_buying']
     ordering_fields = ['date', 'created_at', 'total_expense']
     ordering = ['-date']
-    
+
     def get_permissions(self):
-        """Return permissions based on action"""
+        if self.action in ['list', 'retrieve', 'sales_summary']:
+            return [HasAnyRole('is_tenant_admin', 'is_accountant', 'is_store_accounts')]
         if self.action in ['create']:
             return [HasAnyRole('is_tenant_admin', 'is_accountant', 'is_store_accounts')]
         if self.action in ['update', 'partial_update']:
@@ -440,19 +391,16 @@ class PurchaseBatchViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
         if self.action in ['destroy']:
             return [IsTenantAdmin()]
         return [IsAuthenticated()]
-    
+
     def get_queryset(self):
-        """Queryset with platform operator protection."""
-        return self.queryset.model.objects.for_user(self.request.user)
-    
+        return _scoped_queryset(self.request, PurchaseBatch)
+
     @transaction.atomic
     def perform_create(self, serializer):
-        """Automatically set the tenant"""
         serializer.save(**_get_create_scope(self.request))
-    
+
     @action(detail=True, methods=['get'])
     def sales_summary(self, request, pk=None):
-        """Get sales summary for this batch"""
         batch = self.get_object()
         summary = batch.get_sales_summary()
         return Response({
@@ -460,10 +408,9 @@ class PurchaseBatchViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
             'batch_number': batch.batch_number,
             'sales_summary': summary
         })
-    
+
     @action(detail=True, methods=['post'])
     def update_quality(self, request, pk=None):
-        """Update quality check information"""
         batch = self.get_object()
         batch.quality_grade = request.data.get('quality_grade', batch.quality_grade)
         batch.quality_score = request.data.get('quality_score', batch.quality_score)
@@ -478,16 +425,6 @@ class PurchaseBatchViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
 
 
 class SaleViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
-    """
-    ViewSet for Sale management with tenant isolation.
-    
-    Security:
-    - Platform Operator: NO DIRECT ACCESS
-    - Tenant Admin: Full access
-    - Accountant: Full access (edit before delivery)
-    - Sales Staff: Create only, edit same-day only
-    - Store Accounts: Read-only
-    """
     queryset = Sale.objects.all()
     serializer_class = SaleSerializer
     permission_classes = [IsAuthenticated]
@@ -496,9 +433,10 @@ class SaleViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
     search_fields = ['invoice_number', 'buyer__name', 'shipping_tracking_number']
     ordering_fields = ['date', 'total_revenue', 'profit', 'created_at']
     ordering = ['-date']
-    
+
     def get_permissions(self):
-        """Return permissions based on action"""
+        if self.action in ['list', 'retrieve', 'record_payment', 'mark_delivered', 'process_return']:
+            return [HasAnyRole('is_tenant_admin', 'is_accountant', 'is_sales_staff')]
         if self.action in ['create']:
             return [HasAnyRole('is_tenant_admin', 'is_accountant', 'is_sales_staff')]
         if self.action in ['update', 'partial_update']:
@@ -506,41 +444,41 @@ class SaleViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
         if self.action in ['destroy']:
             return [IsTenantAdmin()]
         return [IsAuthenticated()]
-    
+
     def get_queryset(self):
-        """Queryset with platform operator protection."""
-        return _get_scoped_queryset(Sale, self.request)
-    
+        return _scoped_queryset(self.request, Sale)
+
     def perform_create(self, serializer):
-        """Use SaleService for creation"""
-        service = SaleService(self.request.user)
-        data = serializer.validated_data
-        instance = service.create_sale(dict(data))
-        serializer = self.get_serializer(instance)
-    
+        instance = serializer.save(**_get_create_scope(self.request))
+        serializer.instance = instance
+
     def perform_update(self, serializer):
-        """Use SaleService for update"""
         service = SaleService(self.request.user)
         instance = service.update_sale(serializer.instance, serializer.validated_data)
-        serializer = self.get_serializer(instance)
-    
+        serializer.instance = instance
+
     @action(detail=True, methods=['post'])
     def record_payment(self, request, pk=None):
-        """Record payment using SaleService"""
         sale = self.get_object()
         service = SaleService(self.request.user)
-        payment = service.record_payment(
-            sale,
-            request.data.get('amount'),
-            request.data.get('payment_date'),
-            request.data.get('reference', '')
-        )
+        try:
+            payment = service.record_payment(
+                sale,
+                request.data.get('amount'),
+                request.data.get('payment_date'),
+                request.data.get('reference', '')
+            )
+        except ValidationError as exc:
+            return Response(getattr(exc, 'message_dict', {'error': exc.messages}), status=status.HTTP_400_BAD_REQUEST)
         serializer = PaymentSerializer(payment)
-        return Response(serializer.data)
+        data = serializer.data
+        data['pending_amount'] = str(sale.pending_amount)
+        data['amount_received'] = str(sale.amount_received)
+        data['payment_status'] = sale.payment_status
+        return Response(data)
 
     @action(detail=True, methods=['post'])
     def mark_delivered(self, request, pk=None):
-        """Mark delivered using SaleService"""
         sale = self.get_object()
         service = SaleService(self.request.user)
         service.mark_delivered(sale, request.data.get('delivered_by', request.user.get_full_name()))
@@ -549,7 +487,6 @@ class SaleViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def process_return(self, request, pk=None):
-        """Process return using SaleService"""
         sale = self.get_object()
         service = SaleService(self.request.user)
         service.process_return(
@@ -563,16 +500,6 @@ class SaleViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
 
 
 class PaymentViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
-    """
-    ViewSet for Payment management with tenant isolation.
-    
-    Security:
-    - Platform Operator: NO DIRECT ACCESS
-    - Tenant Admin: Full access
-    - Accountant: Full access (edit before cleared)
-    - Sales Staff: Customer payments only (edit before cleared)
-    - Store Accounts: Supplier payments only (edit before cleared)
-    """
     queryset = Payment.objects.all()
     serializer_class = PaymentSerializer
     permission_classes = [IsAuthenticated]
@@ -581,9 +508,10 @@ class PaymentViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
     search_fields = ['receipt_number', 'reference_number', 'notes']
     ordering_fields = ['date', 'amount', 'created_at']
     ordering = ['-date']
-    
+
     def get_permissions(self):
-        """Return permissions based on action"""
+        if self.action in ['list', 'retrieve']:
+            return [HasAnyRole('is_tenant_admin', 'is_accountant', 'is_sales_staff', 'is_store_accounts')]
         if self.action in ['create']:
             return [HasAnyRole('is_tenant_admin', 'is_accountant', 'is_sales_staff', 'is_store_accounts')]
         if self.action in ['update', 'partial_update']:
@@ -591,18 +519,16 @@ class PaymentViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
         if self.action in ['destroy']:
             return [IsTenantAdmin()]
         return [IsAuthenticated()]
-    
+
     def get_queryset(self):
-        """Queryset with platform operator protection."""
-        return _get_scoped_queryset(Payment, self.request)
-    
+        queryset = _scoped_queryset(self.request, Payment)
+        return _filter_role_visible_payments(queryset, self.request.user)
+
     def perform_create(self, serializer):
-        """Automatically set the tenant"""
         serializer.save(**_get_create_scope(self.request))
-    
+
     @action(detail=True, methods=['post'])
     def approve(self, request, pk=None):
-        """Approve a payment"""
         payment = self.get_object()
         payment.approval_status = 'approved'
         payment.approved_by = request.user
@@ -612,10 +538,9 @@ class PaymentViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
             'approval_status': payment.approval_status,
             'approved_by': request.user.get_full_name()
         })
-    
+
     @action(detail=True, methods=['post'])
     def reject(self, request, pk=None):
-        """Reject a payment"""
         payment = self.get_object()
         payment.approval_status = 'rejected'
         payment.save()
@@ -626,16 +551,6 @@ class PaymentViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
 
 
 class InventoryViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
-    """
-    ViewSet for Inventory management with tenant isolation.
-    
-    Security:
-    - Platform Operator: NO DIRECT ACCESS
-    - Tenant Admin: Full access
-    - Accountant: Full access
-    - Store Accounts: Full access (update inventory, mark spoiled)
-    - Sales Staff: Read-only
-    """
     queryset = Inventory.objects.all()
     serializer_class = InventorySerializer
     permission_classes = [IsAuthenticated]
@@ -644,42 +559,35 @@ class InventoryViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
     search_fields = ['fish__name', 'storage_location', 'bin_number', 'rack_number']
     ordering_fields = ['created_at', 'remaining_packages', 'expiry_date']
     ordering = ['-created_at']
-    
+
     def get_permissions(self):
-        """Return permissions based on action"""
+        if self.action in ['list', 'retrieve', 'low_stock', 'expiring_soon']:
+            return [HasAnyRole('is_tenant_admin', 'is_accountant', 'is_sales_staff', 'is_store_accounts')]
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [HasAnyRole('is_tenant_admin', 'is_accountant', 'is_store_accounts')]
         return [IsAuthenticated()]
-    
-    def get_queryset(self):
-        """Queryset with platform operator protection."""
-        return _get_scoped_queryset(Inventory, self.request)
-    
-    def perform_create(self, serializer):
-        """Use InventoryService for creation"""
-        service = InventoryService(self.request.user)
-        data = serializer.validated_data
-        instance = service.create_inventory(dict(data))
-        serializer = self.get_serializer(instance)
-    
-    def perform_update(self, serializer):
-        """Use InventoryService for update"""
-        service = InventoryService(self.request.user)
-        serializer.save()  # serializer handles fields, service for business logic
 
-    
+    def get_queryset(self):
+        return _scoped_queryset(self.request, Inventory)
+
+    def perform_create(self, serializer):
+        instance = serializer.save(**_get_create_scope(self.request))
+        serializer.instance = instance
+
+    def perform_update(self, serializer):
+        service = InventoryService(self.request.user)
+        serializer.save()
+
     @action(detail=True, methods=['post'])
     def update_temperature(self, request, pk=None):
-        """Update temperature using InventoryService"""
         inventory = self.get_object()
         service = InventoryService(self.request.user)
         service.update_temperature(inventory, request.data.get('temperature'))
         serializer = self.get_serializer(inventory)
         return Response(serializer.data)
-    
+
     @action(detail=True, methods=['post'])
     def move_stock(self, request, pk=None):
-        """Move stock using InventoryService"""
         inventory = self.get_object()
         service = InventoryService(self.request.user)
         service.move_stock(
@@ -690,17 +598,15 @@ class InventoryViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
         )
         serializer = self.get_serializer(inventory)
         return Response(serializer.data)
-    
+
     @action(detail=False, methods=['get'])
     def low_stock(self, request):
-        """Get all low stock items"""
         low_stock_items = self.get_queryset().filter(status='low_stock')
         serializer = self.get_serializer(low_stock_items, many=True)
         return Response(serializer.data)
-    
+
     @action(detail=False, methods=['get'])
     def expiring_soon(self, request):
-        """Get items expiring soon"""
         from datetime import datetime, timedelta
         soon = datetime.now().date() + timedelta(days=3)
         expiring = self.get_queryset().filter(

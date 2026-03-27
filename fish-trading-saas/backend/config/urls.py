@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.urls import path, include
 from django.views.generic import TemplateView
 from django.contrib.auth import views as auth_views
+from django.views.generic import TemplateView
 from accounts.views import CustomProfileRedirectView, UnifiedLoginView, TenantRegisterView, PlatformLoginView
 from dashboard.admin import dashboard_site
 from accounts.admin_sites import platform_admin_site
@@ -21,16 +22,15 @@ urlpatterns = [
     
     # Unified Login for ALL company users (tenant_admin, accountant, trader, store)
     # Primary URL for company users: /web/login/
-    path("web/login/", UnifiedLoginView.as_view(), name="unified-login"),
+    # Clean Login URLs (FINAL PRODUCTION)
+    # Tenant users: /login/
+    path("login/", UnifiedLoginView.as_view(), name="tenant-login"),
     
-    # Backward compatibility: /login/ also routes to company login
-    path("login/", UnifiedLoginView.as_view(), name="login-compat"),
-    
-    # Platform Login for platform operators (platform_operator, platform_super_admin)
-    # Uses _admin suffix: /login/_admin/
-    path("login/_admin/", PlatformLoginView.as_view(), name="platform-login"),
+    # Platform users: /platform/login/
+    path("platform/login/", PlatformLoginView.as_view(), name="platform-login"),
     
     # Register new company
+    path("register.html", TemplateView.as_view(template_name="register.html"), name="register-html"),
     path("register/", TenantRegisterView.as_view(), name="register"),
     
     # Dashboard admin (analytics)
@@ -64,7 +64,7 @@ urlpatterns = [
     path("<str:tenant_slug>/register/", TenantRegisterView.as_view(), name="tenant-register"),
     
     # Frontend login page (default) - redirect to /web/login/
-    path("", TemplateView.as_view(template_name="login.html", extra_context={"redirect_to": "/web/login/"}), name="index"),
+    path("", TemplateView.as_view(template_name="login.html"), name="index"),
     
     # Redirect /accounts/profile/ to the API profile or login
     path("accounts/profile/", CustomProfileRedirectView.as_view(), name="profile-redirect"),

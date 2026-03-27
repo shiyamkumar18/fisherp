@@ -1,52 +1,54 @@
+# Deferred imports to avoid circular import
+def is_impersonating(user):
+    from accounts.permissions import is_impersonating
+    return is_impersonating(user)
+
+def get_impersonated_tenant(user):
+    from accounts.permissions import get_impersonated_tenant
+    return get_impersonated_tenant(user)
+
+from trading.helpers import _user_company
+
+def _get_create_scope(user_dict):
+    from trading.views import _get_create_scope
+    return _get_create_scope(user_dict)
+
 from django.db import models
 from django.db.models import Q
-from rest_framework.permissions import BasePermission
-from django.contrib.auth import get_user_model
 
-User = get_user_model()
 
 class CompanyManager(models.Manager):
-    """
-    Manager that enforces company/tenant isolation and soft delete.
-    """
-    
-    def get_queryset(self):
-        return super().get_queryset().filter(is_deleted=False)
-    
-    def for_user(self, user, include_deleted=False):
-        """
-        Filter queryset for specific user/company.
-        Handles impersonation.
-        """
-        qs = self.get_queryset()
-        
-        if hasattr(user, 'session') and user.session.get('impersonating_company_id'):
-            return qs.filter(company_id=user.session['impersonating_company_id'])
-        
-        if user.company_id:
-            company_filter = Q(company_id=user.company_id)
-        else:
-            company_filter = Q(tenant_id=user.id)
-        
-        if include_deleted:
-            qs = qs.filter(company_filter)
-        else:
-            qs = qs.filter(company_filter, is_deleted=False)
-        
-        return qs
-    
-    def get_for_user(self, user, *args, **kwargs):
-        return self.for_user(user).get(*args, **kwargs)
+    """Scoped manager for tenant/company isolation."""
 
+    def for_user(self, user):
+        if not user or not getattr(user, 'is_authenticated', False):
+            return self.get_queryset().none()
+        if user.is_superuser:
+            return self.get_queryset()
+        if getattr(user, 'is_platform_user', False):
+            return self.get_queryset().none()
+        company = _user_company(user)
+        if company is None:
+            return self.get_queryset().filter(tenant=user)
+        return self.get_queryset().filter(Q(company=company) | Q(tenant=user))
 
-class TenantObjectPermission(BasePermission):
-    """
-    Object-level permission: obj.company == request.user.company (or impersonated).
-    """
-    
-    def has_object_permission(self, request, view, obj):
-        if request.user.is_superuser:
-            return True
-        if hasattr(request, 'session') and request.session.get('impersonating_company_id'):
-            return obj.company_id == request.session['impersonating_company_id']
-        return getattr(obj, 'company_id', None) == getattr(request.user, 'company_id', None)
+class BaseService:
+    """Base class for services with tenant scoping."""
+
+    def __init__(self, user):
+        self.user = user
+        self.company = self._get_company()
+
+    def _get_company(self):
+        if is_impersonating(self.user):
+            return get_impersonated_tenant(self.user)
+        return _user_company(self.user)
+
+    def get_scoped_queryset(self, model):
+        """Get queryset scoped to user/company."""
+        # Assume models have .objects.for_user(user)
+        return model.objects.for_user(self.user)
+
+    def get_create_scope(self):
+        """Get scope for create ops."""
+        return _get_create_scope({'user': self.user})

@@ -58,7 +58,7 @@ const MobileNav = {
                     return;
                 }
                 if (!window.Sidebar.checkAccess(page)) return;
-                window.App.loadPage(page);
+                App.loadPage(page);
             });
         });
     },

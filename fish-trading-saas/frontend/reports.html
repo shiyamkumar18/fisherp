@@ -1,0 +1,119 @@
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Reports & Insights</h1>
+        <p class="page-subtitle">Turn daily buying, selling, and stock movement into clear decisions for owners and finance teams.</p>
+    </div>
+    <div class="hero-actions">
+        <button class="btn btn-primary" onclick="generateReport()">
+            <i class="fas fa-wand-magic-sparkles"></i>
+            Generate Report
+        </button>
+        <button class="btn btn-secondary" onclick="exportReport('pdf')">
+            <i class="fas fa-file-pdf"></i>
+            Export PDF
+        </button>
+    </div>
+</div>
+
+<section class="kpi-row">
+    <article class="kpi-card">
+        <div class="metric-eyebrow">Gross Sales</div>
+        <div class="kpi-value">₹3.42L</div>
+        <div class="kpi-label">Top-line turnover across the selected range.</div>
+    </article>
+    <article class="kpi-card">
+        <div class="metric-eyebrow">Gross Profit</div>
+        <div class="kpi-value">₹96K</div>
+        <div class="kpi-label">Margin view before deeper expense analysis.</div>
+    </article>
+    <article class="kpi-card">
+        <div class="metric-eyebrow">Inventory Value</div>
+        <div class="kpi-value">₹1.18L</div>
+        <div class="kpi-label">Estimated stock value still on hand.</div>
+    </article>
+</section>
+
+<div class="form-section">
+    <div class="section-caption">Filter Window</div>
+    <h2>Build the reporting view you need</h2>
+    <div class="form-grid">
+        <div class="form-group">
+            <label class="form-label">Date From</label>
+            <input type="date" id="report-date-from" class="form-input">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Date To</label>
+            <input type="date" id="report-date-to" class="form-input">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Report Type</label>
+            <select class="form-select">
+                <option>Sales Summary</option>
+                <option>Profit Analysis</option>
+                <option>Inventory Report</option>
+            </select>
+        </div>
+    </div>
+</div>
+
+<div class="charts-row">
+    <div class="chart-container">
+        <div class="table-header">
+            <div>
+                <h3>Sales Performance</h3>
+                <span>Revenue movement over time</span>
+            </div>
+        </div>
+        <div style="padding: 1.4rem;">
+            <canvas id="sales-report-chart"></canvas>
+        </div>
+    </div>
+    <div class="chart-container">
+        <div class="table-header">
+            <div>
+                <h3>Profit Composition</h3>
+                <span>Gross profit versus expenses</span>
+            </div>
+        </div>
+        <div style="padding: 1.4rem;">
+            <canvas id="profit-report-chart"></canvas>
+        </div>
+    </div>
+</div>
+
+<script>
+function generateReport() {
+    initReportCharts();
+}
+
+function initReportCharts() {
+    const salesCanvas = document.getElementById('sales-report-chart');
+    const profitCanvas = document.getElementById('profit-report-chart');
+    if (!window.Chart || !salesCanvas || !profitCanvas) return;
+
+    const ctx1 = salesCanvas.getContext('2d');
+    const ctx2 = profitCanvas.getContext('2d');
+
+    new Chart(ctx1, {
+        type: 'bar',
+        data: {
+            labels: ['Jan', 'Feb', 'Mar', 'Apr'],
+            datasets: [{ label: 'Sales', data: [12000, 19000, 15000, 22400], backgroundColor: '#14b8a6' }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+    });
+
+    new Chart(ctx2, {
+        type: 'doughnut',
+        data: {
+            labels: ['Gross Profit', 'Expenses'],
+            datasets: [{ data: [7200, 4800], backgroundColor: ['#0f766e', '#f59e0b'] }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+    });
+}
+
+function exportReport(format) {
+    alert(`Report exported as ${format.toUpperCase()}`);
+}
+</script>

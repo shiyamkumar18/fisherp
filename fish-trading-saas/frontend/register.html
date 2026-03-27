@@ -5,72 +5,92 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fish ERP - Register Company</title>
     <link rel="stylesheet" href="css/auth-modern.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
 <body class="auth-page">
-    <div class="register-shell">
-        <div class="register-head">
-            <h1>Register Your Company</h1>
-            <p>Create a tenant account and start managing fish trading operations.</p>
-        </div>
+    <div class="auth-shell">
+        <section class="auth-panel brand-panel">
+            <div class="brand-chip">Launch Your Workspace</div>
+            <h1 class="brand-title">Set up your fish trading operation in minutes.</h1>
+            <p class="brand-subtitle">Create your company workspace, onboard the admin account, and move from manual tracking to a real operating system.</p>
 
-        <div id="message"></div>
+            <ul class="brand-points">
+                <li>Purchases, inventory, sales, and payments in one place</li>
+                <li>Built-in team roles for admin, accountant, trader, and store staff</li>
+                <li>Reporting and subscription controls ready from day one</li>
+            </ul>
+        </section>
 
-        <form id="registerForm">
-            <div class="register-grid">
-                <section class="register-section">
-                    <h3>Company Details</h3>
-
-                    <div class="form-group">
-                        <label for="company_name">Company Name *</label>
-                        <input class="form-input" type="text" id="company_name" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="city">City</label>
-                        <input class="form-input" type="text" id="city">
-                    </div>
-                    <div class="form-group">
-                        <label for="phone">Phone</label>
-                        <input class="form-input" type="text" id="phone">
-                    </div>
-                    <div class="form-group">
-                        <label for="gst_number">GST Number</label>
-                        <input class="form-input" type="text" id="gst_number">
-                    </div>
-                </section>
-
-                <section class="register-section">
-                    <h3>Admin Details</h3>
-
-                    <div class="form-group">
-                        <label for="full_name">Full Name</label>
-                        <input class="form-input" type="text" id="full_name">
-                    </div>
-                    <div class="form-group">
-                        <label for="email">Email *</label>
-                        <input class="form-input" type="email" id="email" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="admin_phone">Phone</label>
-                        <input class="form-input" type="text" id="admin_phone">
-                    </div>
-                    <div class="form-group">
-                        <label for="password">Password *</label>
-                        <input class="form-input" type="password" id="password" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="confirm_password">Confirm Password *</label>
-                        <input class="form-input" type="password" id="confirm_password" required>
-                    </div>
-                </section>
+        <section class="auth-panel form-panel">
+            <div class="auth-header">
+                <div class="auth-logo"><i class="fas fa-building"></i></div>
+                <h2>Create Company Workspace</h2>
+                <p>Tell us about your business and the first admin user.</p>
             </div>
 
-            <div class="register-actions">
-                <button class="btn-login" type="submit">
-                    <span class="btn-text">Register Company</span>
-                    <span class="btn-loading">Registering...</span>
-                </button>
+            <div id="message"></div>
+
+            <form id="registerForm" class="auth-form">
+                <div class="register-grid">
+                    <section class="register-section">
+                        <h3>Company Details</h3>
+
+                        <div class="form-group">
+                            <label for="company_name">Company Name *</label>
+                            <input class="form-input" type="text" id="company_name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="city">City</label>
+                            <input class="form-input" type="text" id="city">
+                        </div>
+                        <div class="form-group">
+                            <label for="phone">Phone</label>
+                            <input class="form-input" type="text" id="phone">
+                        </div>
+                        <div class="form-group">
+                            <label for="gst_number">GST Number</label>
+                            <input class="form-input" type="text" id="gst_number">
+                        </div>
+                    </section>
+
+                    <section class="register-section">
+                        <h3>Admin Details</h3>
+
+                        <div class="form-group">
+                            <label for="full_name">Full Name</label>
+                            <input class="form-input" type="text" id="full_name">
+                        </div>
+                        <div class="form-group">
+                            <label for="email">Email *</label>
+                            <input class="form-input" type="email" id="email" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="admin_phone">Phone</label>
+                            <input class="form-input" type="text" id="admin_phone">
+                        </div>
+                        <div class="form-group">
+                            <label for="password">Password *</label>
+                            <input class="form-input" type="password" id="password" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="confirm_password">Confirm Password *</label>
+                            <input class="form-input" type="password" id="confirm_password" required>
+                        </div>
+                    </section>
+                </div>
+
+                <div class="register-actions">
+                    <button class="btn-login" type="submit">
+                        <span class="btn-text">Register Company</span>
+                        <span class="btn-loading">Registering...</span>
+                    </button>
+                </div>
+            </form>
+
+            <div class="switch-link">
+                Already registered? <a href="/login.html">Sign in here</a>
             </div>
-        </form>
+        </section>
     </div>
 
     <script>
@@ -97,7 +117,7 @@
             };
         }
 
-        form.addEventListener('submit', async function(event) {
+        form.addEventListener('submit', async (event) => {
             event.preventDefault();
             const data = collectData();
 
@@ -130,7 +150,7 @@
 
                 showMessage('Company registered successfully. Redirecting to login...', 'success');
                 setTimeout(() => {
-                    window.location.href = '/web/login/';
+                    window.location.href = '/login.html';
                 }, 1800);
             } catch (error) {
                 console.error('Registration error:', error);

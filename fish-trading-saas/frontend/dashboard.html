@@ -1,1292 +1,173 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FisherP - Dashboard</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/base.css">
-    <link rel="stylesheet" href="css/layout.css">
-    <link rel="stylesheet" href="css/components.css">
-    <link rel="stylesheet" href="css/additional.css">
-    <link rel="stylesheet" href="css/design-system.css">
-    <!-- Font Awesome for Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-</head>
-<body>
-    <!-- Impersonation Banner (for platform operators) -->
-    <div id="impersonationBanner" class="impersonation-banner" style="display: none;">
-        <i class="fas fa-user-secret"></i>
-        <span>You are impersonating <strong id="impersonatingTenant"></strong></span>
-        <button onclick="SessionManager.stopImpersonation()">Exit Impersonation</button>
-    </div>
-    
-    <div class="dashboard-layout">
-        <!-- Sidebar -->
-        <aside class="sidebar" id="sidebar">
-            <div class="sidebar-header">
-                <div class="logo">
-                    <span class="logo-mark">🐟</span>
-                    <h2>FisherP</h2>
-                </div>
-            </div>
-            
-            <nav class="sidebar-nav" id="sidebarNav">
-                <div class="nav-section">
-                    <div class="nav-section-title">Main</div>
-                    <a href="#" class="nav-item active" data-page="dashboard">
-                        <i class="fas fa-th-large"></i>
-                        <span>Dashboard</span>
-                    </a>
-                </div>
-                
-                <div class="nav-section">
-                    <div class="nav-section-title">Trading</div>
-                    <a href="#" class="nav-item" data-page="fish">
-                        <i class="fas fa-fish"></i>
-                        <span>Fish Products</span>
-                    </a>
-                    <a href="#" class="nav-item" data-page="fishCategories">
-                        <i class="fas fa-tags"></i>
-                        <span>Fish Categories</span>
-                    </a>
-                    <a href="#" class="nav-item" data-page="suppliers">
-                        <i class="fas fa-truck"></i>
-                        <span>Suppliers</span>
-                    </a>
-                    <a href="#" class="nav-item" data-page="buyers">
-                        <i class="fas fa-users"></i>
-                        <span>Buyers</span>
-                    </a>
-                </div>
-                
-                <div class="nav-section">
-                    <div class="nav-section-title">Operations</div>
-                    <a href="#" class="nav-item" data-page="purchases">
-                        <i class="fas fa-shopping-cart"></i>
-                        <span>Purchases</span>
-                    </a>
-                    <a href="#" class="nav-item" data-page="sales">
-                        <i class="fas fa-cash-register"></i>
-                        <span>Sales</span>
-                    </a>
-                    <a href="#" class="nav-item" data-page="inventory">
-                        <i class="fas fa-boxes"></i>
-                        <span>Inventory</span>
-                    </a>
-                    <a href="#" class="nav-item" data-page="payments">
-                        <i class="fas fa-money-bill-wave"></i>
-                        <span>Payments</span>
-                    </a>
-                </div>
-                
-                <div class="nav-section">
-                    <div class="nav-section-title">Reports</div>
-                    <a href="#" class="nav-item" data-page="reports">
-                        <i class="fas fa-chart-bar"></i>
-                        <span>Reports</span>
-                    </a>
-                    <a href="#" class="nav-item" data-page="analytics">
-                        <i class="fas fa-chart-line"></i>
-                        <span>Analytics</span>
-                    </a>
-                </div>
-                
-                <div class="nav-section">
-                    <div class="nav-section-title">Management</div>
-                    <a href="#" class="nav-item" data-page="users">
-                        <i class="fas fa-user-cog"></i>
-                        <span>User Management</span>
-                    </a>
-                    <a href="#" class="nav-item" data-page="audit">
-                        <i class="fas fa-history"></i>
-                        <span>Audit Logs</span>
-                    </a>
-                    <a href="#" class="nav-item" data-page="platform">
-                        <i class="fas fa-server"></i>
-                        <span>Platform Admin</span>
-                    </a>
-                </div>
-                
-                <div class="nav-section">
-                    <div class="nav-section-title">Security</div>
-                    <a href="#" class="nav-item" data-page="security">
-                        <i class="fas fa-shield-alt"></i>
-                        <span>Security (2FA)</span>
-                    </a>
-                </div>
-                
-                <div class="nav-section">
-                    <div class="nav-section-title">Settings</div>
-                    <a href="#" class="nav-item" data-page="subscription">
-                        <i class="fas fa-crown"></i>
-                        <span>Subscription</span>
-                    </a>
-                    <a href="#" class="nav-item" data-page="settings">
-                        <i class="fas fa-cog"></i>
-                        <span>Settings</span>
-                    </a>
-                    <a href="#" class="nav-item" id="logoutBtn">
-                        <i class="fas fa-sign-out-alt"></i>
-                        <span>Logout</span>
-                    </a>
-                </div>
-            </nav>
-        </aside>
-        
-        <!-- Main Content -->
-        <main class="main-content">
-            <!-- Top Header -->
-            <header class="top-header">
-                <div class="header-left">
-                    <button class="menu-toggle" id="menuToggle">
-                        <i class="fas fa-bars"></i>
-                    </button>
-                    <h1 class="page-title" id="pageTitle">Dashboard</h1>
-                    <div class="company-pill" id="currentCompany">Company Workspace</div>
-                </div>
-                
-                <div class="header-right">
-                    <div class="global-search-wrap">
-                        <i class="fas fa-search"></i>
-                        <input id="globalSearchInput" type="search" placeholder="Search fish, buyers, transactions...">
-                        <div id="globalSearchResults" class="global-search-results hidden"></div>
-                    </div>
-                    <div class="notification-wrap" id="notificationWrap">
-                        <button class="notification-btn" id="notificationBtn" type="button" aria-label="Notifications">
-                            <i class="fas fa-bell"></i>
-                            <span class="notification-count" id="notificationCount">0</span>
-                        </button>
-                        <div class="notification-dropdown hidden" id="notificationDropdown">
-                            <div class="notification-head">
-                                <strong>Notifications</strong>
-                            </div>
-                            <div id="notificationList" class="notification-list"></div>
-                        </div>
-                    </div>
-                    <div class="user-menu" id="userMenu">
-                        <div class="user-avatar" id="userAvatar">A</div>
-                        <div class="user-info">
-                            <div class="user-name" id="userName">Admin</div>
-                            <div class="user-role" id="userRole">Tenant Admin</div>
-                        </div>
-                    </div>
-                </div>
-            </header>
-            
-            <!-- Content Area -->
-            <div class="content" id="mainContent">
-                <!-- Dashboard Page -->
-                <div id="dashboardPage" class="page-content">
-                    <!-- Quick Actions (Mobile) -->
-                    <div class="quick-actions-section" id="quickActions">
-                        <!-- Quick action buttons rendered here -->
-                    </div>
-                    
-                    <!-- KPI Cards -->
-                    <div class="kpi-grid">
-                        <div class="kpi-card">
-                            <div class="kpi-icon blue">
-                                <i class="fas fa-rupee-sign"></i>
-                            </div>
-                            <div class="kpi-content">
-                                <div class="kpi-label">Today's Sales</div>
-                                <div class="kpi-value" id="todaySales">₹0</div>
-                                <div class="kpi-change positive" id="todaySalesChange">+0% from yesterday</div>
-                            </div>
-                        </div>
-                        
-                        <div class="kpi-card">
-                            <div class="kpi-icon green">
-                                <i class="fas fa-chart-line"></i>
-                            </div>
-                            <div class="kpi-content">
-                                <div class="kpi-label">Today's Profit</div>
-                                <div class="kpi-value" id="todayProfit">₹0</div>
-                                <div class="kpi-change positive">+0% margin</div>
-                            </div>
-                        </div>
-                        
-                        <div class="kpi-card">
-                            <div class="kpi-icon orange">
-                                <i class="fas fa-shopping-cart"></i>
-                            </div>
-                            <div class="kpi-content">
-                                <div class="kpi-label">Purchases</div>
-                                <div class="kpi-value" id="todayPurchases">₹0</div>
-                                <div class="kpi-change" id="todayPurchasesCount">0 orders</div>
-                            </div>
-                        </div>
-                        
-                        <div class="kpi-card">
-                            <div class="kpi-icon red">
-                                <i class="fas fa-wallet"></i>
-                            </div>
-                            <div class="kpi-content">
-                                <div class="kpi-label">Receivables</div>
-                                <div class="kpi-value" id="receivables">₹0</div>
-                                <div class="kpi-change">Outstanding</div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Charts Row -->
-                    <div class="chart-grid">
-                        <div class="card">
-                            <div class="card-header">
-                                <h3 class="card-title">Sales Trend (Last 7 Days)</h3>
-                            </div>
-                            <div class="chart-container">
-                                <canvas id="salesTrendChart"></canvas>
-                            </div>
-                        </div>
-                        
-                        <div class="card">
-                            <div class="card-header">
-                                <h3 class="card-title">Sales by Fish Type</h3>
-                            </div>
-                            <div class="chart-container">
-                                <canvas id="fishTypeChart"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Recent Transactions -->
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Recent Sales</h3>
-                            <button class="btn btn-sm btn-secondary" onclick="App.loadPage('sales')">View All</button>
-                        </div>
-                        <div class="table-container">
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>Invoice</th>
-                                        <th>Buyer</th>
-                                        <th>Fish Type</th>
-                                        <th>Amount</th>
-                                        <th>Profit</th>
-                                        <th>Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="recentSalesTable">
-                                    <tr>
-                                        <td colspan="6" class="text-center">Loading...</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                    
-                    <!-- Inventory Alerts -->
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Inventory Alerts</h3>
-                            <button class="btn btn-sm btn-secondary" onclick="App.loadPage('inventory')">View All</button>
-                        </div>
-                        <div class="table-container">
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>Fish Type</th>
-                                        <th>Batch</th>
-                                        <th>Remaining</th>
-                                        <th>Expiry Date</th>
-                                        <th>Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="inventoryAlertsTable">
-                                    <tr>
-                                        <td colspan="5" class="text-center">Loading...</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Fish Products Page -->
-                <div id="fishPage" class="page-content hidden">
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Fish Products</h3>
-                            <button class="btn btn-primary" id="addFishBtn" data-action="create-fish">
-                                <i class="fas fa-plus"></i> Add Fish
-                            </button>
-                        </div>
-                        <div class="search-filter-bar">
-                            <div class="search-box">
-                                <i class="fas fa-search search-icon"></i>
-                                <input type="text" id="fishSearch" placeholder="Search fish...">
-                            </div>
-                        </div>
-                        <div class="table-container">
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>Name</th>
-                                        <th>Category</th>
-                                        <th>Unit</th>
-                                        <th>Min Price</th>
-                                        <th>Max Price</th>
-                                        <th>Status</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="fishTable">
-                                    <tr>
-                                        <td colspan="7" class="text-center">Loading...</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Fish Categories Page -->
-                <div id="fishCategoriesPage" class="page-content hidden">
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Fish Categories</h3>
-                            <button class="btn btn-primary" id="addFishCategoryBtn" data-action="create-fishCategory">
-                                <i class="fas fa-plus"></i> Add Category
-                            </button>
-                        </div>
-                        <div class="search-filter-bar">
-                            <div class="search-box">
-                                <i class="fas fa-search search-icon"></i>
-                                <input type="text" id="fishCategorySearch" placeholder="Search categories...">
-                            </div>
-                        </div>
-                        <div class="table-container">
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>Name</th>
-                                        <th>Type</th>
-                                        <th>Priority</th>
-                                        <th>Featured</th>
-                                        <th>Status</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="fishCategoryTable">
-                                    <tr>
-                                        <td colspan="6" class="text-center">Loading...</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Suppliers Page -->
-                <div id="suppliersPage" class="page-content hidden">
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Suppliers</h3>
-                            <button class="btn btn-primary" id="addSupplierBtn" data-action="create-supplier">
-                                <i class="fas fa-plus"></i> Add Supplier
-                            </button>
-                        </div>
-                        <div class="search-filter-bar">
-                            <div class="search-box">
-                                <i class="fas fa-search search-icon"></i>
-                                <input type="text" id="supplierSearch" placeholder="Search suppliers...">
-                            </div>
-                        </div>
-                        <div class="table-container">
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>Name</th>
-                                        <th>Phone</th>
-                                        <th>Type</th>
-                                        <th>Outstanding</th>
-                                        <th>Rating</th>
-                                        <th>Status</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="supplierTable">
-                                    <tr>
-                                        <td colspan="7" class="text-center">Loading...</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Buyers Page -->
-                <div id="buyersPage" class="page-content hidden">
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Buyers</h3>
-                            <button class="btn btn-primary" id="addBuyerBtn" data-action="create-buyer">
-                                <i class="fas fa-plus"></i> Add Buyer
-                            </button>
-                        </div>
-                        <div class="search-filter-bar">
-                            <div class="search-box">
-                                <i class="fas fa-search search-icon"></i>
-                                <input type="text" id="buyerSearch" placeholder="Search buyers...">
-                            </div>
-                        </div>
-                        <div class="table-container">
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>Name</th>
-                                        <th>Phone</th>
-                                        <th>Type</th>
-                                        <th>Credit Limit</th>
-                                        <th>Outstanding</th>
-                                        <th>Status</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="buyerTable">
-                                    <tr>
-                                        <td colspan="7" class="text-center">Loading...</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Purchases Page -->
-                <div id="purchasesPage" class="page-content hidden">
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Purchase Orders</h3>
-                            <button class="btn btn-primary" id="addPurchaseBtn" data-action="create-purchase">
-                                <i class="fas fa-plus"></i> New Purchase
-                            </button>
-                        </div>
-                        <div class="search-filter-bar">
-                            <div class="search-box">
-                                <i class="fas fa-search search-icon"></i>
-                                <input type="text" id="purchaseSearch" placeholder="Search purchases...">
-                            </div>
-                        </div>
-                        <div class="table-container">
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>Batch #</th>
-                                        <th>Date</th>
-                                        <th>Supplier</th>
-                                        <th>Fish Type</th>
-                                        <th>Quantity</th>
-                                        <th>Total Cost</th>
-                                        <th>Status</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="purchaseTable">
-                                    <tr>
-                                        <td colspan="8" class="text-center">Loading...</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Sales Page -->
-                <div id="salesPage" class="page-content hidden">
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Sales</h3>
-                            <button class="btn btn-primary" id="addSaleBtn" data-action="create-sale">
-                                <i class="fas fa-plus"></i> New Sale
-                            </button>
-                        </div>
-                        <div class="search-filter-bar">
-                            <div class="search-box">
-                                <i class="fas fa-search search-icon"></i>
-                                <input type="text" id="saleSearch" placeholder="Search sales...">
-                            </div>
-                        </div>
-                        <div class="table-container">
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>Invoice #</th>
-                                        <th>Date</th>
-                                        <th>Buyer</th>
-                                        <th>Fish Type</th>
-                                        <th>Amount</th>
-                                        <th>Profit</th>
-                                        <th>Payment</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="saleTable">
-                                    <tr>
-                                        <td colspan="8" class="text-center">Loading...</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Inventory Page -->
-                <div id="inventoryPage" class="page-content hidden">
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Inventory</h3>
-                        </div>
-                        <div class="search-filter-bar">
-                            <div class="search-box">
-                                <i class="fas fa-search search-icon"></i>
-                                <input type="text" id="inventorySearch" placeholder="Search inventory...">
-                            </div>
-                        </div>
-                        <div class="table-container">
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>Fish Type</th>
-                                        <th>Batch</th>
-                                        <th>Remaining Pkg</th>
-                                        <th>Weight (kg)</th>
-                                        <th>Expiry</th>
-                                        <th>Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="inventoryTable">
-                                    <tr>
-                                        <td colspan="6" class="text-center">Loading...</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Payments Page -->
-                <div id="paymentsPage" class="page-content hidden">
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Payments</h3>
-                            <button class="btn btn-primary" id="addPaymentBtn" data-action="create-payment">
-                                <i class="fas fa-plus"></i> Record Payment
-                            </button>
-                        </div>
-                        <div class="tabs">
-                            <button class="tab active" data-tab="received">Received</button>
-                            <button class="tab" data-tab="made">Made</button>
-                        </div>
-                        
-                        <div class="tab-content active" id="paymentsReceived">
-                            <div class="table-container">
-                                <table class="data-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Receipt #</th>
-                                            <th>Date</th>
-                                            <th>From</th>
-                                            <th>Amount</th>
-                                            <th>Mode</th>
-                                            <th>Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="paymentsReceivedTable">
-                                        <tr>
-                                            <td colspan="6" class="text-center">Loading...</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                        
-                        <div class="tab-content" id="paymentsMade">
-                            <div class="table-container">
-                                <table class="data-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Receipt #</th>
-                                            <th>Date</th>
-                                            <th>To</th>
-                                            <th>Amount</th>
-                                            <th>Mode</th>
-                                            <th>Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="paymentsMadeTable">
-                                        <tr>
-                                            <td colspan="6" class="text-center">Loading...</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Accounts Page -->
-                <div id="accountsPage" class="page-content hidden">
-                    <div class="kpi-grid">
-                        <div class="kpi-card">
-                            <div class="kpi-icon blue">
-                                <i class="fas fa-arrow-down"></i>
-                            </div>
-                            <div class="kpi-content">
-                                <div class="kpi-label">Revenue</div>
-                                <div class="kpi-value" id="accountsRevenue">₹0</div>
-                            </div>
-                        </div>
-                        <div class="kpi-card">
-                            <div class="kpi-icon orange">
-                                <i class="fas fa-arrow-up"></i>
-                            </div>
-                            <div class="kpi-content">
-                                <div class="kpi-label">Expenses</div>
-                                <div class="kpi-value" id="accountsExpenses">₹0</div>
-                            </div>
-                        </div>
-                        <div class="kpi-card">
-                            <div class="kpi-icon green">
-                                <i class="fas fa-coins"></i>
-                            </div>
-                            <div class="kpi-content">
-                                <div class="kpi-label">Profit</div>
-                                <div class="kpi-value" id="accountsProfit">₹0</div>
-                            </div>
-                        </div>
-                        <div class="kpi-card">
-                            <div class="kpi-icon red">
-                                <i class="fas fa-hourglass-half"></i>
-                            </div>
-                            <div class="kpi-content">
-                                <div class="kpi-label">Pending Payments</div>
-                                <div class="kpi-value" id="accountsPending">₹0</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Accounts Ledger</h3>
-                        </div>
-                        <div class="table-container">
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>Date</th>
-                                        <th>Type</th>
-                                        <th>Amount</th>
-                                        <th>Notes</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="accountsLedgerTable">
-                                    <tr>
-                                        <td colspan="4" class="text-center">Loading...</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Reports Page -->
-                <div id="reportsPage" class="page-content hidden">
-                    <div class="page-toolbar">
-                        <button class="btn btn-secondary" id="exportPdfBtn">
-                            <i class="fas fa-file-pdf"></i> Export PDF
-                        </button>
-                        <button class="btn btn-secondary" id="exportExcelBtn">
-                            <i class="fas fa-file-excel"></i> Export Excel
-                        </button>
-                    </div>
-                    <div class="kpi-grid">
-                        <div class="kpi-card">
-                            <div class="kpi-icon blue">
-                                <i class="fas fa-chart-pie"></i>
-                            </div>
-                            <div class="kpi-content">
-                                <div class="kpi-label">Monthly Revenue</div>
-                                <div class="kpi-value" id="monthlyRevenue">₹0</div>
-                            </div>
-                        </div>
-                        
-                        <div class="kpi-card">
-                            <div class="kpi-icon green">
-                                <i class="fas fa-percentage"></i>
-                            </div>
-                            <div class="kpi-content">
-                                <div class="kpi-label">Profit Margin</div>
-                                <div class="kpi-value" id="profitMargin">0%</div>
-                            </div>
-                        </div>
-                        
-                        <div class="kpi-card">
-                            <div class="kpi-icon orange">
-                                <i class="fas fa-boxes"></i>
-                            </div>
-                            <div class="kpi-content">
-                                <div class="kpi-label">Inventory Value</div>
-                                <div class="kpi-value" id="inventoryValue">₹0</div>
-                            </div>
-                        </div>
-                        
-                        <div class="kpi-card">
-                            <div class="kpi-icon red">
-                                <i class="fas fa-exclamation-triangle"></i>
-                            </div>
-                            <div class="kpi-content">
-                                <div class="kpi-label">Risk Alerts</div>
-                                <div class="kpi-value" id="riskAlerts">0</div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="chart-grid">
-                        <div class="card">
-                            <div class="card-header">
-                                <h3 class="card-title">Monthly Comparison</h3>
-                            </div>
-                            <div class="chart-container">
-                                <canvas id="monthlyChart"></canvas>
-                            </div>
-                        </div>
-                        
-                        <div class="card">
-                            <div class="card-header">
-                                <h3 class="card-title">Top Buyers</h3>
-                            </div>
-                            <div class="table-container">
-                                <table class="data-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Buyer</th>
-                                            <th>Orders</th>
-                                            <th>Revenue</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="topBuyersTable">
-                                        <tr>
-                                            <td colspan="3" class="text-center">Loading...</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Subscription Page -->
-                <div id="subscriptionPage" class="page-content hidden">
-                    <!-- Current Subscription Card -->
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Current Subscription</h3>
-                        </div>
-                        <div id="currentSubscription">
-                            <div class="text-center p-4">Loading...</div>
-                        </div>
-                    </div>
-                    
-                    <!-- Subscription Tiers -->
-                    <div class="card mt-2">
-                        <div class="card-header">
-                            <h3 class="card-title">Available Plans</h3>
-                        </div>
-                        <div class="tier-grid" id="subscriptionTiers">
-                            <div class="text-center p-4">Loading...</div>
-                        </div>
-                    </div>
-                    
-                    <!-- Add-ons -->
-                    <div class="card mt-2">
-                        <div class="card-header">
-                            <h3 class="card-title">Available Add-ons</h3>
-                        </div>
-                        <div class="table-container">
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>Name</th>
-                                        <th>Description</th>
-                                        <th>Price</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="subscriptionAddons">
-                                    <tr>
-                                        <td colspan="4" class="text-center">Loading...</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Analytics Page -->
-                <div id="analyticsPage" class="page-content hidden">
-                    <div class="kpi-grid">
-                        <div class="kpi-card">
-                            <div class="kpi-icon blue">
-                                <i class="fas fa-chart-line"></i>
-                            </div>
-                            <div class="kpi-content">
-                                <div class="kpi-label">Monthly Revenue</div>
-                                <div class="kpi-value" id="monthlyRevenueAnalytics">₹0</div>
-                            </div>
-                        </div>
-                        
-                        <div class="kpi-card">
-                            <div class="kpi-icon green">
-                                <i class="fas fa-percentage"></i>
-                            </div>
-                            <div class="kpi-content">
-                                <div class="kpi-label">Profit Margin</div>
-                                <div class="kpi-value" id="profitMarginAnalytics">0%</div>
-                            </div>
-                        </div>
-                        
-                        <div class="kpi-card">
-                            <div class="kpi-icon orange">
-                                <i class="fas fa-money-bill-wave"></i>
-                            </div>
-                            <div class="kpi-content">
-                                <div class="kpi-label">Cash Inflow</div>
-                                <div class="kpi-value" id="cashInflow">₹0</div>
-                            </div>
-                        </div>
-                        
-                        <div class="kpi-card">
-                            <div class="kpi-icon red">
-                                <i class="fas fa-money-bill-wave"></i>
-                            </div>
-                            <div class="kpi-content">
-                                <div class="kpi-label">Cash Outflow</div>
-                                <div class="kpi-value" id="cashOutflow">₹0</div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="chart-grid">
-                        <div class="card">
-                            <div class="card-header">
-                                <h3 class="card-title">Revenue vs Profit Trend</h3>
-                            </div>
-                            <div class="chart-container">
-                                <canvas id="profitTrendChart"></canvas>
-                            </div>
-                        </div>
-                        
-                        <div class="card">
-                            <div class="card-header">
-                                <h3 class="card-title">Sales by Payment Method</h3>
-                            </div>
-                            <div class="chart-container">
-                                <canvas id="paymentMethodChart"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="chart-grid">
-                        <div class="card">
-                            <div class="card-header">
-                                <h3 class="card-title">Profit by Purchase Type</h3>
-                            </div>
-                            <div class="table-container">
-                                <table class="data-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Purchase Type</th>
-                                            <th>Total Profit</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="profitByTypeTable">
-                                        <tr>
-                                            <td colspan="2" class="text-center">Loading...</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                        
-                        <div class="card">
-                            <div class="card-header">
-                                <h3 class="card-title">Credit Customers</h3>
-                            </div>
-                            <div class="table-container">
-                                <table class="data-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Customer</th>
-                                            <th>Credit Balance</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="creditCustomersTable">
-                                        <tr>
-                                            <td colspan="2" class="text-center">Loading...</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Pending Payments</h3>
-                        </div>
-                        <div class="table-container">
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>Invoice #</th>
-                                        <th>Party</th>
-                                        <th>Amount</th>
-                                        <th>Due Date</th>
-                                        <th>Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="pendingPaymentsTable">
-                                    <tr>
-                                        <td colspan="5" class="text-center">Loading...</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Users Management Page -->
-                <div id="usersPage" class="page-content hidden">
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Staff Management</h3>
-                            <button class="btn btn-primary" id="addUserBtn">
-                                <i class="fas fa-plus"></i> Add Staff
-                            </button>
-                        </div>
-                        <div class="search-filter-bar">
-                            <div class="search-box">
-                                <i class="fas fa-search search-icon"></i>
-                                <input type="text" id="userSearch" placeholder="Search users...">
-                            </div>
-                        </div>
-                        <div class="table-container">
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>Name</th>
-                                        <th>Role</th>
-                                        <th>Email</th>
-                                        <th>Status</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="usersTable">
-                                    <tr>
-                                        <td colspan="5" class="text-center">Loading...</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Audit Logs Page -->
-                <div id="auditPage" class="page-content hidden">
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Audit Logs</h3>
-                        </div>
-                        <div class="search-filter-bar">
-                            <div class="search-box">
-                                <i class="fas fa-search search-icon"></i>
-                                <input type="text" id="auditSearch" placeholder="Search logs...">
-                            </div>
-                        </div>
-                        <div class="table-container">
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>Timestamp</th>
-                                        <th>User</th>
-                                        <th>Action</th>
-                                        <th>Details</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="auditTable">
-                                    <tr>
-                                        <td colspan="4" class="text-center">Loading...</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Platform Admin Page -->
-                <div id="platformPage" class="page-content hidden">
-                    <div class="kpi-grid">
-                        <div class="kpi-card">
-                            <div class="kpi-icon blue">
-                                <i class="fas fa-building"></i>
-                            </div>
-                            <div class="kpi-content">
-                                <div class="kpi-label">Total Tenants</div>
-                                <div class="kpi-value" id="totalTenants">0</div>
-                            </div>
-                        </div>
-                        
-                        <div class="kpi-card">
-                            <div class="kpi-icon green">
-                                <i class="fas fa-users"></i>
-                            </div>
-                            <div class="kpi-content">
-                                <div class="kpi-label">Total Users</div>
-                                <div class="kpi-value" id="totalUsers">0</div>
-                            </div>
-                        </div>
-                        
-                        <div class="kpi-card">
-                            <div class="kpi-icon orange">
-                                <i class="fas fa-money-bill-wave"></i>
-                            </div>
-                            <div class="kpi-content">
-                                <div class="kpi-label">Monthly Revenue</div>
-                                <div class="kpi-value" id="platformRevenue">₹0</div>
-                            </div>
-                        </div>
-                        
-                        <div class="kpi-card">
-                            <div class="kpi-icon red">
-                                <i class="fas fa-exclamation-triangle"></i>
-                            </div>
-                            <div class="kpi-content">
-                                <div class="kpi-label">Active Issues</div>
-                                <div class="kpi-value" id="activeIssues">0</div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Tenant Management</h3>
-                        </div>
-                        <div class="search-filter-bar">
-                            <div class="search-box">
-                                <i class="fas fa-search search-icon"></i>
-                                <input type="text" id="tenantSearch" placeholder="Search tenants...">
-                            </div>
-                        </div>
-                        <div class="table-container">
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>Company</th>
-                                        <th>Owner</th>
-                                        <th>Plan</th>
-                                        <th>Users</th>
-                                        <th>Status</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="tenantsTable">
-                                    <tr>
-                                        <td colspan="6" class="text-center">Loading...</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                    
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Platform Tools</h3>
-                        </div>
-                        <div class="platform-tools-grid">
-                            <div class="tool-card" onclick="ManagementPages.loadPlatformTool('activity')">
-                                <i class="fas fa-fire"></i>
-                                <span>Activity Heatmap</span>
-                            </div>
-                            <div class="tool-card" onclick="ManagementPages.loadPlatformTool('billing')">
-                                <i class="fas fa-file-invoice"></i>
-                                <span>Billing History</span>
-                            </div>
-                            <div class="tool-card" onclick="ManagementPages.loadPlatformTool('errors')">
-                                <i class="fas fa-bug"></i>
-                                <span>Error Tracking</span>
-                            </div>
-                            <div class="tool-card" onclick="ManagementPages.loadPlatformTool('backup')">
-                                <i class="fas fa-database"></i>
-                                <span>Backup Status</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Security Page (2FA) -->
-                <div id="securityPage" class="page-content hidden">
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Two-Factor Authentication</h3>
-                        </div>
-                        <div id="twoFactorStatus">
-                            <div class="text-center p-4">Loading...</div>
-                        </div>
-                    </div>
-                    
-                    <div class="card mt-2">
-                        <div class="card-header">
-                            <h3 class="card-title">Security Settings</h3>
-                        </div>
-                        <div class="security-options">
-                            <div class="security-option">
-                                <div class="option-info">
-                                    <h4>Password Strength</h4>
-                                    <p>Ensure your password is strong and unique</p>
-                                </div>
-                                <button class="btn btn-secondary" onclick="UI.showAlert('Use Change Password section below.', 'info')">Change Password</button>
-                            </div>
-                            
-                            <div class="security-option">
-                                <div class="option-info">
-                                    <h4>Active Sessions</h4>
-                                    <p>View and manage your active login sessions</p>
-                                </div>
-                                <button class="btn btn-secondary" onclick="UI.showAlert('Session timeout and security are active for this account.', 'info')">View Sessions</button>
-                            </div>
-                            
-                            <div class="security-option">
-                                <div class="option-info">
-                                    <h4>Login History</h4>
-                                    <p>Review your recent login activity</p>
-                                </div>
-                                <button class="btn btn-secondary" onclick="UI.showAlert('Platform operators can review audit logs in the Audit menu.', 'info')">View History</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Settings Page -->
-                <div id="settingsPage" class="page-content hidden">
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Profile Settings</h3>
-                        </div>
-                        <form id="profileForm">
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label>Username</label>
-                                    <input type="text" class="form-control" id="settingsUsername" readonly>
-                                </div>
-                                <div class="form-group">
-                                    <label>Email</label>
-                                    <input type="email" class="form-control" id="settingsEmail">
-                                </div>
-                            </div>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label>Phone</label>
-                                    <input type="text" class="form-control" id="settingsPhone">
-                                </div>
-                                <div class="form-group">
-                                    <label>Role</label>
-                                    <input type="text" class="form-control" id="settingsRole" readonly>
-                                </div>
-                            </div>
-                            <button type="submit" class="btn btn-primary">Save Changes</button>
-                        </form>
-                    </div>
-                    
-                    <div class="card mt-2">
-                        <div class="card-header">
-                            <h3 class="card-title">Change Password</h3>
-                        </div>
-                        <form id="passwordForm">
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label>Current Password</label>
-                                    <input type="password" class="form-control" id="currentPassword">
-                                </div>
-                            </div>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label>New Password</label>
-                                    <input type="password" class="form-control" id="newPassword">
-                                </div>
-                                <div class="form-group">
-                                    <label>Confirm Password</label>
-                                    <input type="password" class="form-control" id="confirmPassword">
-                                </div>
-                            </div>
-                            <button type="submit" class="btn btn-primary">Change Password</button>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </main>
-        
-        <!-- Mobile Bottom Navigation -->
-        <nav class="mobile-nav" id="mobileNav">
-            <!-- Mobile nav items will be rendered here -->
-        </nav>
-    </div>
-    
-    <!-- Modal Container -->
-    <div class="modal-overlay" id="modalOverlay">
-        <div class="modal">
-            <div class="modal-header">
-                <h3 class="modal-title" id="modalTitle">Modal Title</h3>
-                <button class="modal-close" onclick="UI.closeModal()">&times;</button>
-            </div>
-            <div class="modal-body" id="modalBody">
-                <!-- Modal content will be inserted here -->
-            </div>
-            <div class="modal-footer" id="modalFooter">
-                <button class="btn btn-secondary" onclick="UI.closeModal()">Cancel</button>
-                <button class="btn btn-primary" id="modalSaveBtn">Save</button>
-            </div>
+<section class="dashboard-hero">
+    <div>
+        <div class="section-caption">Daily Control Room</div>
+        <h1>Keep trading, stock, and cashflow in one clear view.</h1>
+        <p>Move faster on purchases, catch payment pressure early, and keep the floor aligned around the numbers that matter today.</p>
+        <div class="hero-actions">
+            <button class="btn btn-primary" onclick="App.loadPage('sales')">
+                <i class="fas fa-arrow-up-right-dots"></i>
+                Record Sale
+            </button>
+            <button class="btn btn-secondary" onclick="App.loadPage('purchases')">
+                <i class="fas fa-cart-plus"></i>
+                Add Purchase
+            </button>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
-    <!-- Core Modules -->
-    <script src="js/api.js"></script>
-    <script src="js/auth.js"></script>
-    <script src="js/utils.js"></script>
-    <script src="js/ui.js"></script>
-    <script src="js/events.js"></script>
-    
-    <!-- Hooks -->
-    <script src="js/hooks/useRole.js"></script>
-    <script src="js/hooks/useFeature.js"></script>
-    
-    <!-- Components -->
-    <script src="js/components/Sidebar.js"></script>
-    <script src="js/components/MobileNav.js"></script>
-    <script src="js/components/QuickActions.js"></script>
-    <script src="js/components/FeatureLock.js"></script>
-    
-    <!-- Utils -->
-    <script src="js/utils/session.js"></script>
-    
-    <!-- Page Modules -->
-    <script src="js/pages/dashboard.js"></script>
-    <script src="js/pages/trading.js"></script>
-    <script src="js/pages/accounts.js"></script>
-    <script src="js/pages/reports.js"></script>
-    <script src="js/pages/analytics.js"></script>
-    <script src="js/pages/management.js"></script>
-    
-    <!-- Forms -->
-    <script src="js/forms.js"></script>
-    
-    <!-- Main App -->
-    <script src="js/app.js"></script>
-</body>
-</html>
+    <aside class="hero-panel">
+        <div class="hero-panel-label">Today's Pulse</div>
+        <div class="hero-mini-grid">
+            <div class="hero-mini">
+                <span>Sales booked</span>
+                <strong id="todaySales">₹0.00</strong>
+            </div>
+            <div class="hero-mini">
+                <span>Purchase outflow</span>
+                <strong id="todayPurchases">₹0.00</strong>
+            </div>
+            <div class="hero-mini">
+                <span>Margin today</span>
+                <strong id="todayProfit">₹0.00</strong>
+            </div>
+            <div class="hero-mini">
+                <span>Stock packages</span>
+                <strong id="stockPackages">0</strong>
+            </div>
+        </div>
+    </aside>
+</section>
+
+<section class="kpi-row">
+    <article class="kpi-card">
+        <div class="metric-eyebrow">Sales Today</div>
+        <div class="kpi-value" id="sales-today">₹0.00</div>
+        <div class="kpi-label">Live revenue from completed invoices.</div>
+        <div class="trend-badge">Revenue in motion</div>
+    </article>
+
+    <article class="kpi-card">
+        <div class="metric-eyebrow">Purchases Today</div>
+        <div class="kpi-value" id="purchases-today">₹0.00</div>
+        <div class="kpi-label">Buying pace across current batches.</div>
+        <div class="trend-badge">Supplier spend</div>
+    </article>
+
+    <article class="kpi-card">
+        <div class="metric-eyebrow">Profit Today</div>
+        <div class="kpi-value" id="profit">₹0.00</div>
+        <div class="kpi-label">Estimated gross performance for the day.</div>
+        <div class="trend-badge">Margin watch</div>
+    </article>
+
+    <article class="kpi-card">
+        <div class="metric-eyebrow">Stock Packages</div>
+        <div class="kpi-value" id="stock">0</div>
+        <div class="kpi-label">Packages currently available for sale.</div>
+        <div class="trend-badge">Warehouse health</div>
+    </article>
+</section>
+
+<section class="spotlight-grid">
+    <div class="table-container">
+        <div class="table-header">
+            <div>
+                <h3>Recent Sales</h3>
+                <span>Latest invoices and payment movement</span>
+            </div>
+            <div class="table-actions">
+                <button class="btn btn-ghost btn-sm" onclick="App.loadPage('sales')">Open Sales</button>
+            </div>
+        </div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Invoice</th>
+                    <th>Buyer</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="dashboardRecentSales">
+                <tr>
+                    <td colspan="4" class="text-center">Loading recent sales...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <aside class="insight-card">
+        <div>
+            <div class="section-caption">Watchlist</div>
+            <h3>Operations attention points</h3>
+        </div>
+        <div class="insight-list" id="dashboardAlerts">
+            <div class="insight-item">
+                <i class="fas fa-water"></i>
+                <div>
+                    <strong>Checking live alerts</strong>
+                    <p>We are pulling stock and payment signals for this workspace.</p>
+                </div>
+            </div>
+        </div>
+    </aside>
+</section>
+
+<section class="spotlight-grid">
+    <div class="table-container">
+        <div class="table-header">
+            <div>
+                <h3>Recent Purchases</h3>
+                <span>Incoming stock and supplier activity</span>
+            </div>
+            <div class="table-actions">
+                <button class="btn btn-ghost btn-sm" onclick="App.loadPage('purchases')">Open Purchases</button>
+            </div>
+        </div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Batch</th>
+                    <th>Fish</th>
+                    <th>Supplier</th>
+                    <th>Cost</th>
+                </tr>
+            </thead>
+            <tbody id="dashboardRecentPurchases">
+                <tr>
+                    <td colspan="4" class="text-center">Loading recent purchases...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <aside class="insight-card">
+        <div>
+            <div class="section-caption">Execution Notes</div>
+            <h3>Shift priorities</h3>
+        </div>
+        <div class="insight-list">
+            <div class="insight-item">
+                <i class="fas fa-credit-card"></i>
+                <div>
+                    <strong>Keep receivables visible</strong>
+                    <p>Use the payments screen to follow up partial and pending invoices before the end of day.</p>
+                </div>
+            </div>
+            <div class="insight-item">
+                <i class="fas fa-boxes-stacked"></i>
+                <div>
+                    <strong>Protect high-value stock</strong>
+                    <p>Review inventory first when margin is strong so fast-moving fish stays available for repeat buyers.</p>
+                </div>
+            </div>
+            <div class="insight-item">
+                <i class="fas fa-chart-line"></i>
+                <div>
+                    <strong>Close the loop with reports</strong>
+                    <p>Wrap the day with reports to compare buying pace against realized profit and stock drawdown.</p>
+                </div>
+            </div>
+        </div>
+    </aside>
+</section>

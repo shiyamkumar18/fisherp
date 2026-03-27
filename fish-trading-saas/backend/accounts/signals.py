@@ -57,6 +57,7 @@ def sale_created_event(sender, instance, created, **kwargs):
         AuditLog.log_create(
             user=getattr(instance, 'processed_by', None),
             model_name='SALE_CREATED',
+            object_id=instance.id,
             object_repr=f"New sale #{instance.id} - {instance.total_revenue} revenue",
             tenant=instance.company
         )
