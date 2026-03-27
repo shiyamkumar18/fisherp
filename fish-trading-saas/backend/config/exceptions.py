@@ -2,7 +2,7 @@ from rest_framework.views import exception_handler
 from rest_framework.response import Response
 from rest_framework import status
 
-from exceptions import APIError
+from ..exceptions import APIError
 
 def custom_exception_handler(exc, context):
     """Custom handler for APIError format."""

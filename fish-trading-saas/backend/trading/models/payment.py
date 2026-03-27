@@ -79,6 +79,10 @@ class Payment(models.Model):
             timestamp = datetime.now().strftime('%Y%m%d%H%M%S%f')
             self.receipt_number = f"RCP-{timestamp}-{uuid.uuid4().hex[:6]}"
 
+        # Validate amount is positive
+        if self.amount is not None and self.amount <= 0:
+            raise ValidationError({'amount': 'Payment amount must be greater than 0.'})
+
         if not self.company_id and self.tenant_id and self.tenant.company_id:
             self.company = self.tenant.company
         if not self.tenant_id and self.company_id and self.company.admin_id:

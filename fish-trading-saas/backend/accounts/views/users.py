@@ -163,8 +163,20 @@ class UserRegistrationView(APIView):
                     start_date=timezone.now(),
                     expiry_date=timezone.now() + timedelta(days=14),
                 )
-            except Exception:
-                pass
+            except Exception as sub_error:
+                # Log subscription provisioning failure
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Failed to provision free-tier subscription for company {company.id}: {str(sub_error)}")
+                
+                # Rollback user and company creation on subscription failure
+                user.delete()
+                company.delete()
+                
+                return Response(
+                    {'error': 'Registration failed: unable to provision subscription. Please try again or contact support.'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
 
             refresh = RefreshToken.for_user(user)
 
@@ -185,8 +197,12 @@ class UserRegistrationView(APIView):
             }, status=status.HTTP_201_CREATED)
 
         except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Registration failed: {str(e)}")
+            
             return Response(
-                {'error': f'Registration failed: {str(e)}'},
+                {'error': 'Registration failed. Please try again or contact support.'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
@@ -376,7 +392,7 @@ class TenantUserManagementView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        if (user_to_update.company.slug if user_to_update.company else None) != (request.user.company.slug if request.user.company else None):
+        if (user_to_update.company_id if user_to_update.company else None) != (request.user.company_id if request.user.company else None):
             return Response(
                 {'error': 'Cannot modify users from other tenants'},
                 status=status.HTTP_403_FORBIDDEN
@@ -455,7 +471,7 @@ class TenantUserManagementView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        if (user_to_delete.company.slug if user_to_delete.company else None) != (request.user.company.slug if request.user.company else None):
+        if (user_to_delete.company_id if user_to_delete.company else None) != (request.user.company_id if request.user.company else None):
             return Response(
                 {'error': 'Cannot delete users from other tenants'},
                 status=status.HTTP_403_FORBIDDEN
