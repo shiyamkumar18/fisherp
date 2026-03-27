@@ -1,118 +1,75 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FisherP - Fish Products</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/base.css">
-    <link rel="stylesheet" href="css/layout.css">
-    <link rel="stylesheet" href="css/components.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-</head>
-<body>
-    <div class="dashboard-layout">
-        <!-- Sidebar placeholder - same as index.html -->
-        <aside class="sidebar">
-            <div class="logo"><span class="logo-mark">🐟</span><h2>FisherP</h2></div>
-            <nav>
-                <a href="index.html" class="nav-item"><i class="fas fa-th-large"></i> Dashboard</a>
-                <a href="#" class="nav-item active"><i class="fas fa-fish"></i> Fish Products</a>
-                <!-- Other nav items -->
-            </nav>
-        </aside>
-        
-        <main class="main-content">
-            <header class="top-header">
-                <button class="menu-toggle"><i class="fas fa-bars"></i></button>
-                <h1>Fish Products</h1>
-            </header>
-            
-            <div class="content">
-                <div class="card">
-                    <div class="card-header d-flex justify-content-between">
-                        <h3>Fish Products</h3>
-                        <button class="btn btn-primary" onclick="showAddFishModal()">
-                            <i class="fas fa-plus"></i> Add Fish
-                        </button>
-                    </div>
-                    <div class="search-filter-bar">
-                        <input type="text" id="fishSearch" placeholder="Search fish products...">
-                    </div>
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Category</th>
-                                <th>Unit</th>
-                                <th>Min Price</th>
-                                <th>Max Price</th>
-                                <th>Status</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>Kingfish</td>
-                                <td>Premium</td>
-                                <td>Kg</td>
-                                <td>₹450</td>
-                                <td>₹650</td>
-                                <td><span class="status-active">Active</span></td>
-                                <td><button class="btn-sm">Edit</button></td>
-                            </tr>
-                            <tr>
-                                <td>Prawns (Tiger)</td>
-                                <td>Shellfish</td>
-                                <td>Kg</td>
-                                <td>₹800</td>
-                                <td>₹1200</td>
-                                <td><span class="status-active">Active</span></td>
-                                <td><button class="btn-sm">Edit</button></td>
-                            </tr>
-                            <tr>
-                                <td>Snapper</td>
-                                <td>White Fish</td>
-                                <td>Kg</td>
-                                <td>₹350</td>
-                                <td>₹500</td>
-                                <td><span class="status-active">Active</span></td>
-                                <td><button class="btn-sm">Edit</button></td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </main>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Fish Catalog</h1>
+        <p class="page-subtitle">Keep products, units, and category structure clean so trading teams quote and sell with confidence.</p>
     </div>
-    
-    <!-- Modal -->
-    <div id="addFishModal" class="modal-overlay">
-        <div class="modal">
-            <div class="modal-header">
-                <h3>Add Fish Product</h3>
-                <button class="modal-close">&times;</button>
-            </div>
-            <div class="modal-body">
-                <form>
-                    <div class="form-group">
-                        <label>Name</label>
-                        <input type="text" placeholder="Fish name">
-                    </div>
-                    <!-- More fields -->
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary">Cancel</button>
-                <button class="btn btn-primary">Save</button>
-            </div>
+    <button class="btn btn-primary" onclick="showAddFishModal()">
+        <i class="fas fa-plus"></i>
+        Add Fish
+    </button>
+</div>
+
+<section class="kpi-row">
+    <article class="kpi-card">
+        <div class="metric-eyebrow">Catalog Health</div>
+        <div class="kpi-value">24</div>
+        <div class="kpi-label">Live fish items available across trading teams.</div>
+    </article>
+    <article class="kpi-card">
+        <div class="metric-eyebrow">Category Coverage</div>
+        <div class="kpi-value">6</div>
+        <div class="kpi-label">Categories shaping pricing and reporting consistency.</div>
+    </article>
+    <article class="kpi-card">
+        <div class="metric-eyebrow">Unit Discipline</div>
+        <div class="kpi-value">3</div>
+        <div class="kpi-label">Standardized sale units active across the catalog.</div>
+    </article>
+</section>
+
+<div class="table-container">
+    <div class="table-header">
+        <div>
+            <h3>Fish Types</h3>
+            <span>Product records used for purchases, inventory, and sales</span>
+        </div>
+        <div class="table-actions">
+            <button class="btn btn-ghost btn-sm" onclick="App.loadPage('fishCategories')">Open Categories</button>
         </div>
     </div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Fish Name</th>
+                <th>Category</th>
+                <th>Unit Type</th>
+                <th>Created Date</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="fishTable">
+            <tr>
+                <td colspan="6" class="text-center">Loading fish catalog...</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
 
-    <script>
-        function showAddFishModal() {
-            document.getElementById('addFishModal').classList.add('show');
-        }
-    </script>
-</body>
-</html>
+<script>
+function showAddFishModal() {
+    showModal('Add New Fish', `
+        <div class="form-group">
+            <label class="form-label">Fish Name</label>
+            <input type="text" id="fish-name" class="form-input" placeholder="e.g. Salmon">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Category</label>
+            <select id="fish-category" class="form-select">
+                <option>Saltwater</option>
+                <option>Freshwater</option>
+            </select>
+        </div>
+    `);
+}
+</script>

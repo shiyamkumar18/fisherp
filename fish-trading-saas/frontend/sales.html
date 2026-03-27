@@ -1,73 +1,109 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FisherP - Sales</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/base.css">
-    <link rel="stylesheet" href="css/layout.css">
-    <link rel="stylesheet" href="css/components.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-</head>
-<body>
-    <div class="dashboard-layout">
-        <aside class="sidebar" id="sidebar"></aside>
-        <main class="main-content">
-            <header class="top-header">
-                <div class="header-left">
-                    <button class="mobile-menu-toggle" id="mobileMenuToggle">
-                        <i class="fas fa-bars"></i>
-                    </button>
-                    <h1>Sales Management</h1>
-                </div>
-                <div class="header-right">
-                    <div class="user-info">
-                        <span id="userName">Loading...</span>
-                        <span id="userRole" class="role-badge"></span>
-                    </div>
-                </div>
-            </header>
-            <div class="content">
-                <div class="card">
-                    <div class="card-header">
-                        <h3>Sales Orders</h3>
-                        <div class="header-actions">
-                            <input type="text" id="saleSearch" placeholder="Search sales..." class="form-control search-input">
-                            <button class="btn btn-primary" onclick="Trading.showAddSaleModal()">Add Sale</button>
-                        </div>
-                    </div>
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Invoice</th>
-                                <th>Buyer</th>
-                                <th>Fish</th>
-                                <th>Revenue</th>
-                                <th>Profit</th>
-                                <th>Status</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="saleTable">
-                            <tr><td colspan="7" class="text-center">Loading sales...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </main>
-    </div>
+<!-- Sales Page - Spec 8 -->
+<div class="page-header">
+    <h1 class="page-title">Sales</h1>
+    <button class="btn-primary" onclick="showAddSaleModal()">+ Add Sale</button>
+</div>
 
-    <script src="js/utils.js"></script>
-    <script src="js/api.js"></script>
-    <script src="js/auth.js"></script>
-    <script src="js/app.js"></script>
-    <script src="js/ui.js"></script>
-    <script src="js/pages/trading.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            window.App.loadPage('sales');
-        });
-    </script>
-</body>
-</html>
+<!-- Form - Top Section -->
+<div class="form-section">
+    <h2>Add New Sale</h2>
+    <div class="form-grid">
+        <div class="form-group">
+            <label class="form-label">Buyer</label>
+            <select id="sale-buyer" class="form-select">
+                <option>ABC Retail</option>
+                <option>XYZ Mart</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Fish</label>
+            <select id="sale-fish" class="form-select">
+                <option>Salmon</option>
+                <option>Tilapia</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Quantity (packages)</label>
+            <input type="number" id="sale-quantity" class="form-input" oninput="calculateSaleTotal()">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Price/kg</label>
+            <input type="number" id="sale-price" class="form-input" step="0.01" oninput="calculateSaleTotal()">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Total</label>
+            <input type="number" id="sale-total" class="form-input" readonly>
+        </div>
+    </div>
+    <button class="btn-save" onclick="saveSale()">Save Sale</button>
+</div>
+
+<!-- Sales History Table - Below Form -->
+<div class="table-container">
+    <div class="table-header">Sales History</div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Invoice</th>
+                <th>Buyer</th>
+                <th>Fish</th>
+                <th>Packages</th>
+                <th>Revenue</th>
+                <th>Profit</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="saleTable">
+            <tr>
+                <td>SALE-001</td>
+                <td>ABC Retail</td>
+                <td>Salmon</td>
+                <td>50</td>
+                <td>$2,500</td>
+                <td>$750</td>
+                <td class="status-good">Paid</td>
+                <td>
+                    <button class="btn btn-secondary btn-sm" onclick="editSale(1)">Edit</button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteSale(1)">Delete</button>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<script>
+function calculateSaleTotal() {
+    const quantity = parseFloat(document.getElementById('sale-quantity').value) || 0;
+    const price = parseFloat(document.getElementById('sale-price').value) || 0;
+    document.getElementById('sale-total').value = (quantity * price).toFixed(2);
+}
+
+function showAddSaleModal() {
+    // Form already visible on page per spec
+}
+
+function saveSale() {
+    const data = {
+        buyer: document.getElementById('sale-buyer').value,
+        fish: document.getElementById('sale-fish').value,
+        quantity: document.getElementById('sale-quantity').value,
+        price: document.getElementById('sale-price').value,
+        total: document.getElementById('sale-total').value
+    };
+    // API call
+    console.log('Save sale:', data);
+    loadPage('sales');
+}
+
+function editSale(id) {
+    showModal('Edit Sale', '<p>Edit form would go here</p>');
+}
+
+function deleteSale(id) {
+    if (confirm('Delete this sale?')) {
+        console.log('Delete sale', id);
+        loadPage('sales');
+    }
+}
+</script>

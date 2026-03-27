@@ -8,10 +8,13 @@ This middleware ensures that:
 4. Write operations are blocked if subscription is inactive
 """
 
+from datetime import date, datetime
+import logging
 from django.http import JsonResponse
 from django.utils import timezone
-from functools import wraps
 from rest_framework import status
+
+logger = logging.getLogger(__name__)
 
 
 def _subscription_qs_for_user(user):
@@ -20,6 +23,24 @@ def _subscription_qs_for_user(user):
     if user.company_id:
         return qs.filter(company=user.company)
     return qs.filter(tenant=user)
+
+
+def _expiry_as_date(expiry_value):
+    """Normalize subscription expiry values to a date for safe comparisons."""
+    if expiry_value is None:
+        return None
+    if isinstance(expiry_value, datetime):
+        if timezone.is_aware(expiry_value):
+            return timezone.localtime(expiry_value).date()
+        return expiry_value.date()
+    if isinstance(expiry_value, date):
+        return expiry_value
+    return None
+
+
+def _subscription_is_expired(subscription):
+    expiry_date = _expiry_as_date(subscription.expiry_date)
+    return bool(expiry_date and expiry_date < timezone.localdate())
 
 
 class SubscriptionEnforcementMiddleware:
@@ -85,8 +106,6 @@ class SubscriptionEnforcementMiddleware:
         Returns:
             JsonResponse with error if subscription is invalid, None otherwise
         """
-        from subscriptions.models import Subscription
-        
         # Get tenant (user)
         user = request.user
         
@@ -102,7 +121,7 @@ class SubscriptionEnforcementMiddleware:
                 }, status=status.HTTP_403_FORBIDDEN)
             
             # Check if subscription has expired
-            if subscription.expiry_date and subscription.expiry_date < timezone.now().date():
+            if _subscription_is_expired(subscription):
                 # Mark as expired
                 subscription.status = 'expired'
                 subscription.save(update_fields=['status'])
@@ -111,7 +130,7 @@ class SubscriptionEnforcementMiddleware:
                     'error': 'Subscription has expired',
                     'message': 'Please renew your subscription to continue using the platform',
                     'code': 'SUBSCRIPTION_EXPIRED',
-                    'expiry_date': str(subscription.expiry_date)
+                    'expiry_date': str(_expiry_as_date(subscription.expiry_date))
                 }, status=status.HTTP_403_FORBIDDEN)
             
             # Check usage limits
@@ -127,10 +146,13 @@ class SubscriptionEnforcementMiddleware:
             
             return None
             
-        except Exception as e:
-            # Log error but don't block (fail open for availability)
-            # In production, you might want to log this
-            return None
+        except Exception:
+            logger.exception("Subscription enforcement failed for user_id=%s", getattr(user, "id", None))
+            return JsonResponse({
+                'error': 'Subscription validation unavailable',
+                'message': 'Subscription enforcement is temporarily unavailable. Please retry shortly.',
+                'code': 'SUBSCRIPTION_CHECK_FAILED'
+            }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
     
     def _check_usage_limits(self, subscription, request):
         """
@@ -139,9 +161,7 @@ class SubscriptionEnforcementMiddleware:
         Returns:
             JsonResponse with error if limits exceeded, None otherwise
         """
-        from subscriptions.models import Subscription
         from django.utils import timezone
-        from datetime import timedelta
         
         # Get tier limits
         tier = subscription.tier
@@ -161,7 +181,6 @@ class SubscriptionEnforcementMiddleware:
         # Check purchases limit (monthly)
         if tier.max_purchases_per_month:
             from trading.models import PurchaseBatch
-            from django.db.models import Count
             
             # Reset counter if new month
             current_month = timezone.now().month
@@ -233,7 +252,7 @@ def require_active_subscription(view_func):
             }, status=status.HTTP_403_FORBIDDEN)
         
         # Check expiry
-        if subscription.expiry_date and subscription.expiry_date < timezone.now().date():
+        if _subscription_is_expired(subscription):
             return JsonResponse({
                 'error': 'Subscription expired',
                 'message': 'Please renew your subscription',
@@ -272,7 +291,7 @@ def check_subscription_status(user):
             'message': 'No active subscription found'
         }
     
-    if subscription.expiry_date and subscription.expiry_date < timezone.now().date():
+    if _subscription_is_expired(subscription):
         return {
             'is_valid': False,
             'subscription': subscription,

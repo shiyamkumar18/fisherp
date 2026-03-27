@@ -155,13 +155,13 @@ class PlatformDashboardView(APIView):
         recent_signups = Company.objects.order_by('-created_at')[:5]
         recent_signup_list = []
         for company in recent_signups:
-            try:
-                subscription = Subscription.objects.get(company=company)
-                sub_status = subscription.status
-                expiry = subscription.expiry_date
-            except:
-                sub_status = 'none'
-                expiry = None
+            subscription = (
+                Subscription.objects.filter(company=company)
+                .order_by('-created_at')
+                .first()
+            )
+            sub_status = subscription.status if subscription else 'none'
+            expiry = subscription.expiry_date if subscription else None
             
             recent_signup_list.append({
                 'id': company.id,
@@ -824,9 +824,11 @@ class StartImpersonationView(APIView):
         impersonation = ImpersonationLog.objects.create(
             platform_user=request.user,
             tenant=company,
+            impersonated_user=company.admin,
             reason=reason,
             ip_address=get_client_ip(request),
             user_agent=request.META.get('HTTP_USER_AGENT', '')[:500],
+            session_id=request.session.session_key or '',
             is_active=True,
         )
         

@@ -12,13 +12,3 @@ from .sale import Sale
 from .payment import Payment
 from .inventory import Inventory
 
-__all__ = [
-    'FishCategory',
-    'Fish',
-    'Supplier',
-    'Buyer',
-    'PurchaseBatch',
-    'Sale',
-    'Payment',
-    'Inventory',
-]

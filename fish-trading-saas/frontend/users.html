@@ -1,469 +1,108 @@
-
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>User Management - Fish Trading SaaS</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        body {
-            min-height: 100vh;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 20px;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        .header {
-            background: white;
-            border-radius: 15px;
-            padding: 25px;
-            margin-bottom: 20px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-        }
-        .header h1 {
-            color: #333;
-            margin-bottom: 5px;
-        }
-        .header p {
-            color: #666;
-        }
-        .user-info-bar {
-            background: white;
-            border-radius: 15px;
-            padding: 15px 25px;
-            margin-bottom: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-        }
-        .user-info-bar span {
-            color: #555;
-        }
-        .logout-btn {
-            padding: 10px 20px;
-            background: #dc3545;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-        }
-        .main-content {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
-        .card {
-            background: white;
-            border-radius: 15px;
-            padding: 25px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-        }
-        .card h2 {
-            color: #333;
-            margin-bottom: 20px;
-            font-size: 20px;
-        }
-        .form-group {
-            margin-bottom: 15px;
-        }
-        .form-group label {
-            display: block;
-            color: #555;
-            font-size: 14px;
-            font-weight: 500;
-            margin-bottom: 8px;
-        }
-        .form-group input, .form-group select {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #e1e1e1;
-            border-radius: 8px;
-            font-size: 14px;
-        }
-        .form-group input:focus, .form-group select:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-        .btn {
-            padding: 12px 24px;
-            border: none;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-        .btn-danger {
-            background: #dc3545;
-            color: white;
-        }
-        .btn-success {
-            background: #28a745;
-            color: white;
-        }
-        .btn-warning {
-            background: #ffc107;
-            color: #333;
-        }
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-        }
-        .message {
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            font-size: 14px;
-        }
-        .message.error {
-            background: #fee;
-            color: #c33;
-            border: 1px solid #fcc;
-        }
-        .message.success {
-            background: #efe;
-            color: #3c3;
-            border: 1px solid #cfc;
-        }
-        .users-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        .users-table th, .users-table td {
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid #e1e1e1;
-        }
-        .users-table th {
-            background: #f8f9fa;
-            font-weight: 600;
-            color: #333;
-        }
-        .users-table tr:hover {
-            background: #f8f9fa;
-        }
-        .status-badge {
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-        .status-active {
-            background: #d4edda;
-            color: #155724;
-        }
-        .status-inactive {
-            background: #f8d7da;
-            color: #721c24;
-        }
-        .role-badge {
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-        .role-admin {
-            background: #cce5ff;
-            color: #004085;
-        }
-        .role-sales {
-            background: #d1ecf1;
-            color: #0c5460;
-        }
-        .role-store {
-            background: #fff3cd;
-            color: #856404;
-        }
-        .user-actions {
-            display: flex;
-            gap: 8px;
-        }
-        .btn-sm {
-            padding: 6px 12px;
-            font-size: 12px;
-        }
-        .no-users {
-            text-align: center;
-            padding: 30px;
-            color: #666;
-        }
-        .login-required {
-            text-align: center;
-            padding: 50px;
-            background: white;
-            border-radius: 15px;
-        }
-        .login-required h2 {
-            color: #333;
-            margin-bottom: 15px;
-        }
-        .login-required a {
-            color: #667eea;
-            text-decoration: none;
-        }
-    </style>
-</head>
-<body>
-    <div class="container" id="app">
-        <div id="message"></div>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Team Access</h1>
+        <p class="page-subtitle">Control who can trade, review stock, manage money, and oversee the workspace without losing visibility.</p>
     </div>
-    <script>
-        const API_URL = `${window.location.origin}/api/auth/`;
-        let accessToken = localStorage.getItem('token') || localStorage.getItem('access_token');
-        
-        function showMessage(text, type) {
-            const app = document.getElementById('app');
-            const existingMsg = document.getElementById('message');
-            if (existingMsg) existingMsg.remove();
-            const msgDiv = document.createElement('div');
-            msgDiv.id = 'message';
-            msgDiv.className = `message ${type}`;
-            msgDiv.textContent = text;
-            app.insertBefore(msgDiv, app.firstChild);
-            setTimeout(() => msgDiv.remove(), 5000);
-        }
-        
-        function getHeaders() {
-            return {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${accessToken}`
-            };
-        }
-        
-        function logout() {
-            localStorage.clear();
-            window.location.href = '/web/login/';
-        }
-        
-        async function checkAuth() {
-            if (!accessToken) {
-                showLoginRequired();
-                return false;
-            }
-            return true;
-        }
-        
-        function showLoginRequired() {
-            document.getElementById('app').innerHTML = `
-                <div class="login-required">
-                    <h2>Login Required</h2>
-                    <p>Please <a href="/web/login/">login</a> to access user management.</p>
+    <button class="btn btn-primary" onclick="showInviteUserModal()">
+        <i class="fas fa-user-plus"></i>
+        Invite User
+    </button>
+</div>
+
+<section class="spotlight-grid">
+    <div class="form-section">
+        <div class="section-caption">Quick Invite</div>
+        <h2>Add a teammate</h2>
+        <div class="form-grid">
+            <div class="form-group">
+                <label class="form-label">Full Name</label>
+                <input class="form-input" type="text" placeholder="Aarav Patel">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Email</label>
+                <input class="form-input" type="email" placeholder="aarav@company.com">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Role</label>
+                <select class="form-select">
+                    <option>Tenant Admin</option>
+                    <option>Accountant</option>
+                    <option>Trader</option>
+                    <option>Store</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Phone</label>
+                <input class="form-input" type="text" placeholder="+91 98765 43210">
+            </div>
+        </div>
+        <div class="hero-actions">
+            <button class="btn btn-primary" type="button">Send Invite</button>
+            <button class="btn btn-secondary" type="button">Save Draft</button>
+        </div>
+    </div>
+
+    <aside class="insight-card">
+        <div>
+            <div class="section-caption">Access Notes</div>
+            <h3>Design cleaner permissions</h3>
+        </div>
+        <div class="insight-list">
+            <div class="insight-item">
+                <i class="fas fa-shield-halved"></i>
+                <div>
+                    <strong>Keep finance narrow</strong>
+                    <p>Reserve payment and reporting actions for roles that really need them.</p>
                 </div>
-            `;
-        }
-        
-        async function loadUsers() {
-            if (!await checkAuth()) return;
-            
-            try {
-                const response = await fetch(API_URL + 'tenant-users/', {
-                    headers: getHeaders()
-                });
-                
-                if (response.status === 401) {
-                    logout();
-                    return;
-                }
-                
-                const data = await response.json();
-                
-                if (response.ok) {
-                    renderUserManagement(data);
-                } else {
-                    showMessage(data.error || 'Failed to load users', 'error');
-                }
-            } catch (error) {
-                console.error('Error loading users:', error);
-                showMessage('Connection error', 'error');
-            }
-        }
-        
-        function renderUserManagement(users) {
-            const currentUserRole = localStorage.getItem('userRole') || localStorage.getItem('role');
-            const isTenantAdmin = currentUserRole === 'tenant_admin';
-            
-            document.getElementById('app').innerHTML = `
-                <div class="header">
-                    <h1>👥 User Management</h1>
-                    <p>Manage users within your company</p>
+            </div>
+            <div class="insight-item">
+                <i class="fas fa-user-check"></i>
+                <div>
+                    <strong>Match role to workflow</strong>
+                    <p>Trader, store, and accountant roles work best when their screens stay focused and uncluttered.</p>
                 </div>
-                
-                <div class="user-info-bar">
-                    <span>Logged in as: <strong>${localStorage.getItem('username') || '-'}</strong> (${localStorage.getItem('userRole') || localStorage.getItem('role') || '-'})</span>
-                    <button class="logout-btn" onclick="logout()">Logout</button>
-                </div>
-                
-                <div class="message info">
-                    <strong>Note:</strong> Maximum 3 users per company. You can create Sales Staff and Store/Accounts users.
-                </div>
-                
-                <div class="main-content">
-                    <div class="card">
-                        <h2>${isTenantAdmin ? '➕ Create New User' : 'User Information'}</h2>
-                        ${isTenantAdmin ? `
-                        <div id="createUserForm">
-                            <div class="form-group">
-                                <label>Username *</label>
-                                <input type="text" id="newUsername" placeholder="Enter username">
-                            </div>
-                            <div class="form-group">
-                                <label>Email *</label>
-                                <input type="email" id="newEmail" placeholder="Enter email">
-                            </div>
-                            <div class="form-group">
-                                <label>Phone</label>
-                                <input type="text" id="newPhone" placeholder="Enter phone">
-                            </div>
-                            <div class="form-group">
-                                <label>Role *</label>
-                                <select id="newRole">
-                                    <option value="trader">Trader</option>
-                                    <option value="store">Store/Inventory</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label>Password (leave empty for auto-generate)</label>
-                                <input type="password" id="newPassword" placeholder="Enter password">
-                            </div>
-                            <button class="btn btn-primary" onclick="createUser()">Create User</button>
-                        </div>
-                        ` : '<p>Only Tenant Admins can create users.</p>'}
-                    </div>
-                    
-                    <div class="card">
-                        <h2>👥 Company Users</h2>
-                        ${users.length > 0 ? `
-                        <table class="users-table">
-                            <thead>
-                                <tr>
-                                    <th>Username</th>
-                                    <th>Email</th>
-                                    <th>Role</th>
-                                    <th>Status</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${users.map(user => `
-                                <tr>
-                                    <td>${user.username}</td>
-                                    <td>${user.email || '-'}</td>
-                                    <td><span class="role-badge role-${user.role === 'tenant_admin' ? 'admin' : user.role === 'trader' ? 'sales' : 'store'}">${user.role}</span></td>
-                                    <td><span class="status-badge ${user.is_active ? 'status-active' : 'status-inactive'}">${user.is_active ? 'Active' : 'Inactive'}</span></td>
-                                    <td class="user-actions">
-                                        ${isTenantAdmin && user.id != localStorage.getItem('user_id') ? `
-                                        <button class="btn btn-sm btn-warning" onclick="resetPassword(${user.id})">Reset</button>
-                                        <button class="btn btn-sm btn-danger" onclick="deleteUser(${user.id})">Delete</button>
-                                        ` : '-'}
-                                    </td>
-                                </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                        ` : '<div class="no-users">No users found. Create your first user!</div>'}
-                    </div>
-                </div>
-            `;
-        }
-        
-        async function createUser() {
-            if (!await checkAuth()) return;
-            
-            const data = {
-                username: document.getElementById('newUsername').value.trim(),
-                email: document.getElementById('newEmail').value.trim(),
-                phone: document.getElementById('newPhone').value.trim(),
-                role: document.getElementById('newRole').value,
-                password: document.getElementById('newPassword').value || null,
-            };
-            
-            if (!data.username || !data.email) {
-                showMessage('Username and email are required', 'error');
-                return;
-            }
-            
-            try {
-                const response = await fetch(API_URL + 'tenant-users/', {
-                    method: 'POST',
-                    headers: getHeaders(),
-                    body: JSON.stringify(data)
-                });
-                
-                const result = await response.json();
-                
-                if (response.ok) {
-                    showMessage('User created successfully! ' + (result.temp_password ? `Temporary password: ${result.temp_password}` : ''), 'success');
-                    loadUsers();
-                } else {
-                    showMessage(result.error || 'Failed to create user', 'error');
-                }
-            } catch (error) {
-                console.error('Error creating user:', error);
-                showMessage('Connection error', 'error');
-            }
-        }
-        
-        async function resetPassword(userId) {
-            if (!confirm('Are you sure you want to reset this user\'s password?')) return;
-            
-            try {
-                const response = await fetch(API_URL + 'tenant-users/', {
-                    method: 'PUT',
-                    headers: getHeaders(),
-                    body: JSON.stringify({ user_id: userId, reset_password: true })
-                });
-                
-                const result = await response.json();
-                
-                if (response.ok) {
-                    showMessage('Password reset successful! Temporary password: ' + result.temp_password, 'success');
-                } else {
-                    showMessage(result.error || 'Failed to reset password', 'error');
-                }
-            } catch (error) {
-                console.error('Error resetting password:', error);
-                showMessage('Connection error', 'error');
-            }
-        }
-        
-        async function deleteUser(userId) {
-            if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) return;
-            
-            try {
-                const response = await fetch(API_URL + 'tenant-users/', {
-                    method: 'DELETE',
-                    headers: getHeaders(),
-                    body: JSON.stringify({ user_id: userId })
-                });
-                
-                if (response.ok) {
-                    showMessage('User deleted successfully', 'success');
-                    loadUsers();
-                } else {
-                    const result = await response.json();
-                    showMessage(result.error || 'Failed to delete user', 'error');
-                }
-            } catch (error) {
-                console.error('Error deleting user:', error);
-                showMessage('Connection error', 'error');
-            }
-        }
-        
-        // Initialize
-        loadUsers();
-    </script>
-</body>
-</html>
+            </div>
+        </div>
+    </aside>
+</section>
+
+<div class="table-container">
+    <div class="table-header">
+        <div>
+            <h3>Workspace Users</h3>
+            <span>Who has access, what they can do, and whether they are active</span>
+        </div>
+    </div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Contact</th>
+                <th>Company</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="userTable">
+            <tr>
+                <td colspan="6" class="text-center">Loading workspace users...</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<script>
+function showInviteUserModal() {
+    showModal('Invite User', `
+        <div class="form-group">
+            <label class="form-label">Full Name</label>
+            <input class="form-input" type="text" placeholder="Aarav Patel">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Email</label>
+            <input class="form-input" type="email" placeholder="aarav@company.com">
+        </div>
+    `);
+}
+</script>

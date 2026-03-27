@@ -1,62 +1,73 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FisherP - Fish Categories</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/base.css">
-    <link rel="stylesheet" href="css/layout.css">
-    <link rel="stylesheet" href="css/components.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-</head>
-<body>
-    <div class="dashboard-layout">
-        <aside class="sidebar"><!-- abbreviated --></aside>
-        <main class="main-content">
-            <header class="top-header">
-                <h1>Fish Categories</h1>
-            </header>
-            <div class="content">
-                <div class="card">
-                    <div class="card-header">
-                        <h3>Fish Categories</h3>
-                        <button class="btn btn-primary">Add Category</button>
-                    </div>
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Type</th>
-                                <th>Priority</th>
-                                <th>Featured</th>
-                                <th>Status</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>Premium Fish</td>
-                                <td>Sea</td>
-                                <td>1</td>
-                                <td>Yes</td>
-                                <td>Active</td>
-                                <td>Edit/Delete</td>
-                            </tr>
-                            <tr>
-                                <td>Shellfish</td>
-                                <td>Crustacean</td>
-                                <td>2</td>
-                                <td>No</td>
-                                <td>Active</td>
-                                <td>Edit/Delete</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </main>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Fish Categories</h1>
+        <p class="page-subtitle">Shape the catalog with clear category logic so pricing, reporting, and stock analysis stay aligned.</p>
     </div>
-</body>
-</html>
+    <button class="btn btn-primary" onclick="showAddCategoryModal()">
+        <i class="fas fa-layer-group"></i>
+        Add Category
+    </button>
+</div>
 
+<section class="kpi-row">
+    <article class="kpi-card">
+        <div class="metric-eyebrow">Featured Categories</div>
+        <div class="kpi-value">4</div>
+        <div class="kpi-label">Priority groups highlighted for faster trading decisions.</div>
+    </article>
+    <article class="kpi-card">
+        <div class="metric-eyebrow">Priority Bands</div>
+        <div class="kpi-value">3</div>
+        <div class="kpi-label">Clear product hierarchy for pricing and reporting.</div>
+    </article>
+    <article class="kpi-card">
+        <div class="metric-eyebrow">Active Structure</div>
+        <div class="kpi-value">100%</div>
+        <div class="kpi-label">Categories prepared for use in daily operations.</div>
+    </article>
+</section>
+
+<div class="table-container">
+    <div class="table-header">
+        <div>
+            <h3>Category Structure</h3>
+            <span>Organize fish lines by type, priority, and visibility</span>
+        </div>
+    </div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Priority</th>
+                <th>Featured</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="fishCategoryTable">
+            <tr>
+                <td colspan="6" class="text-center">Loading fish categories...</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<script>
+function showAddCategoryModal() {
+    showModal('Add Fish Category', `
+        <div class="form-group">
+            <label class="form-label">Category Name</label>
+            <input type="text" class="form-input" placeholder="Premium Sea Fish">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Type</label>
+            <select class="form-select">
+                <option>Sea</option>
+                <option>Freshwater</option>
+                <option>Shellfish</option>
+            </select>
+        </div>
+    `);
+}
+</script>

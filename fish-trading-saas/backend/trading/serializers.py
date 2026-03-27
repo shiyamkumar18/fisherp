@@ -1,3 +1,4 @@
+# trading/serializers.py
 from rest_framework import serializers
 from .models import (
     FishCategory, Fish, Supplier, Buyer, 
@@ -29,9 +30,8 @@ def _is_in_user_scope(user, owner_user=None, company=None):
 
 
 class FishCategorySerializer(serializers.ModelSerializer):
-    """Serializer for FishCategory"""
     category_type_display = serializers.CharField(source='get_category_type_display', read_only=True)
-    
+
     class Meta:
         model = FishCategory
         fields = [
@@ -43,29 +43,27 @@ class FishCategorySerializer(serializers.ModelSerializer):
 
 
 class FishListSerializer(serializers.ModelSerializer):
-    """Lightweight serializer for Fish list views"""
     category_name = serializers.CharField(source='category.name', read_only=True)
     unit_type_display = serializers.CharField(source='get_unit_type_display', read_only=True)
     tenant_name = serializers.CharField(source='tenant.username', read_only=True)
     company_name = serializers.CharField(source='company.name', read_only=True)
-    
+
     class Meta:
         model = Fish
         fields = [
-            'id', 'name', 'category', 'category_name', 
+            'id', 'name', 'category', 'category_name',
             'unit_type', 'unit_type_display', 'box_weight_kg',
             'tenant', 'tenant_name', 'company', 'company_name', 'is_active', 'created_at'
         ]
 
 
 class FishSerializer(serializers.ModelSerializer):
-    """Full serializer for Fish with role-based field visibility"""
     category_details = FishCategorySerializer(source='category', read_only=True)
     unit_type_display = serializers.CharField(source='get_unit_type_display', read_only=True)
     tenant_name = serializers.CharField(source='tenant.username', read_only=True)
     company_name = serializers.CharField(source='company.name', read_only=True)
     display_weight = serializers.DecimalField(source='get_display_weight', max_digits=8, decimal_places=2, read_only=True)
-    
+
     class Meta:
         model = Fish
         fields = [
@@ -76,45 +74,29 @@ class FishSerializer(serializers.ModelSerializer):
             'is_active', 'created_at', 'updated_at'
         ]
         read_only_fields = ['tenant', 'company', 'created_at', 'updated_at']
-    
+
     def to_representation(self, instance):
-        """Mask sensitive fields based on user role"""
         data = super().to_representation(instance)
-        
         request = self.context.get('request')
         if request and request.user:
             user = request.user
-            
-            # Sales Staff cannot see pricing details
             if user.is_sales_staff:
                 data['min_price_per_kg'] = None
                 data['max_price_per_kg'] = None
                 data['avg_price_per_kg'] = None
-        
         return data
-    
+
     def validate(self, data):
-        """Validate that box_weight_kg is provided when unit_type is 'box'"""
         unit_type = data.get('unit_type')
         box_weight_kg = data.get('box_weight_kg')
-        
         if unit_type == 'box' and not box_weight_kg:
             raise serializers.ValidationError({
                 'box_weight_kg': 'Box weight is required when unit type is box.'
             })
-        
-        # Validate category belongs to same tenant or is shared
-        request = self.context.get('request')
-        if request and request.user and not request.user.is_superuser:
-            category = data.get('category')
-            # FishCategory is shared (no tenant), so we don't validate it
-            # But we ensure the fish itself gets the correct tenant
-        
         return data
 
 
 class SupplierSerializer(serializers.ModelSerializer):
-    """Serializer for Supplier with role-based field visibility"""
     supplier_type_display = serializers.CharField(source='get_supplier_type_display', read_only=True)
     payment_terms_display = serializers.CharField(source='get_payment_terms_display', read_only=True)
     on_time_percentage = serializers.FloatField(source='get_on_time_percentage', read_only=True)
@@ -122,7 +104,7 @@ class SupplierSerializer(serializers.ModelSerializer):
     is_payment_overdue = serializers.BooleanField(read_only=True)
     tenant_name = serializers.CharField(source='tenant.username', read_only=True)
     company_name = serializers.CharField(source='company.name', read_only=True)
-    
+
     class Meta:
         model = Supplier
         fields = [
@@ -133,14 +115,11 @@ class SupplierSerializer(serializers.ModelSerializer):
             'contract_start_date', 'contract_end_date', 'commission_rate',
             'rating', 'total_deliveries', 'on_time_deliveries', 'on_time_percentage',
             'is_active', 'is_verified', 'created_at', 'updated_at',
-            # Tenant isolation
             'tenant', 'tenant_name', 'company', 'company_name',
-            # Payment tracking
             'payment_terms', 'payment_terms_display', 'credit_limit', 'payment_due_date',
             'total_purchases', 'total_paid', 'outstanding_amount',
             'payment_status', 'is_payment_overdue',
             'last_purchase_date', 'last_payment_date',
-            # Credit tracking
             'total_credit_given', 'total_credit_repaid', 'current_credit_balance'
         ]
         read_only_fields = [
@@ -148,16 +127,12 @@ class SupplierSerializer(serializers.ModelSerializer):
             'total_purchases', 'total_paid', 'outstanding_amount',
             'last_purchase_date', 'last_payment_date', 'tenant', 'company'
         ]
-    
+
     def to_representation(self, instance):
-        """Mask sensitive financial fields based on user role"""
         data = super().to_representation(instance)
-        
         request = self.context.get('request')
         if request and request.user:
             user = request.user
-            
-            # Sales Staff cannot see financial details
             if user.is_sales_staff:
                 data['credit_limit'] = None
                 data['total_purchases'] = None
@@ -173,19 +148,17 @@ class SupplierSerializer(serializers.ModelSerializer):
                 data['on_time_deliveries'] = None
                 data['total_deliveries'] = None
                 data['commission_rate'] = None
-        
         return data
 
 
 class BuyerSerializer(serializers.ModelSerializer):
-    """Serializer for Buyer with role-based field visibility"""
     buyer_type_display = serializers.CharField(source='get_buyer_type_display', read_only=True)
     referral_source_display = serializers.CharField(source='get_referral_source_display', read_only=True)
     preferred_fish_types_details = FishListSerializer(source='preferred_fish_types', many=True, read_only=True)
     total_pending = serializers.DecimalField(source='get_total_pending', max_digits=12, decimal_places=2, read_only=True)
     tenant_name = serializers.CharField(source='tenant.username', read_only=True)
     company_name = serializers.CharField(source='company.name', read_only=True)
-    
+
     class Meta:
         model = Buyer
         fields = [
@@ -200,20 +173,15 @@ class BuyerSerializer(serializers.ModelSerializer):
             'date_of_birth', 'anniversary_date', 'total_purchases', 'total_orders',
             'is_active', 'is_preferred', 'is_verified',
             'created_at', 'updated_at', 'total_pending',
-            # Tenant isolation
             'tenant', 'tenant_name', 'company', 'company_name'
         ]
         read_only_fields = ['created_at', 'updated_at', 'current_credit_balance', 'total_pending', 'tenant', 'company']
-    
+
     def to_representation(self, instance):
-        """Mask sensitive financial fields based on user role"""
         data = super().to_representation(instance)
-        
         request = self.context.get('request')
         if request and request.user:
             user = request.user
-            
-            # Sales Staff cannot see credit/financial details
             if user.is_sales_staff:
                 data['credit_limit'] = None
                 data['total_credit_allowed'] = None
@@ -222,21 +190,15 @@ class BuyerSerializer(serializers.ModelSerializer):
                 data['total_purchases'] = None
                 data['total_orders'] = None
                 data['total_pending'] = None
-        
         return data
-    
+
     def validate(self, data):
-        """Validate cross-tenant ForeignKeys"""
         request = self.context.get('request')
         if not request or not request.user:
             return data
-        
         user = request.user
-        # Skip for superusers
         if user.is_superuser:
             return data
-        
-        # Validate preferred_fish_types belong to same tenant
         preferred_fish_types = data.get('preferred_fish_types')
         if preferred_fish_types:
             for fish in preferred_fish_types:
@@ -244,19 +206,15 @@ class BuyerSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError({
                         'preferred_fish_types': 'Invalid fish selection. All fish must belong to your organization.'
                     })
-        
-        # Validate referred_by belongs to same tenant
         referred_by = data.get('referred_by')
         if referred_by and not _is_in_user_scope(user, owner_user=referred_by.tenant, company=referred_by.company):
             raise serializers.ValidationError({
                 'referred_by': 'Invalid referral. Must belong to your organization.'
             })
-        
         return data
 
 
 class PurchaseBatchSerializer(serializers.ModelSerializer):
-    """Serializer for PurchaseBatch with role-based field visibility"""
     purchase_type_display = serializers.CharField(source='get_purchase_type_display', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     supplier_name = serializers.CharField(source='supplier.name', read_only=True)
@@ -265,7 +223,7 @@ class PurchaseBatchSerializer(serializers.ModelSerializer):
     sold_packages = serializers.IntegerField(source='get_sold_packages', read_only=True)
     tenant_name = serializers.CharField(source='tenant.username', read_only=True)
     company_name = serializers.CharField(source='company.name', read_only=True)
-    
+
     class Meta:
         model = PurchaseBatch
         fields = [
@@ -277,32 +235,27 @@ class PurchaseBatchSerializer(serializers.ModelSerializer):
             'labour_cost', 'ice_cost', 'transport_cost', 'commission_cost', 'other_cost',
             'total_expense', 'actual_cost_per_kg', 'cost_per_package',
             'amount_paid', 'pending_amount', 'status', 'status_display',
-            'quality_grade', 'inspection_date', 'inspector_name', 
+            'quality_grade', 'inspection_date', 'inspector_name',
             'quality_score', 'freshness_score',
             'fish_photo', 'quality_certificate', 'invoice_document',
-            'transport_vehicle_number', 'transport_driver_name', 
+            'transport_vehicle_number', 'transport_driver_name',
             'transport_driver_phone', 'arrival_time',
             'estimated_expiry_date', 'notes',
             'remaining_packages', 'sold_packages',
             'created_at', 'updated_at',
-            # Tenant isolation
             'tenant', 'tenant_name', 'company', 'company_name'
         ]
         read_only_fields = [
-            'total_weight', 'fish_cost', 'total_expense', 'actual_cost_per_kg', 
+            'total_weight', 'fish_cost', 'total_expense', 'actual_cost_per_kg',
             'cost_per_package', 'pending_amount', 'remaining_packages', 'sold_packages',
             'created_at', 'updated_at', 'tenant', 'company'
         ]
-    
+
     def to_representation(self, instance):
-        """Mask sensitive cost fields based on user role"""
         data = super().to_representation(instance)
-        
         request = self.context.get('request')
         if request and request.user:
             user = request.user
-            
-            # Sales Staff cannot see cost details
             if user.is_sales_staff:
                 data['price_per_kg'] = None
                 data['fish_cost'] = None
@@ -316,39 +269,29 @@ class PurchaseBatchSerializer(serializers.ModelSerializer):
                 data['cost_per_package'] = None
                 data['amount_paid'] = None
                 data['pending_amount'] = None
-        
         return data
-    
+
     def validate(self, data):
-        """Validate cross-tenant ForeignKeys"""
         request = self.context.get('request')
         if not request or not request.user:
             return data
-        
         user = request.user
-        # Skip for superusers
         if user.is_superuser:
             return data
-        
-        # Validate supplier belongs to same tenant
         supplier = data.get('supplier')
         if supplier and not _is_in_user_scope(user, owner_user=supplier.tenant, company=supplier.company):
             raise serializers.ValidationError({
                 'supplier': 'Invalid supplier. Must belong to your organization.'
             })
-        
-        # Validate fish belongs to same tenant
         fish = data.get('fish')
         if fish and not _is_in_user_scope(user, owner_user=fish.tenant, company=fish.company):
             raise serializers.ValidationError({
                 'fish': 'Invalid fish. Must belong to your organization.'
             })
-        
         return data
 
 
 class SaleSerializer(serializers.ModelSerializer):
-    """Serializer for Sale with role-based field visibility"""
     sale_type_display = serializers.CharField(source='get_sale_type_display', read_only=True)
     payment_status_display = serializers.CharField(source='get_payment_status_display', read_only=True)
     delivery_status_display = serializers.CharField(source='get_delivery_status_display', read_only=True)
@@ -356,7 +299,7 @@ class SaleSerializer(serializers.ModelSerializer):
     batch_number = serializers.CharField(source='batch.batch_number', read_only=True)
     tenant_name = serializers.CharField(source='tenant.username', read_only=True)
     company_name = serializers.CharField(source='company.name', read_only=True)
-    
+
     class Meta:
         model = Sale
         fields = [
@@ -371,7 +314,6 @@ class SaleSerializer(serializers.ModelSerializer):
             'discount_amount', 'discount_percent', 'tax_percent', 'tax_amount', 'final_amount',
             'is_returned', 'return_date', 'return_reason', 'refund_amount',
             'notes', 'created_at', 'updated_at',
-            # Tenant isolation
             'tenant', 'tenant_name', 'company', 'company_name'
         ]
         read_only_fields = [
@@ -379,59 +321,63 @@ class SaleSerializer(serializers.ModelSerializer):
             'pending_amount', 'tax_amount', 'final_amount',
             'created_at', 'updated_at', 'tenant', 'company'
         ]
-    
+
     def to_representation(self, instance):
-        """Mask sensitive cost/profit fields based on user role"""
         data = super().to_representation(instance)
-        
         request = self.context.get('request')
         if request and request.user:
             user = request.user
-            
-            # Sales Staff cannot see cost/profit details
             if user.is_sales_staff:
                 data['total_cost'] = None
                 data['profit'] = None
                 data['profit_margin_percent'] = None
-        
         return data
-    
+
     def validate(self, data):
-        """Validate cross-tenant ForeignKeys"""
         request = self.context.get('request')
+        instance = getattr(self, 'instance', None)
+
+        discount_amount = data.get('discount_amount', getattr(instance, 'discount_amount', 0) or 0)
+        discount_percent = data.get('discount_percent', getattr(instance, 'discount_percent', 0) or 0)
+        tax_percent = data.get('tax_percent', getattr(instance, 'tax_percent', 0) or 0)
+
+        errors = {}
+        if discount_amount < 0:
+            errors['discount_amount'] = 'Discount amount cannot be negative.'
+        if discount_percent < 0 or discount_percent > 100:
+            errors['discount_percent'] = 'Discount percent must be between 0 and 100.'
+        if tax_percent < 0 or tax_percent > 100:
+            errors['tax_percent'] = 'Tax percent must be between 0 and 100.'
+        if discount_amount > 0 and discount_percent > 0:
+            errors['discount_percent'] = 'Use either a flat discount or a percent discount, not both.'
+        if errors:
+            raise serializers.ValidationError(errors)
+
         if not request or not request.user:
             return data
-        
         user = request.user
-        # Skip for superusers
         if user.is_superuser:
             return data
-        
-        # Validate buyer belongs to same tenant
         buyer = data.get('buyer')
         if buyer and not _is_in_user_scope(user, owner_user=buyer.tenant, company=buyer.company):
             raise serializers.ValidationError({
                 'buyer': 'Invalid buyer. Must belong to your organization.'
             })
-        
-        # Validate batch belongs to same tenant
         batch = data.get('batch')
         if batch and not _is_in_user_scope(user, owner_user=batch.tenant, company=batch.company):
             raise serializers.ValidationError({
                 'batch': 'Invalid purchase batch. Must belong to your organization.'
             })
-        
         return data
 
 
 class PaymentSerializer(serializers.ModelSerializer):
-    """Serializer for Payment with tenant isolation"""
     payment_type_display = serializers.CharField(source='get_payment_type_display', read_only=True)
     payment_mode_display = serializers.CharField(source='get_payment_mode_display', read_only=True)
     approval_status_display = serializers.CharField(source='get_approval_status_display', read_only=True)
     tenant_name = serializers.CharField(source='tenant.username', read_only=True)
     company_name = serializers.CharField(source='company.name', read_only=True)
-    
+
     class Meta:
         model = Payment
         fields = [
@@ -445,55 +391,41 @@ class PaymentSerializer(serializers.ModelSerializer):
             'approval_status', 'approval_status_display',
             'approved_by', 'processed_by',
             'created_at', 'updated_at',
-            # Tenant isolation
             'tenant', 'tenant_name', 'company', 'company_name'
         ]
         read_only_fields = ['receipt_number', 'created_at', 'updated_at', 'tenant', 'company']
-    
+
     def validate(self, data):
-        """Validate cross-tenant ForeignKeys"""
         request = self.context.get('request')
         if not request or not request.user:
             return data
-        
         user = request.user
-        # Skip for superusers
         if user.is_superuser:
             return data
-        
-        # Validate supplier belongs to same tenant
         supplier = data.get('supplier')
         if supplier and not _is_in_user_scope(user, owner_user=supplier.tenant, company=supplier.company):
             raise serializers.ValidationError({
                 'supplier': 'Invalid supplier. Must belong to your organization.'
             })
-        
-        # Validate buyer belongs to same tenant
         buyer = data.get('buyer')
         if buyer and not _is_in_user_scope(user, owner_user=buyer.tenant, company=buyer.company):
             raise serializers.ValidationError({
                 'buyer': 'Invalid buyer. Must belong to your organization.'
             })
-        
-        # Validate purchase_batch belongs to same tenant
         purchase_batch = data.get('purchase_batch')
         if purchase_batch and not _is_in_user_scope(user, owner_user=purchase_batch.tenant, company=purchase_batch.company):
             raise serializers.ValidationError({
                 'purchase_batch': 'Invalid purchase batch. Must belong to your organization.'
             })
-        
-        # Validate sale belongs to same tenant
         sale = data.get('sale')
         if sale and not _is_in_user_scope(user, owner_user=sale.tenant, company=sale.company):
             raise serializers.ValidationError({
                 'sale': 'Invalid sale. Must belong to your organization.'
             })
-        
         return data
 
 
 class InventorySerializer(serializers.ModelSerializer):
-    """Serializer for Inventory with tenant isolation"""
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     fish_name = serializers.CharField(source='fish.name', read_only=True)
     batch_number = serializers.CharField(source='purchase_batch.batch_number', read_only=True)
@@ -501,7 +433,7 @@ class InventorySerializer(serializers.ModelSerializer):
     expiry_alert = serializers.BooleanField(source='check_expiry_alert', read_only=True)
     tenant_name = serializers.CharField(source='tenant.username', read_only=True)
     company_name = serializers.CharField(source='company.name', read_only=True)
-    
+
     class Meta:
         model = Inventory
         fields = [
@@ -515,7 +447,6 @@ class InventorySerializer(serializers.ModelSerializer):
             'last_moved_at', 'last_moved_by',
             'needs_reorder', 'expiry_alert',
             'created_at', 'updated_at',
-            # Tenant isolation
             'tenant', 'tenant_name', 'company', 'company_name'
         ]
         read_only_fields = ['created_at', 'updated_at', 'tenant', 'company']
@@ -523,33 +454,24 @@ class InventorySerializer(serializers.ModelSerializer):
             'initial_weight_kg': {'required': False},
             'remaining_weight_kg': {'required': False},
         }
-    
+
     def validate(self, data):
-        """Validate cross-tenant ForeignKeys"""
         request = self.context.get('request')
         if not request or not request.user:
             return data
-        
         user = request.user
-        # Skip for superusers
         if user.is_superuser:
             return data
-        
-        # Validate fish belongs to same tenant
         fish = data.get('fish')
         if fish and not _is_in_user_scope(user, owner_user=fish.tenant, company=fish.company):
             raise serializers.ValidationError({
                 'fish': 'Invalid fish. Must belong to your organization.'
             })
-        
-        # Validate purchase_batch belongs to same tenant
         purchase_batch = data.get('purchase_batch')
         if purchase_batch and not _is_in_user_scope(user, owner_user=purchase_batch.tenant, company=purchase_batch.company):
             raise serializers.ValidationError({
                 'purchase_batch': 'Invalid purchase batch. Must belong to your organization.'
             })
-
-        # Auto-populate weight fields when omitted.
         initial_packages = data.get('initial_packages')
         if initial_packages is not None and purchase_batch:
             if data.get('initial_weight_kg') is None:
@@ -557,5 +479,4 @@ class InventorySerializer(serializers.ModelSerializer):
             if data.get('remaining_weight_kg') is None:
                 remaining_packages = data.get('remaining_packages', initial_packages)
                 data['remaining_weight_kg'] = remaining_packages * purchase_batch.package_weight
-        
         return data

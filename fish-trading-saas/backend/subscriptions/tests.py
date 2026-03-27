@@ -1,10 +1,11 @@
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.contrib.auth import get_user_model
 from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
 from decimal import Decimal
 from datetime import datetime, timedelta
 from django.utils import timezone
+from unittest.mock import patch
 
 from subscriptions.models import Subscription, SubscriptionTier
 from accounts.models import User
@@ -612,3 +613,34 @@ class SubscriptionRenewalTest(TestCase):
         
         self.assertTrue(self.subscription.expiry_warning_sent)
 
+
+@override_settings(ROOT_URLCONF='config.urls')
+class SubscriptionEnforcementMiddlewareTest(APITestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            username='middleware_user',
+            email='middleware@example.com',
+            password='testpass123',
+            role='tenant_admin',
+        )
+        self.client.force_login(self.user)
+
+    def test_write_requests_without_subscription_are_blocked(self):
+        response = self.client.post('/api/fish-categories/', {
+            'name': 'Blocked Category',
+            'category_type': 'saltwater',
+        }, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.json()['code'], 'NO_SUBSCRIPTION')
+
+    def test_subscription_errors_fail_closed(self):
+        with patch('subscriptions.middleware._subscription_qs_for_user', side_effect=Exception('db unavailable')):
+            response = self.client.post('/api/fish-categories/', {
+                'name': 'Blocked Category',
+                'category_type': 'saltwater',
+            }, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_503_SERVICE_UNAVAILABLE)
+        self.assertEqual(response.json()['code'], 'SUBSCRIPTION_CHECK_FAILED')

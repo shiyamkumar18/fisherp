@@ -250,7 +250,7 @@ const SessionManager = {
      */
     handleUnauthorized: () => {
         SessionManager.clearTimers();
-        window.location.href = '/web/login/';
+        window.location.href = '/login.html';
     }
 };
 

@@ -9,6 +9,7 @@ from django.utils import timezone
 from dashboard.models import DashboardManager
 from trading.models import FishCategory, Fish, Supplier, Buyer, PurchaseBatch, Sale, Payment, Inventory
 from subscriptions.models import Subscription, SubscriptionTier
+from companies.models import Company
 
 User = get_user_model()
 
@@ -838,3 +839,263 @@ class DashboardAdminTest(TestCase):
         
         self.assertIn('error', result)
 
+
+class RoleBasedDashboardVisibilityAPITest(APITestCase):
+    """Verify dashboard endpoints return only aligned data for each role."""
+
+    def setUp(self):
+        self.company_a = Company.objects.create(name='Alpha Dashboard', slug='alpha-dashboard')
+        self.company_b = Company.objects.create(name='Beta Dashboard', slug='beta-dashboard')
+
+        self.platform_operator = User.objects.create_user(
+            username='platform_dashboard',
+            email='platform-dashboard@example.com',
+            password='testpass123',
+            role='platform_operator',
+        )
+
+        self.tenant_admin = User.objects.create_user(
+            username='tenant_admin_dashboard_alpha',
+            email='tenant-admin-dashboard-alpha@example.com',
+            password='testpass123',
+            company=self.company_a,
+            role='tenant_admin',
+        )
+        self.company_a.admin = self.tenant_admin
+        self.company_a.save(update_fields=['admin'])
+
+        self.accountant = User.objects.create_user(
+            username='accountant_dashboard_alpha',
+            email='accountant-dashboard-alpha@example.com',
+            password='testpass123',
+            company=self.company_a,
+            role='accountant',
+        )
+        self.trader = User.objects.create_user(
+            username='trader_dashboard_alpha',
+            email='trader-dashboard-alpha@example.com',
+            password='testpass123',
+            company=self.company_a,
+            role='trader',
+        )
+        self.store = User.objects.create_user(
+            username='store_dashboard_alpha',
+            email='store-dashboard-alpha@example.com',
+            password='testpass123',
+            company=self.company_a,
+            role='store',
+        )
+
+        self.other_tenant_admin = User.objects.create_user(
+            username='tenant_admin_dashboard_beta',
+            email='tenant-admin-dashboard-beta@example.com',
+            password='testpass123',
+            company=self.company_b,
+            role='tenant_admin',
+        )
+        self.company_b.admin = self.other_tenant_admin
+        self.company_b.save(update_fields=['admin'])
+
+        self.category = FishCategory.objects.create(name='Dashboard Category', category_type='saltwater')
+
+        self.fish_a = Fish.objects.create(
+            name='Dashboard Fish Alpha',
+            category=self.category,
+            unit_type='kg',
+            tenant=self.tenant_admin,
+        )
+        self.fish_b = Fish.objects.create(
+            name='Dashboard Fish Beta',
+            category=self.category,
+            unit_type='kg',
+            tenant=self.other_tenant_admin,
+        )
+
+        self.supplier_a = Supplier.objects.create(
+            name='Dashboard Supplier Alpha',
+            phone='5555555551',
+            tenant=self.tenant_admin,
+        )
+        self.supplier_b = Supplier.objects.create(
+            name='Dashboard Supplier Beta',
+            phone='5555555552',
+            tenant=self.other_tenant_admin,
+        )
+
+        self.buyer_a = Buyer.objects.create(
+            name='Dashboard Buyer Alpha',
+            phone='5555555553',
+            tenant=self.tenant_admin,
+        )
+        self.buyer_b = Buyer.objects.create(
+            name='Dashboard Buyer Beta',
+            phone='5555555554',
+            tenant=self.other_tenant_admin,
+        )
+
+        today = timezone.now().date()
+        self.batch_a = PurchaseBatch.objects.create(
+            purchase_type='direct',
+            supplier=self.supplier_a,
+            fish=self.fish_a,
+            number_of_packages=10,
+            package_weight=Decimal('12.00'),
+            price_per_kg=Decimal('25.00'),
+            tenant=self.tenant_admin,
+            date=today,
+            estimated_expiry_date=today + timedelta(days=2),
+        )
+        self.batch_b = PurchaseBatch.objects.create(
+            purchase_type='direct',
+            supplier=self.supplier_b,
+            fish=self.fish_b,
+            number_of_packages=7,
+            package_weight=Decimal('11.00'),
+            price_per_kg=Decimal('22.00'),
+            tenant=self.other_tenant_admin,
+            date=today,
+            estimated_expiry_date=today + timedelta(days=6),
+        )
+
+        self.sale_a = Sale.objects.create(
+            batch=self.batch_a,
+            buyer=self.buyer_a,
+            number_of_packages_sold=4,
+            selling_weight_per_package=Decimal('10.00'),
+            selling_price_per_kg=Decimal('35.00'),
+            tenant=self.tenant_admin,
+            date=today,
+        )
+        self.sale_b = Sale.objects.create(
+            batch=self.batch_b,
+            buyer=self.buyer_b,
+            number_of_packages_sold=3,
+            selling_weight_per_package=Decimal('9.00'),
+            selling_price_per_kg=Decimal('33.00'),
+            tenant=self.other_tenant_admin,
+            date=today,
+        )
+
+        self.inventory_a = Inventory.objects.create(
+            fish=self.fish_a,
+            purchase_batch=self.batch_a,
+            initial_packages=10,
+            remaining_packages=6,
+            initial_weight_kg=Decimal('120.00'),
+            remaining_weight_kg=Decimal('72.00'),
+            tenant=self.tenant_admin,
+            expiry_date=today + timedelta(days=2),
+        )
+        self.inventory_b = Inventory.objects.create(
+            fish=self.fish_b,
+            purchase_batch=self.batch_b,
+            initial_packages=7,
+            remaining_packages=4,
+            initial_weight_kg=Decimal('77.00'),
+            remaining_weight_kg=Decimal('44.00'),
+            tenant=self.other_tenant_admin,
+            expiry_date=today + timedelta(days=5),
+        )
+
+        Payment.objects.create(
+            payment_type='sale',
+            payment_mode='cash',
+            amount=Decimal('300.00'),
+            sale=self.sale_a,
+            buyer=self.buyer_a,
+            tenant=self.tenant_admin,
+            date=today,
+        )
+        Payment.objects.create(
+            payment_type='purchase',
+            payment_mode='bank_transfer',
+            amount=Decimal('200.00'),
+            purchase_batch=self.batch_a,
+            supplier=self.supplier_a,
+            tenant=self.tenant_admin,
+            date=today,
+        )
+        Payment.objects.create(
+            payment_type='sale',
+            payment_mode='cash',
+            amount=Decimal('999.00'),
+            sale=self.sale_b,
+            buyer=self.buyer_b,
+            tenant=self.other_tenant_admin,
+            date=today,
+        )
+
+    def _get(self, user, path):
+        client = APIClient()
+        client.force_authenticate(user=user)
+        return client.get(path)
+
+    def test_financial_overview_is_role_specific(self):
+        admin_response = self._get(self.tenant_admin, '/api/dashboard/financial-overview/')
+        accountant_response = self._get(self.accountant, '/api/dashboard/financial-overview/')
+        trader_response = self._get(self.trader, '/api/dashboard/financial-overview/')
+        store_response = self._get(self.store, '/api/dashboard/financial-overview/')
+        platform_response = self._get(self.platform_operator, '/api/dashboard/financial-overview/')
+
+        self.assertEqual(admin_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(accountant_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(admin_response.data['active_buyers_count'], 1)
+        self.assertEqual(admin_response.data['active_suppliers_count'], 1)
+        self.assertIn('today_profit', accountant_response.data)
+
+        self.assertEqual(trader_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(trader_response.data['role'], 'trader')
+        self.assertNotIn('outstanding_receivables', trader_response.data)
+
+        self.assertEqual(store_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(store_response.data['role'], 'store')
+        self.assertNotIn('today_profit', store_response.data)
+
+        self.assertEqual(platform_response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_dashboard_analytics_permissions_match_roles(self):
+        trader_sales_trend = self._get(self.trader, '/api/dashboard/sales-trend/')
+        store_sales_trend = self._get(self.store, '/api/dashboard/sales-trend/')
+        trader_payment_summary = self._get(self.trader, '/api/dashboard/payment-summary/')
+        store_payment_summary = self._get(self.store, '/api/dashboard/payment-summary/')
+        store_inventory = self._get(self.store, '/api/dashboard/inventory-overview/')
+        platform_inventory = self._get(self.platform_operator, '/api/dashboard/inventory-overview/')
+
+        self.assertEqual(trader_sales_trend.status_code, status.HTTP_200_OK)
+        self.assertEqual(store_sales_trend.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(trader_payment_summary.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(store_payment_summary.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(store_inventory.status_code, status.HTTP_200_OK)
+        self.assertEqual(platform_inventory.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_tenant_dashboard_and_batch_dashboard_are_scoped_and_working(self):
+        tenant_dashboard = self._get(self.tenant_admin, '/api/dashboard/tenant/')
+        accountant_batch = self._get(self.accountant, f'/api/dashboard/batch/?batch_id={self.batch_a.id}')
+        trader_batch = self._get(self.trader, f'/api/dashboard/batch/?batch_id={self.batch_a.id}')
+
+        self.assertEqual(tenant_dashboard.status_code, status.HTTP_200_OK)
+        self.assertEqual(tenant_dashboard.data['role'], 'tenant_admin')
+        self.assertEqual(tenant_dashboard.data['alerts']['expiring_count'], 1)
+        self.assertEqual(tenant_dashboard.data['kpi']['today_sales'], self.sale_a.total_revenue)
+
+        self.assertEqual(accountant_batch.status_code, status.HTTP_200_OK)
+        self.assertEqual(accountant_batch.data['batch']['id'], self.batch_a.id)
+        self.assertEqual(accountant_batch.data['expiry']['status'], 'expiring_soon')
+        self.assertEqual(accountant_batch.data['batch']['expiry_date'], self.batch_a.estimated_expiry_date)
+
+        self.assertEqual(trader_batch.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_filter_options_are_tenant_scoped_and_platform_blocked(self):
+        trader_response = self._get(self.trader, '/api/dashboard/filters/')
+        platform_response = self._get(self.platform_operator, '/api/dashboard/filters/')
+
+        self.assertEqual(trader_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(platform_response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            {item['name'] for item in trader_response.data['fish_types']},
+            {'Dashboard Fish Alpha'}
+        )
+        self.assertEqual(
+            {item['name'] for item in trader_response.data['buyers']},
+            {'Dashboard Buyer Alpha'}
+        )

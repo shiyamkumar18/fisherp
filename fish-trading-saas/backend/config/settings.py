@@ -21,7 +21,12 @@ if not secret_key:
     raise ValueError("SECRET_KEY environment variable required")
 SECRET_KEY = secret_key
 DEBUG = os.getenv("DEBUG", "False") == "True"
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0'] + (os.getenv('ALLOWED_HOSTS', '').split(',') if os.getenv('ALLOWED_HOSTS') else [])
+DEFAULT_ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+ALLOWED_HOSTS = DEFAULT_ALLOWED_HOSTS + [
+    host.strip()
+    for host in os.getenv('ALLOWED_HOSTS', '').split(',')
+    if host.strip()
+]
 
 # =========================
 # MULTI-TENANT CONFIG (SQLite - Remove django_tenants)
@@ -78,7 +83,7 @@ ROOT_URLCONF = "config.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [BASE_DIR / "templates"],
+        "DIRS": [BASE_DIR / "templates", BASE_DIR.parent / "frontend"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -170,7 +175,8 @@ USE_TZ = True
 # STATIC FILES
 # =========================
 
-STATIC_URL = "static/"
+STATIC_URL = '/static/'
+STATICFILES_DIRS = [BASE_DIR.parent / "frontend"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # =========================
@@ -206,8 +212,10 @@ REST_FRAMEWORK = {
 }
 
 # JWT Settings
+JWT_ACCESS_TOKEN_LIFETIME_MINUTES = int(os.getenv("JWT_ACCESS_TOKEN_LIFETIME_MINUTES", "15"))
+
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(days=1),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=JWT_ACCESS_TOKEN_LIFETIME_MINUTES),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
@@ -221,7 +229,6 @@ SIMPLE_JWT = {
 AUTH_MAX_USERS_PER_TENANT = 3
 AUTH_LOGIN_ATTEMPT_LIMIT = 5
 AUTH_LOCKOUT_DURATION_MINUTES = 15
-JWT_ACCESS_TOKEN_LIFETIME_MINUTES = 15
 TWO_FACTOR_TOKEN_LIFETIME_MINUTES = 5
 
 # =========================
@@ -254,8 +261,9 @@ CORS_ALLOW_HEADERS = [
 ]
 
 # Celery Configuration
-CELERY_BROKER_URL = 'redis://localhost:6379/0'
-CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
+CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', REDIS_URL)
+CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', CELERY_BROKER_URL)
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'

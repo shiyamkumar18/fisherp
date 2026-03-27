@@ -1,1 +1,235 @@
-# Fisherp - Fish Trading SaaS Platform&#10;&#10;## Overview&#10;Fisherp is a full-stack SaaS platform for fish trading, built with Django backend and static HTML/JS frontend. It supports inventory management, sales/purchases, payments, RBAC, dashboard analytics, and more.&#10;&#10;## Project Structure&#10;```&#10;fish-trading-saas/&#10;├── backend/&#10;│   ├── accounts/     # Authentication, RBAC, permissions, impersonation&#10;│   ├── trading/      # Core models (Fish, Sale, PurchaseBatch, Buyer, Supplier, Inventory, Payment), services, Celery tasks&#10;│   ├── companies/    # Company models&#10;│   ├── dashboard/    # Analytics views and templates&#10;│   ├── subscriptions/&#10;│   ├── health/       # Health checks&#10;│   ├── config/       # Settings, URLs, exceptions&#10;│   └── requirements.txt&#10;└── frontend/         # Static HTML/JS UI pages (sales, purchases, fish, suppliers, dashboard, etc.)&#10;    ├── js/pages/&#10;    └── TODO.md&#10;```&#10;&#10;## Backend Features&#10;- **Accounts**: Role-Based Access Control (RBAC), middleware, signals, throttling, tests, impersonation.&#10;- **Trading**: Fish inventory, sales/purchases, buyers/suppliers, payments, inventory/sale services, Celery tasks for async processing.&#10;- **Dashboard**: Visual analytics.&#10;- **Admin**: Full Django admin integration.&#10;&#10;## Frontend Features&#10;- Responsive pages: index, register, users, payments, purchases, sales, buyers, fish, suppliers, fishCategories, subscriptions.&#10;- JS modules: trading.js, management.js.&#10;&#10;## Key Models (trading/models/)&#10;- Fish, Payment, Sale, PurchaseBatch, Buyer, Supplier, Inventory.&#10;&#10;## Setup&#10;1. Navigate to `fish-trading-saas/backend/`: `cd fish-trading-saas/backend`&#10;2. Create/activate virtualenv: `python -m venv .venv && source .venv/bin/activate`&#10;3. Install deps: `pip install -r requirements.txt`&#10;4. Migrate: `python manage.py migrate`&#10;5. Run server: `python manage.py runserver`&#10;6. Access: http://localhost:8000&#10;&#10;## TODOs&#10;- See [TODO.md](TODO.md), [fish-trading-saas/TODO.md](fish-trading-saas/frontend/TODO.md), [TASK_PROGRESS.md](TASK_PROGRESS.md), security hardening, role system implementation.&#10;&#10;Built with Django, Celery, PostgreSQL-ready.
+# fisherp
+
+Fish Trading Management SaaS
+
+Last Updated: 2026-03-27
+
+## Product Overview
+
+Fish Trading Management SaaS is a subscription-based platform for fish mediators and tenant teams to manage:
+
+- Purchase intake (boat, auction, bucket)
+- 37 KG package standardization
+- Sales and pending collections
+- Expense-aware profit calculation
+- Tenant-level analytics and role-based access
+
+The core product principle is accurate profitability by including operational expenses in batch cost.
+
+## Architecture Summary
+
+High-level runtime flow:
+
+1. Frontend pages (static HTML/CSS/JS)
+2. Django + Django REST Framework APIs
+3. SQLite by default (PostgreSQL option for production-like setup)
+4. Redis + Celery for async/background jobs
+
+Current architecture characteristics:
+
+- Single database in current default configuration
+- Company-based data isolation
+- Subscription enforcement middleware
+- Role-based permissions and group mapping
+
+## Tech Stack
+
+- Backend: Django 6, Django REST Framework, SimpleJWT, django-filter
+- API docs: drf-spectacular (Swagger and ReDoc)
+- Async: Celery with Redis broker/result backend
+- Frontend: Static HTML/CSS/JavaScript served with Django templates/static files
+- Database: SQLite (default), PostgreSQL (documented option in settings)
+
+## Repository Layout
+
+```text
+fish-trading-saas/
+  backend/
+    accounts/        # Authentication, RBAC, tenant user operations
+    trading/         # Purchase, sales, inventory, tasks
+    dashboard/       # Analytics endpoints/admin dashboards
+    subscriptions/   # Plans, billing, subscription enforcement
+    companies/       # Tenant company/domain entities
+    config/          # Django settings, URL routing, ASGI/WSGI
+    health/          # Liveness/readiness checks
+  frontend/          # Static frontend pages and JavaScript modules
+```
+
+## Prerequisites
+
+- Python 3.11+ recommended
+- Redis 6+ (required for documented local workflow)
+- `pip` and virtual environment tooling
+
+## Quick Start (SQLite First)
+
+From repository root:
+
+```bash
+cd fish-trading-saas/backend
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+Create `.env` inside `fish-trading-saas/backend`:
+
+```env
+SECRET_KEY=change-me-in-local
+DEBUG=True
+ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0
+
+# PostgreSQL variables are optional unless you switch DB config.
+DB_NAME=
+DB_USER=
+DB_PASSWORD=
+DB_HOST=
+DB_PORT=
+```
+
+Initialize RBAC and data:
+
+```bash
+python manage.py migrate
+python manage.py setup_groups_and_permissions
+python manage.py create_default_users
+```
+
+Start required services:
+
+```bash
+redis-server
+```
+
+In a new terminal (same virtualenv):
+
+```bash
+cd fish-trading-saas/backend
+source .venv/bin/activate
+celery -A trading.celery:app worker --loglevel=info
+```
+
+In another terminal (same virtualenv):
+
+```bash
+cd fish-trading-saas/backend
+source .venv/bin/activate
+celery -A trading.celery:app beat --loglevel=info
+```
+
+Run backend:
+
+```bash
+cd fish-trading-saas/backend
+source .venv/bin/activate
+python manage.py runserver 0.0.0.0:8000
+```
+
+## Frontend Access
+
+Frontend files live in `fish-trading-saas/frontend` and are used as static/template pages by Django configuration.
+
+- App entry: `http://localhost:8000/login/`
+- Default root route: `http://localhost:8000/`
+- API base used by frontend scripts: `${window.location.origin}/api`
+
+No Node build step is currently required in this repository.
+
+## Database Options
+
+### Option A: SQLite (default and fastest local setup)
+
+No additional DB setup required. Current settings already use SQLite in `backend/db.sqlite3`.
+
+### Option B: PostgreSQL (production-like)
+
+Current `config/settings.py` includes a commented PostgreSQL block. To use PostgreSQL locally:
+
+1. Create PostgreSQL database and credentials.
+2. Fill `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT` in `.env`.
+3. Switch `DATABASES` configuration in `config/settings.py` from SQLite block to PostgreSQL block.
+4. Run migrations again.
+
+## Authentication, RBAC, and Seed Users
+
+Role groups are created by:
+
+```bash
+python manage.py setup_groups_and_permissions
+```
+
+Default users are created by:
+
+```bash
+python manage.py create_default_users
+```
+
+Default local credentials are printed by the command output (for example tenant admin, accountant, trader, and store users). Rotate all defaults outside local development.
+
+## API Documentation
+
+- Swagger UI: `http://localhost:8000/api/docs/`
+- ReDoc: `http://localhost:8000/api/redoc/`
+- OpenAPI schema: `http://localhost:8000/api/schema/`
+
+Primary auth endpoint:
+
+- `POST /api/auth/login/`
+
+Note: API documentation endpoints are configured with authenticated access permissions.
+
+## Health Endpoints
+
+- Liveness: `GET /health/` or `GET /health/live/`
+- Readiness: `GET /health/ready/`
+
+Readiness checks include database, Redis, Celery ping, and cache access.
+
+## Testing
+
+Run all tests:
+
+```bash
+cd fish-trading-saas/backend
+source .venv/bin/activate
+python manage.py test
+```
+
+## Core Business Logic Snapshot
+
+### Purchase Flow
+
+System computes:
+
+- `total_weight = number_of_packages * 37`
+- `fish_cost = total_weight * price_per_kg`
+- `total_expense = fish_cost + labour + ice + transport + commission + other`
+- `actual_cost_per_kg = total_expense / total_weight`
+- `pending_amount = total_expense - amount_paid`
+
+Packages are auto-generated from purchase count.
+
+### Sale Flow
+
+System computes:
+
+- `total_sale_amount = 37 * selling_price_per_kg`
+- `profit = (selling_price_per_kg - actual_cost_per_kg) * 37`
+- `pending_amount = total_sale_amount - amount_received`
+
+Sold package state is updated after transaction completion.
+
+## Deployment Notes
+
+- Use PostgreSQL for production.
+- Keep Redis and Celery worker/beat running for scheduled/background tasks.
+- Set `DEBUG=False` and secure `SECRET_KEY`.
+- Configure `ALLOWED_HOSTS` explicitly for deployment domains.
+- Serve static files with production web server strategy.
+
+## Roadmap (High-Level)
+
+- Expand analytics and report exports
+- Harden subscription billing workflows
+- Continue performance and caching optimization
+- Evolve frontend UX and PWA behavior

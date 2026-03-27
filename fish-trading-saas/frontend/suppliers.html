@@ -1,61 +1,69 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FisherP - Suppliers</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/base.css">
-    <link rel="stylesheet" href="css/layout.css">
-    <link rel="stylesheet" href="css/components.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-</head>
-<body>
-    <div class="dashboard-layout">
-        <aside class="sidebar"><!-- abbreviated --></aside>
-        <main class="main-content">
-            <header class="top-header">
-                <h1>Suppliers</h1>
-            </header>
-            <div class="content">
-                <div class="card">
-                    <div class="card-header">
-                        <h3>Suppliers</h3>
-                        <button class="btn btn-primary">Add Supplier</button>
-                    </div>
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Phone</th>
-                                <th>Type</th>
-                                <th>Outstanding</th>
-                                <th>Status</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>Deep Sea Fisheries</td>
-                                <td>9876543210</td>
-                                <td>Local</td>
-                                <td>₹45,000</td>
-                                <td>Active</td>
-                                <td>Edit/Delete</td>
-                            </tr>
-                            <tr>
-                                <td>Bay Harvest</td>
-                                <td>9876543211</td>
-                                <td>Wholesale</td>
-                                <td>₹0</td>
-                                <td>Active</td>
-                                <td>Edit/Delete</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </main>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Suppliers</h1>
+        <p class="page-subtitle">Track who you buy from, what they supply, and where outstanding payables need attention.</p>
     </div>
-</body>
-</html>
+    <button class="btn btn-primary" onclick="showAddSupplierModal()">
+        <i class="fas fa-truck-field"></i>
+        Add Supplier
+    </button>
+</div>
+
+<section class="kpi-row">
+    <article class="kpi-card">
+        <div class="metric-eyebrow">Active Suppliers</div>
+        <div class="kpi-value">18</div>
+        <div class="kpi-label">Reliable partners currently supporting purchasing operations.</div>
+    </article>
+    <article class="kpi-card">
+        <div class="metric-eyebrow">Outstanding Payables</div>
+        <div class="kpi-value">₹2.1L</div>
+        <div class="kpi-label">Balance to monitor before the next buying cycle.</div>
+    </article>
+    <article class="kpi-card">
+        <div class="metric-eyebrow">Fresh Sources</div>
+        <div class="kpi-value">5</div>
+        <div class="kpi-label">Newer suppliers available for negotiation and diversification.</div>
+    </article>
+</section>
+
+<div class="table-container">
+    <div class="table-header">
+        <div>
+            <h3>Supplier Directory</h3>
+            <span>Key trading partners, contact details, and payable status</span>
+        </div>
+    </div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Phone</th>
+                <th>Type</th>
+                <th>Outstanding</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="supplierTable">
+            <tr>
+                <td colspan="6" class="text-center">Loading suppliers...</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<script>
+function showAddSupplierModal() {
+    showModal('Add Supplier', `
+        <div class="form-group">
+            <label class="form-label">Supplier Name</label>
+            <input type="text" class="form-input" placeholder="Ocean Fresh Fisheries">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Phone</label>
+            <input type="text" class="form-input" placeholder="+91 98765 43210">
+        </div>
+    `);
+}
+</script>

@@ -7,24 +7,22 @@ const DashboardPage = {
     },
     
     // Load dashboard data
-    loadData: async () => {
+loadData: async () => {
         await Promise.all([
             DashboardPage.loadKPIs(),
-            DashboardPage.loadCharts(),
             DashboardPage.loadRecentSales(),
-            DashboardPage.loadInventoryAlerts()
+            DashboardPage.loadRecentPurchases()
         ]);
     },
     
     // Load KPI cards
-    loadKPIs: async () => {
-        const financialData = await window.API.get('/dashboard/financial-overview/');
-        
-        if (financialData) {
-            document.getElementById('todaySales').textContent = window.Utils.formatCurrency(financialData.today_sales);
-            document.getElementById('todayProfit').textContent = window.Utils.formatCurrency(financialData.today_profit);
-            document.getElementById('todayPurchases').textContent = window.Utils.formatCurrency(financialData.today_purchases);
-            document.getElementById('receivables').textContent = window.Utils.formatCurrency(financialData.outstanding_receivables);
+loadKPIs: async () => {
+        const data = await window.TradingAPI.dashboard.tenant();
+        if (data && data.kpi) {
+            document.getElementById('sales-today').textContent = window.Utils.formatCurrency(data.kpi.today_sales);
+            document.getElementById('purchases-today').textContent = window.Utils.formatCurrency(data.kpi.today_purchases || 0);
+            document.getElementById('stock').textContent = data.inventory_total || 0;
+            document.getElementById('profit').textContent = window.Utils.formatCurrency(data.kpi.today_profit);
         }
     },
     
@@ -100,25 +98,43 @@ const DashboardPage = {
     },
     
     // Load recent sales
-    loadRecentSales: async () => {
-        const sales = await window.API.get('/trading/sales/?limit=5');
-        
-        const tbody = document.getElementById('recentSalesTable');
+loadRecentSales: async () => {
+        const sales = await window.TradingAPI.sales.list({page_size: 5});
+        const tbody = document.querySelector('.data-table tbody:nth-of-type(1)'); // Recent Sales
         if (!tbody) return;
-        
         if (!sales || sales.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center">No recent sales</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center">No recent sales</td></tr>';
             return;
         }
-        
-        tbody.innerHTML = sales.slice(0, 5).map(sale => `
+        tbody.innerHTML = sales.map(sale => `
             <tr>
                 <td>${sale.invoice_number || '-'}</td>
                 <td>${sale.buyer_name || '-'}</td>
-                <td>${sale.batch_fish_name || '-'}</td>
-                <td>${window.Utils.formatCurrency(sale.total_revenue)}</td>
-                <td>${window.Utils.formatCurrency(sale.profit)}</td>
-                <td><span class="status-badge ${sale.payment_status}">${sale.payment_status || 'pending'}</span></td>
+                <td>${sale.fish_name || '-'}</td>
+                <td>${sale.number_of_packages_sold || 0}</td>
+                <td>${Trading.formatCurrency(sale.total_revenue)}</td>
+                <td>${Trading.formatCurrency(sale.profit)}</td>
+                <td>${Trading.formatDate(sale.date)}</td>
+            </tr>
+        `).join('');
+    },
+
+    loadRecentPurchases: async () => {
+        const purchases = await window.TradingAPI.purchases.list({page_size: 5});
+        const tbody2 = document.querySelector('.data-table tbody:nth-of-type(2)'); // Recent Purchases
+        if (!tbody2) return;
+        if (!purchases || purchases.length === 0) {
+            tbody2.innerHTML = '<tr><td colspan="6" class="text-center">No recent purchases</td></tr>';
+            return;
+        }
+        tbody2.innerHTML = purchases.map(p => `
+            <tr>
+                <td>${p.batch_number || '-'}</td>
+                <td>${p.fish_name || '-'}</td>
+                <td>${p.supplier_name || '-'}</td>
+                <td>${p.number_of_packages || 0}</td>
+                <td>${Trading.formatCurrency(p.total_expense)}</td>
+                <td>${Trading.formatDate(p.date)}</td>
             </tr>
         `).join('');
     },
@@ -147,6 +163,9 @@ const DashboardPage = {
     }
 };
 
-// Export to window
+// Page loader
+window.App.pageLoaders.dashboard = () => DashboardPage.init();
+
+// Export
 window.DashboardPage = DashboardPage;
 

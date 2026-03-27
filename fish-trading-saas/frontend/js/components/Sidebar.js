@@ -1,162 +1,131 @@
-// Fish ERP - Dynamic Sidebar Component
-
-const TENANT_MENU = [
-    {
-        title: 'Main',
-        items: [{ icon: 'fa-th-large', label: 'Dashboard', page: 'dashboard' }],
-    },
-    {
-        title: 'Trading',
-        items: [
-            { icon: 'fa-shopping-cart', label: 'Purchases', page: 'purchases' },
-            { icon: 'fa-cash-register', label: 'Sales', page: 'sales' },
-        ],
-    },
-    {
-        title: 'Inventory',
-        items: [
-            { icon: 'fa-fish', label: 'Fish', page: 'fish' },
-            { icon: 'fa-boxes', label: 'Stock', page: 'inventory' },
-        ],
-    },
-    {
-        title: 'Customers',
-        items: [{ icon: 'fa-users', label: 'Buyers', page: 'buyers' }],
-    },
-    {
-        title: 'Finance',
-        items: [
-            { icon: 'fa-file-invoice-dollar', label: 'Accounts', page: 'accounts' },
-            { icon: 'fa-money-bill-wave', label: 'Payments', page: 'payments' },
-        ],
-    },
-    {
-        title: 'Reports',
-        items: [{ icon: 'fa-chart-bar', label: 'Reports', page: 'reports' }],
-    },
-    {
-        title: 'Management',
-        items: [{ icon: 'fa-user-cog', label: 'Staff Management', page: 'users' }],
-    },
-    {
-        title: 'Settings',
-        items: [
-            { icon: 'fa-crown', label: 'Subscription', page: 'subscription' },
-            { icon: 'fa-cog', label: 'Settings', page: 'settings' },
-        ],
-    },
-];
-
-const PLATFORM_MENU = [
-    {
-        title: 'Platform',
-        items: [
-            { icon: 'fa-th-large', label: 'Dashboard', page: 'dashboard' },
-            { icon: 'fa-building', label: 'Companies', page: 'platform' },
-            { icon: 'fa-crown', label: 'Subscriptions', page: 'subscription' },
-            { icon: 'fa-chart-line', label: 'Analytics', page: 'analytics' },
-            { icon: 'fa-life-ring', label: 'Support', page: 'audit' },
-            { icon: 'fa-cog', label: 'Settings', page: 'settings' },
-        ],
-    },
-];
-
-const Sidebar = {
-    init: () => {
-        Sidebar.render();
-    },
-
-    getMenuByRole: () => {
-        if (window.useRole.isPlatformUser()) {
-            return PLATFORM_MENU;
+class Sidebar {
+    constructor() {
+        this.sidebar = document.querySelector('.sidebar');
+        if (!this.sidebar) {
+            console.error('Sidebar element not found');
+            return;
         }
-        return TENANT_MENU;
-    },
+        this.init();
+    }
 
-    canShowItem: (item) => {
-        return window.useRole.canAccessPage(item.page) && window.useFeature.canAccessPage(item.page);
-    },
+    init() {
+        this.injectNavIfEmpty();       // Ensure menu exists
+        this.updateVisibility();       // Apply role-based visibility
+        this.addEventListeners();      // Attach interactive behavior
+    }
 
-    render: () => {
-        const sidebarNav = document.querySelector('.sidebar-nav');
-        if (!sidebarNav) return;
+    /**
+     * Injects the navigation structure if it doesn't exist.
+     * Uses innerHTML carefully; consider event delegation to avoid re‑binding.
+     */
+    injectNavIfEmpty() {
+        if (this.sidebar.querySelector('ul.nav-menu')) return;
 
-        const menu = Sidebar.getMenuByRole();
-        let html = '';
-
-        menu.forEach((section) => {
-            const visibleItems = section.items.filter((item) => Sidebar.canShowItem(item));
-            if (!visibleItems.length) return;
-
-            html += `
-                <div class="nav-section">
-                    <div class="nav-section-title">${section.title}</div>
-                    ${visibleItems
-                        .map(
-                            (item) => `
-                                <a href="#" class="nav-item" data-page="${item.page}">
-                                    <i class="fas ${item.icon}"></i>
-                                    <span>${item.label}</span>
-                                </a>
-                            `
-                        )
-                        .join('')}
-                </div>
-            `;
-        });
-
-        html += `
-            <div class="nav-section">
-                <a href="#" class="nav-item" id="logoutBtn">
-                    <i class="fas fa-sign-out-alt"></i>
-                    <span>Logout</span>
-                </a>
-            </div>
+        this.sidebar.innerHTML = `
+            <ul class="nav-menu">
+                <li data-page="dashboard" class="active">
+                    <i class="fas fa-tachometer-alt"></i> Dashboard
+                </li>
+                <li data-page="fish">
+                    <i class="fas fa-fish"></i> Fish Types
+                </li>
+                <li data-page="fishCategories">
+                    <i class="fas fa-tags"></i> Fish Categories
+                </li>
+                <li data-page="suppliers">
+                    <i class="fas fa-truck"></i> Suppliers
+                </li>
+                <li data-page="buyers">
+                    <i class="fas fa-user-friends"></i> Buyers
+                </li>
+                <li data-page="purchases">
+                    <i class="fas fa-shopping-cart"></i> Purchases
+                </li>
+                <li data-page="sales">
+                    <i class="fas fa-dollar-sign"></i> Sales
+                </li>
+                <li data-page="inventory">
+                    <i class="fas fa-warehouse"></i> Inventory
+                </li>
+                <li data-page="payments">
+                    <i class="fas fa-credit-card"></i> Payments
+                </li>
+                <li data-page="reports" class="admin-only">
+                    <i class="fas fa-chart-bar"></i> Reports
+                </li>
+                <li data-page="staff" class="admin-only">
+                    <i class="fas fa-users-cog"></i> Staff
+                </li>
+                <li data-page="settings" class="admin-only">
+                    <i class="fas fa-cog"></i> Settings
+                </li>
+            </ul>
         `;
 
-        sidebarNav.innerHTML = html;
-        Sidebar.attachEvents();
-    },
+        // Optional: Set active page after injection
+        const currentPage = localStorage.getItem('currentPage') || 'dashboard';
+        this.setActiveNav(currentPage);
+    }
 
-    attachEvents: () => {
-        const navItems = document.querySelectorAll('.sidebar-nav .nav-item[data-page]');
-        navItems.forEach((item) => {
-            item.addEventListener('click', function (event) {
-                event.preventDefault();
-                const page = this.getAttribute('data-page');
-                if (!Sidebar.checkAccess(page)) return;
-                window.App.loadPage(page);
-            });
+    /**
+     * Show/hide admin-only items based on user role.
+     */
+    updateVisibility() {
+        const role = localStorage.getItem('role') || 'trader';
+        const isAdmin = role === 'admin';
+
+        this.sidebar.querySelectorAll('.admin-only').forEach(el => {
+            el.style.display = isAdmin ? 'flex' : 'none';
         });
+    }
 
-        const logoutBtn = document.getElementById('logoutBtn');
-        if (logoutBtn) {
-            logoutBtn.addEventListener('click', (event) => {
-                event.preventDefault();
-                window.Auth.logout();
-            });
-        }
-    },
-
-    setActive: (page) => {
-        document.querySelectorAll('.sidebar-nav .nav-item').forEach((item) => {
-            item.classList.toggle('active', item.getAttribute('data-page') === page);
+    /**
+     * Set active navigation item visually and optionally load page.
+     * This method is called after injection or when the page changes.
+     */
+    setActiveNav(pageId) {
+        const items = this.sidebar.querySelectorAll('.nav-menu li');
+        items.forEach(item => {
+            if (item.dataset.page === pageId) {
+                item.classList.add('active');
+            } else {
+                item.classList.remove('active');
+            }
         });
-    },
+        // Store current page for persistence
+        localStorage.setItem('currentPage', pageId);
+    }
 
-    checkAccess: (page) => {
-        if (!window.useRole.canAccessPage(page)) {
-            window.UI.showAlert('You do not have permission to access this page', 'danger');
-            return false;
-        }
+    /**
+     * Attach event listeners using delegation to handle dynamic content.
+     */
+    addEventListeners() {
+        // Delegate click events for navigation
+        this.sidebar.addEventListener('click', (e) => {
+            // Navigate when clicking a list item (or its children)
+            const li = e.target.closest('li');
+            if (!li) return;
 
-        if (!window.useFeature.canAccessPage(page)) {
-            window.useFeature.showFeatureLocked('feature', 'premium');
-            return false;
-        }
+            const page = li.dataset.page;
+            if (page && typeof App !== 'undefined' && App.loadPage) {
+                App.loadPage(page);
+                this.setActiveNav(page);
+            }
 
-        return true;
-    },
-};
+            // Handle collapsible submenus (if needed)
+            const span = e.target.closest('li > span');
+            if (span) {
+                const parentLi = span.closest('li');
+                const submenu = parentLi?.querySelector('.submenu');
+                if (submenu) {
+                    submenu.style.display = submenu.style.display === 'none' ? 'block' : 'none';
+                }
+            }
+        });
+    }
+}
 
-window.Sidebar = Sidebar;
+// Initialize sidebar when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    new Sidebar();
+});

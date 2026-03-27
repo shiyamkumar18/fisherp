@@ -4,7 +4,13 @@ from django.utils import timezone
 from datetime import datetime, timedelta
 from decimal import Decimal
 
-from trading.models import PurchaseBatch, Sale, Fish, Inventory, Buyer, Supplier, Payment
+from trading.models.purchase_batch import PurchaseBatch
+from trading.models.sale import Sale
+from trading.models.fish import Fish
+from trading.models.inventory import Inventory
+from trading.models.buyer import Buyer
+from trading.models.supplier import Supplier
+from trading.models.payment import Payment
 from subscriptions.models import Subscription, SubscriptionTier
 from accounts.models import User
 
@@ -28,8 +34,10 @@ class DashboardManager:
     @staticmethod
     def _get_tenant_filter(user):
         """Get tenant filter based on user - returns Q object"""
-        if user.is_superuser or user.is_platform_user:
-            return Q()  # No filter for superusers
+        if user.is_superuser:
+            return Q()
+        if user.is_platform_user:
+            return Q(pk__isnull=True)
         if user.company_id:
             return Q(company=user.company)
         return Q(tenant=user)

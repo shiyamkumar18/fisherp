@@ -9,16 +9,26 @@ from datetime import timedelta
 from .models import DashboardManager
 from trading.models import Sale, Inventory, Fish, Buyer, Supplier, PurchaseBatch
 from accounts.permissions import (
-    IsPlatformOperator, IsTenantAdmin, CanViewFinancials
+    IsPlatformOperator, IsTenantAdmin, CanViewFinancials, IsTenantUser, HasAnyRole
 )
 
 
 def _tenant_scope_kwargs(user):
-    if user.is_superuser or user.is_platform_user:
+    if user.is_superuser:
         return {}
+    if user.is_platform_user:
+        return {'pk__isnull': True}
     if user.company_id:
         return {'company': user.company}
     return {'tenant': user}
+
+
+class RoleRestrictedAPIView(APIView):
+    """APIView helper for role-flag based access checks."""
+    role_flags = ()
+
+    def get_permissions(self):
+        return [permissions.IsAuthenticated(), HasAnyRole(*self.role_flags)]
 
 
 class FinancialOverviewView(APIView):
@@ -31,46 +41,53 @@ class FinancialOverviewView(APIView):
     - PlatformMaintainer: Can view tenant financials
     - SalesStaff/StoreAccounts: Not allowed
     """
-    permission_classes = [permissions.IsAuthenticated, CanViewFinancials]
+    permission_classes = [permissions.IsAuthenticated, IsTenantUser]
     
     def get(self, request):
         user = request.user
-        scope = _tenant_scope_kwargs(user)
-        
-        # Trader sees only their sales data
+        if user.is_platform_user:
+            return Response(
+                {'error': 'Platform users cannot access tenant business dashboards directly.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Trader sees a sales-focused company view.
         if user.is_sales_staff:
             data = DashboardManager.get_today_summary(user)
             return Response({
                 'role': 'trader',
                 'today_sales': data.get('total_sales_amount', 0),
                 'sale_count': data.get('sale_count', 0),
-                'message': 'Limited view - contact admin for full dashboard'
+                'pending_sales_amount': data.get('pending_sales_amount', 0),
+                'message': 'Sales-focused dashboard view'
             })
-        
-        # Store sees only purchase data
+
+        # Store sees a purchase and stock-focused company view.
         if user.is_store_accounts:
-            data = DashboardManager.get_today_summary(user)
+            summary = DashboardManager.get_today_summary(user)
+            inventory = DashboardManager.get_inventory_overview(user)
             return Response({
                 'role': 'store',
-                'today_purchases': data.get('total_purchase_amount', 0),
-                'purchase_count': data.get('purchase_count', 0),
-                'message': 'Limited view - contact admin for full dashboard'
+                'today_purchases': summary.get('total_purchase_amount', 0),
+                'purchase_count': summary.get('purchase_count', 0),
+                'total_packages': inventory.get('total_packages', 0),
+                'low_stock_items': inventory.get('low_stock_items', []),
+                'message': 'Inventory-focused dashboard view'
             })
-        
-        # TenantAdmin sees full financial overview
-        if user.is_tenant_admin:
+
+        if user.is_tenant_admin or user.is_accountant:
             data = DashboardManager.get_financial_overview(request.user)
             return Response(data)
-        
+
         return Response(
             {'error': 'Access denied'},
             status=status.HTTP_403_FORBIDDEN
         )
 
 
-class SalesTrendView(APIView):
+class SalesTrendView(RoleRestrictedAPIView):
     """Get sales trend for last N days with optional filters"""
-    permission_classes = [permissions.IsAuthenticated]
+    role_flags = ('is_tenant_admin', 'is_accountant', 'is_sales_staff')
     
     def get(self, request):
         days = int(request.query_params.get('days', 7))
@@ -94,7 +111,7 @@ class SalesTrendView(APIView):
 
 class MonthlyRevenueComparisonView(APIView):
     """Compare revenue across last N months"""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, CanViewFinancials]
     
     def get(self, request):
         months = int(request.query_params.get('months', 6))
@@ -106,7 +123,7 @@ class MonthlyRevenueComparisonView(APIView):
 
 class ProfitMarginTrendView(APIView):
     """Get profit margin trend for last N days"""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, CanViewFinancials]
     
     def get(self, request):
         days = int(request.query_params.get('days', 30))
@@ -114,9 +131,9 @@ class ProfitMarginTrendView(APIView):
         return Response(data)
 
 
-class TopBuyersView(APIView):
+class TopBuyersView(RoleRestrictedAPIView):
     """Get top N buyers by revenue"""
-    permission_classes = [permissions.IsAuthenticated]
+    role_flags = ('is_tenant_admin', 'is_accountant', 'is_sales_staff')
     
     def get(self, request):
         limit = int(request.query_params.get('limit', 5))
@@ -124,9 +141,9 @@ class TopBuyersView(APIView):
         return Response(data)
 
 
-class TopFishView(APIView):
+class TopFishView(RoleRestrictedAPIView):
     """Get top N fish by sales volume"""
-    permission_classes = [permissions.IsAuthenticated]
+    role_flags = ('is_tenant_admin', 'is_accountant', 'is_sales_staff')
     
     def get(self, request):
         limit = int(request.query_params.get('limit', 5))
@@ -136,25 +153,25 @@ class TopFishView(APIView):
 
 class SalesByPaymentMethodView(APIView):
     """Get sales breakdown by payment method"""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, CanViewFinancials]
     
     def get(self, request):
         data = DashboardManager.get_sales_by_payment_method(request.user)
         return Response(data)
 
 
-class InventoryOverviewView(APIView):
+class InventoryOverviewView(RoleRestrictedAPIView):
     """Get complete inventory overview"""
-    permission_classes = [permissions.IsAuthenticated]
+    role_flags = ('is_tenant_admin', 'is_accountant', 'is_sales_staff', 'is_store_accounts')
     
     def get(self, request):
         data = DashboardManager.get_inventory_overview(request.user)
         return Response(data)
 
 
-class InventoryByCategoryView(APIView):
+class InventoryByCategoryView(RoleRestrictedAPIView):
     """Get inventory breakdown by fish category"""
-    permission_classes = [permissions.IsAuthenticated]
+    role_flags = ('is_tenant_admin', 'is_accountant', 'is_sales_staff', 'is_store_accounts')
     
     def get(self, request):
         data = DashboardManager.get_inventory_by_category(request.user)
@@ -163,7 +180,7 @@ class InventoryByCategoryView(APIView):
 
 class BatchProfitMarginView(APIView):
     """Get profit margin by batch"""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, CanViewFinancials]
     
     def get(self, request):
         data = DashboardManager.get_batch_profit_margin(request.user)
@@ -172,7 +189,7 @@ class BatchProfitMarginView(APIView):
 
 class PaymentCashflowView(APIView):
     """Get cash flow data for last N days"""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, CanViewFinancials]
     
     def get(self, request):
         days = int(request.query_params.get('days', 30))
@@ -182,7 +199,7 @@ class PaymentCashflowView(APIView):
 
 class PaymentSummaryView(APIView):
     """Get payment summary"""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, CanViewFinancials]
     
     def get(self, request):
         data = DashboardManager.get_payment_summary(request.user)
@@ -191,7 +208,7 @@ class PaymentSummaryView(APIView):
 
 class CreditCustomersView(APIView):
     """Get credit customers with pending payments"""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, CanViewFinancials]
     
     def get(self, request):
         limit = int(request.query_params.get('limit', 10))
@@ -201,7 +218,7 @@ class CreditCustomersView(APIView):
 
 class OperationalDashboardView(APIView):
     """Get daily operational data"""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsTenantUser]
     
     def get(self, request):
         data = DashboardManager.get_operational_dashboard(request.user)
@@ -210,7 +227,7 @@ class OperationalDashboardView(APIView):
 
 class RiskAlertsView(APIView):
     """Get all risk alerts for the tenant"""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsTenantUser]
     
     def get(self, request):
         data = DashboardManager.get_risk_alerts(request.user)
@@ -239,16 +256,16 @@ class AdminDashboardView(APIView):
 # Legacy Views (for backward compatibility)
 class TodaySummaryView(APIView):
     """Get today's summary - total purchase, sales, profit"""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsTenantUser]
     
     def get(self, request):
         summary = DashboardManager.get_today_summary(request.user)
         return Response(summary)
 
 
-class MonthlySummaryView(APIView):
+class MonthlySummaryView(RoleRestrictedAPIView):
     """Get monthly summary for a specific year/month"""
-    permission_classes = [permissions.IsAuthenticated]
+    role_flags = ('is_tenant_admin', 'is_accountant', 'is_sales_staff', 'is_store_accounts')
     
     def get(self, request):
         year = request.query_params.get('year', timezone.now().year)
@@ -267,9 +284,9 @@ class MonthlySummaryView(APIView):
         return Response(summary)
 
 
-class YearlySummaryView(APIView):
+class YearlySummaryView(RoleRestrictedAPIView):
     """Get yearly summary with monthly breakdown"""
-    permission_classes = [permissions.IsAuthenticated]
+    role_flags = ('is_tenant_admin', 'is_accountant', 'is_sales_staff', 'is_store_accounts')
     
     def get(self, request):
         year = request.query_params.get('year', timezone.now().year)
@@ -288,7 +305,7 @@ class YearlySummaryView(APIView):
 
 class ProfitByPurchaseTypeView(APIView):
     """Get profit breakdown by purchase type (boat, auction, bucket)"""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, CanViewFinancials]
     
     def get(self, request):
         data = DashboardManager.get_profit_by_purchase_type(request.user)
@@ -297,7 +314,7 @@ class ProfitByPurchaseTypeView(APIView):
 
 class ProfitByPlaceView(APIView):
     """Get profit breakdown by place of buying"""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, CanViewFinancials]
     
     def get(self, request):
         data = DashboardManager.get_profit_by_place(request.user)
@@ -306,7 +323,7 @@ class ProfitByPlaceView(APIView):
 
 class ProfitByFishermanView(APIView):
     """Get profit breakdown by fisherman"""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, CanViewFinancials]
     
     def get(self, request):
         data = DashboardManager.get_profit_by_fisherman(request.user)
@@ -315,7 +332,7 @@ class ProfitByFishermanView(APIView):
 
 class ProfitByFishTypeView(APIView):
     """Get profit breakdown by fish type"""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, CanViewFinancials]
     
     def get(self, request):
         data = DashboardManager.get_profit_by_fish_type(request.user)
@@ -324,7 +341,7 @@ class ProfitByFishTypeView(APIView):
 
 class PendingPaymentsView(APIView):
     """Get pending payments summary"""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, CanViewFinancials]
     
     def get(self, request):
         data = DashboardManager.get_pending_payments(request.user)
@@ -333,7 +350,7 @@ class PendingPaymentsView(APIView):
 
 class DashboardOverviewView(APIView):
     """Get complete dashboard overview - combines all key metrics"""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, CanViewFinancials]
     
     def get(self, request):
         user = request.user
@@ -387,6 +404,7 @@ class TenantAdminDashboardView(APIView):
     
     def get(self, request):
         user = request.user
+        scope = _tenant_scope_kwargs(user)
         
         # Extract filter parameters
         filters = {
@@ -487,7 +505,7 @@ class BatchSpecificDashboardView(APIView):
     - Remaining stock
     - Expiry status
     """
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, CanViewFinancials]
     
     def get(self, request):
         batch_id = request.query_params.get('batch_id')
@@ -534,12 +552,13 @@ class BatchSpecificDashboardView(APIView):
         expiry_status = 'active'
         days_until_expiry = None
         
-        if batch.expiry_date:
-            if batch.expiry_date < today:
+        expiry_date = batch.estimated_expiry_date
+        if expiry_date:
+            if expiry_date < today:
                 expiry_status = 'expired'
-            elif batch.expiry_date <= today + timedelta(days=3):
+            elif expiry_date <= today + timedelta(days=3):
                 expiry_status = 'expiring_soon'
-                days_until_expiry = (batch.expiry_date - today).days
+                days_until_expiry = (expiry_date - today).days
         
         return Response({
             'batch': {
@@ -547,7 +566,7 @@ class BatchSpecificDashboardView(APIView):
                 'batch_number': batch.batch_number,
                 'fish_name': batch.fish.name if batch.fish else None,
                 'purchase_date': batch.date,
-                'expiry_date': batch.expiry_date,
+                'expiry_date': expiry_date,
             },
             'sales': {
                 'total_revenue': total_revenue,
@@ -572,7 +591,7 @@ class FilterOptionsView(APIView):
     Get available filter options for the dashboard.
     Returns lists of fish types, buyers, suppliers, and batches.
     """
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsTenantUser]
     
     def get(self, request):
         user = request.user

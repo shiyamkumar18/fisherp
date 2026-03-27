@@ -1,19 +1,21 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
+
 /* Auth UI: shared login/register layout for desktop + mobile */
 
 :root {
-    --auth-bg-1: #0b3c5d;
-    --auth-bg-2: #176087;
-    --auth-bg-3: #f3f8fb;
+    --auth-bg-1: #0f2234;
+    --auth-bg-2: #144a63;
+    --auth-bg-3: #f3fbfb;
     --auth-card: #ffffff;
     --auth-text: #10222d;
     --auth-subtext: #5b6f7b;
-    --auth-primary: #0c7cb8;
-    --auth-primary-dark: #086694;
+    --auth-primary: #0f766e;
+    --auth-primary-dark: #115e59;
     --auth-border: #d8e3ea;
     --auth-danger: #b42318;
     --auth-danger-bg: #fef3f2;
-    --auth-shadow: 0 20px 40px rgba(10, 44, 63, 0.18);
-    --auth-radius: 18px;
+    --auth-shadow: 0 28px 60px rgba(10, 44, 63, 0.18);
+    --auth-radius: 24px;
 }
 
 * {
@@ -22,9 +24,11 @@
 
 body {
     margin: 0;
-    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    font-family: "Manrope", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
     color: var(--auth-text);
-    background: linear-gradient(140deg, var(--auth-bg-1), var(--auth-bg-2));
+    background:
+        radial-gradient(circle at top left, rgba(20, 184, 166, 0.18), transparent 24%),
+        linear-gradient(140deg, var(--auth-bg-1), var(--auth-bg-2));
     min-height: 100vh;
 }
 
@@ -47,6 +51,7 @@ body {
     border-radius: var(--auth-radius);
     box-shadow: var(--auth-shadow);
     overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.18);
 }
 
 .auth-panel {
@@ -56,8 +61,8 @@ body {
 .brand-panel {
     color: #f6fbff;
     background:
-        radial-gradient(circle at 20% 18%, rgba(255, 255, 255, 0.2), transparent 40%),
-        linear-gradient(170deg, #0c4e73, #0b3c5d);
+        radial-gradient(circle at 20% 18%, rgba(255, 255, 255, 0.22), transparent 40%),
+        linear-gradient(170deg, #0f4f58, #102a43);
 }
 
 .auth-admin .brand-panel {
@@ -119,8 +124,8 @@ body {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    background: #eaf5fb;
-    border: 1px solid #cfe8f5;
+    background: #e8f7f4;
+    border: 1px solid #c9ebe5;
     border-radius: 14px;
     font-size: 28px;
     margin-bottom: 10px;
@@ -203,7 +208,7 @@ body {
     font-weight: 700;
     color: #fff;
     background: linear-gradient(135deg, var(--auth-primary), var(--auth-primary-dark));
-    box-shadow: 0 10px 20px rgba(12, 124, 184, 0.25);
+    box-shadow: 0 16px 32px rgba(15, 118, 110, 0.24);
     transition: transform 0.2s ease, opacity 0.2s ease;
 }
 
