@@ -29,7 +29,7 @@ def _make_user():
     company = _make_company()
     user = User(
         username=f"user_{uuid.uuid4().hex[:8]}",
-        email=f"u@test.com",
+        email="u@test.com",
         role="tenant_admin",
         company=company,
     )

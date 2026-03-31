@@ -11,19 +11,14 @@ from django.contrib.auth import get_user_model
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from companies.models import Company
-from trading.models import FishCategory, Fish, PurchaseBatch, Inventory, Buyer
+from trading.models import PurchaseBatch
+from tests.factories import (
+    UserFactory, FishFactory, BuyerFactory, PurchaseBatchFactory, InventoryFactory,
+)
 
 User = get_user_model()
 
 pytestmark = pytest.mark.django_db
-
-from tests.factories import (
-    CompanyFactory, UserFactory, FishCategoryFactory, FishFactory,
-    SupplierFactory, BuyerFactory, PurchaseBatchFactory, InventoryFactory,
-    SubscriptionTierFactory, SubscriptionFactory,
-)
-
 
 # ---------------------------------------------------------------------------
 # Full purchase-to-sale workflow

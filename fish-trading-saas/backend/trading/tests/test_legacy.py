@@ -3,7 +3,8 @@ from django.contrib.auth import get_user_model
 from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
 from decimal import Decimal
-from datetime import datetime, timedelta
+from datetime import timedelta
+import threading
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 from unittest.mock import patch
@@ -205,7 +206,7 @@ class FishAPITest(APITestCase):
             email='other@example.com',
             password='testpass123'
         )
-        other_fish = Fish.objects.create(
+        Fish.objects.create(
             name="Other Tenant's Fish",
             category=self.category,
             unit_type="kg",
@@ -1010,8 +1011,6 @@ class InventoryAPITest(APITestCase):
     
     def test_expiring_soon_endpoint(self):
         """Test expiring soon items endpoint"""
-        from datetime import datetime, timedelta
-        
         self.inventory.expiry_date = timezone.now().date() + timedelta(days=2)
         self.inventory.save()
         
@@ -1341,7 +1340,7 @@ class SupplierModelMethodTest(TestCase):
         category = FishCategory.objects.create(name="Out Cat")
         fish = Fish.objects.create(name="Out Fish", category=category, unit_type="kg", tenant=tenant)
         
-        batch = PurchaseBatch.objects.create(
+        PurchaseBatch.objects.create(
             purchase_type="direct",
             supplier=self.supplier,
             fish=fish,
@@ -1568,11 +1567,7 @@ class InventoryModelMethodTest(TestCase):
         value = self.inventory.get_stock_value()
         
         self.assertGreater(value, Decimal("0.00"))
-    
-    
-import threading
-from concurrent.futures import ThreadPoolExecutor
-from django.db import transaction
+
 
 class InventoryConcurrencyTest(TestCase):
     """Test inventory update concurrency"""

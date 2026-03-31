@@ -10,7 +10,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from companies.models import Company
-from trading.models import FishCategory, Fish, Supplier, Buyer, PurchaseBatch, Inventory
+from trading.models import FishCategory, Fish, Buyer, PurchaseBatch, Inventory
 
 User = get_user_model()
 

@@ -5,10 +5,8 @@ FishCategory, Fish, Supplier, Buyer, PurchaseBatch, Sale, Payment, Inventory
 import pytest
 from decimal import Decimal
 from django.contrib.auth import get_user_model
-from django.core.exceptions import ValidationError
-
 from companies.models import Company
-from trading.models import FishCategory, Fish, Supplier, Buyer, PurchaseBatch, Sale, Inventory
+from trading.models import FishCategory, Fish, Supplier, Buyer, PurchaseBatch
 
 User = get_user_model()
 

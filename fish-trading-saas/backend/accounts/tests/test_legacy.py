@@ -2,9 +2,6 @@ from django.test import TestCase, override_settings
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient, APITestCase
 from rest_framework import status
-from unittest.mock import patch, MagicMock
-from decimal import Decimal
-# FIX 7: timezone and timedelta were used in DataMaskingTestCase but never imported
 from django.utils import timezone
 from datetime import timedelta
 from companies.models import Company
