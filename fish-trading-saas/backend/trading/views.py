@@ -573,6 +573,7 @@ class InventoryViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
         serializer.instance = instance
 
     def perform_update(self, serializer):
+        # InventoryService validates tenant scoping on init
         InventoryService(self.request.user)
         serializer.save()
 
