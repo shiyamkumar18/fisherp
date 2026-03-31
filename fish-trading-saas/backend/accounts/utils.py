@@ -155,13 +155,13 @@ def clear_failed_login(email):
 def validate_password_strength(password):
     """
     Validate password strength:
-    - Min 8 chars
+    - Min 12 chars
     - At least 1 uppercase
     - At least 1 number
     - At least 1 special character
     """
-    if len(password) < 8:
-        return False, "Password must be at least 8 characters"
+    if len(password) < 12:
+        return False, "Password must be at least 12 characters"
 
     if not re.search(r"[A-Z]", password):
         return False, "Password must contain at least 1 uppercase letter"

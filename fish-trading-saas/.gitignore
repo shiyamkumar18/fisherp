@@ -9,12 +9,13 @@ env/
 
 # Local databases and logs
 *.sqlite3
-logs/
+logs/*.log
 *.log
 
 # Environment files
 .env
 .env.*
+!.env.example
 
 # OS/editor noise
 .DS_Store

@@ -48,6 +48,7 @@ SHARED_APPS = [
 TENANT_APPS = [
     "rest_framework",
     "rest_framework_simplejwt",
+    "rest_framework_simplejwt.token_blacklist",
     "drf_spectacular",
     "corsheaders",
     "django_filters",
@@ -76,6 +77,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "subscriptions.middleware.SubscriptionEnforcementMiddleware",
+    "config.middleware_security.SecurityHeadersMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -133,7 +135,10 @@ AUTH_USER_MODEL = "accounts.User"
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
-    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
+    {
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+        "OPTIONS": {"min_length": 12},
+    },
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
@@ -142,6 +147,12 @@ AUTH_PASSWORD_VALIDATORS = [
 LOGIN_REDIRECT_URL = "/api/auth/profile/"
 LOGOUT_REDIRECT_URL = "/"
 LOGIN_URL = "/api-auth/login/"
+
+# Custom authentication backend: accepts email or username
+AUTHENTICATION_BACKENDS = [
+    "accounts.authentication.EmailOrUsernameBackend",
+    "django.contrib.auth.backends.ModelBackend",
+]
 
 # Security Headers
 SECURE_BROWSER_XSS_FILTER = True
@@ -153,6 +164,7 @@ if not DEBUG:
     SECURE_HSTS_SECONDS = 31536000  # 1 year
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
+    SECURE_SSL_REDIRECT = True
 
 # Secure Cookies
 SESSION_COOKIE_SECURE = not DEBUG
@@ -239,10 +251,11 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://localhost:8000",
     "http://localhost:5173",
-] if DEBUG else [
-    "https://app.fisherp.com",
-    "https://fisherp.com",
-]
+] if DEBUG else list(filter(None, [
+    origin.strip()
+    for origin in os.getenv("CORS_ALLOWED_ORIGINS", "https://app.fisherp.com,https://fisherp.com").split(",")
+    if origin.strip()
+]))
 
 CORS_ALLOW_CREDENTIALS = True
 SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
@@ -323,21 +336,34 @@ LOGGING = {
             'class': 'logging.StreamHandler',
             'formatter': 'simple',
         },
+        'security_file': {
+            'level': 'INFO',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': BASE_DIR / 'logs/security.log',
+            'maxBytes': 1024*1024*5,  # 5MB
+            'backupCount': 10,
+            'formatter': 'verbose',
+        },
     },
     'root': {
-        'handlers': ['console'] if DEBUG else ['file'],
+        'handlers': ['console', 'file'],
         'level': 'INFO',
     },
     'loggers': {
         'django.security': {
-            'handlers': ['console'],
+            'handlers': ['console', 'security_file'],
             'level': 'INFO',
             'propagate': False,
         },
         'django.request': {
-            'handlers': ['file' if not DEBUG else 'console'],
+            'handlers': ['file', 'console'],
             'level': 'ERROR',
             'propagate': True,
+        },
+        'accounts.auth': {
+            'handlers': ['security_file', 'console'],
+            'level': 'INFO',
+            'propagate': False,
         },
     },
 }
