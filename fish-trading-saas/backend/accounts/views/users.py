@@ -4,7 +4,6 @@ from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.contrib.auth import get_user_model
-from django.shortcuts import redirect
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import RedirectView
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -28,7 +27,7 @@ class UserRegistrationView(APIView):
     """
     permission_classes = [permissions.AllowAny]
 
-    def post(self, request):
+    def post(self, request):  # noqa: C901
         from companies.models import Company
 
         company_name = request.data.get('company_name', '').strip()

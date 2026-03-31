@@ -1,8 +1,6 @@
 from django.contrib import admin
 from django.urls import path, include
 from django.views.generic import TemplateView
-from django.contrib.auth import views as auth_views
-from django.views.generic import TemplateView
 from accounts.views import CustomProfileRedirectView, UnifiedLoginView, TenantRegisterView, PlatformLoginView
 from dashboard.admin import dashboard_site
 from accounts.admin_sites import platform_admin_site

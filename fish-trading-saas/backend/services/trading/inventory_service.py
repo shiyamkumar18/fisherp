@@ -3,7 +3,6 @@ from django.utils import timezone
 from datetime import timedelta
 from ..base import BaseService
 from trading.models import Inventory
-from trading.serializers import InventorySerializer
 
 
 class InventoryService(BaseService):

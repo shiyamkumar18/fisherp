@@ -1,4 +1,4 @@
-from rest_framework import generics, permissions, status
+from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.utils import timezone
@@ -9,7 +9,7 @@ from datetime import timedelta
 from .models import DashboardManager
 from trading.models import Sale, Inventory, Fish, Buyer, Supplier, PurchaseBatch
 from accounts.permissions import (
-    IsPlatformOperator, IsTenantAdmin, CanViewFinancials, IsTenantUser, HasAnyRole
+    IsPlatformOperator, CanViewFinancials, IsTenantUser, HasAnyRole
 )
 
 

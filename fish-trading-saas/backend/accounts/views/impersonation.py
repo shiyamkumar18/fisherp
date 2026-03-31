@@ -22,10 +22,10 @@ class PlatformImpersonationPermission(permissions.BasePermission):
     def has_permission(self, request, view):
         return bool(
             request.user.is_authenticated and (
-                request.user.is_superuser or
-                getattr(request.user, "is_platform_operator", False) or
-                getattr(request.user, "is_platform_maintainer", False) or
-                getattr(request.user, "is_platform_support", False)
+                request.user.is_superuser
+                or getattr(request.user, "is_platform_operator", False)
+                or getattr(request.user, "is_platform_maintainer", False)
+                or getattr(request.user, "is_platform_support", False)
             )
         )
 

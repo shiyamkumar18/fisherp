@@ -1,6 +1,5 @@
-from django.db.models.signals import post_save, post_delete
+from django.db.models.signals import post_save
 from django.dispatch import receiver
-from accounts.models_audit import AuditLog
 
 # Connect trading signals to accounts AuditLog
 # Already connected in accounts/signals.py

@@ -1,7 +1,6 @@
-from django.db import models
-from django.db.models import Sum, Count, F, Q, Avg, Max, Min
+from django.db.models import Sum, Count, F, Q, Min
 from django.utils import timezone
-from datetime import datetime, timedelta
+from datetime import timedelta
 from decimal import Decimal
 
 from trading.models.purchase_batch import PurchaseBatch

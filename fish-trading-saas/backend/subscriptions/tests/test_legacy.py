@@ -3,12 +3,11 @@ from django.contrib.auth import get_user_model
 from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
 from decimal import Decimal
-from datetime import datetime, timedelta
+from datetime import timedelta
 from django.utils import timezone
 from unittest.mock import patch
 
 from subscriptions.models import Subscription, SubscriptionTier
-from accounts.models import User
 
 User = get_user_model()
 
@@ -66,7 +65,7 @@ class SubscriptionTierModelTest(TestCase):
     
     def test_tier_ordering(self):
         """Test tier ordering by display_order"""
-        tier2 = SubscriptionTier.objects.create(
+        SubscriptionTier.objects.create(
             name="basic",
             display_order=1,
             price_monthly=Decimal("29.00")

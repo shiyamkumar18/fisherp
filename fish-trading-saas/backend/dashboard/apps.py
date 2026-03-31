@@ -5,4 +5,4 @@ class DashboardConfig(AppConfig):
     name = "dashboard"
     
     def ready(self):
-        import dashboard.signals  # Future
+        import dashboard.signals  # noqa: F401

@@ -3,12 +3,11 @@ Trading models package.
 All models are imported here for easy access.
 """
 
-from .fish_category import FishCategory
-from .fish import Fish
-from .supplier import Supplier
-from .buyer import Buyer
-from .purchase_batch import PurchaseBatch
-from .sale import Sale
-from .payment import Payment
-from .inventory import Inventory
-
+from .fish_category import FishCategory  # noqa: F401
+from .fish import Fish  # noqa: F401
+from .supplier import Supplier  # noqa: F401
+from .buyer import Buyer  # noqa: F401
+from .purchase_batch import PurchaseBatch  # noqa: F401
+from .sale import Sale  # noqa: F401
+from .payment import Payment  # noqa: F401
+from .inventory import Inventory  # noqa: F401

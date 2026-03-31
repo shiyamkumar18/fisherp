@@ -152,7 +152,7 @@ class SubscriptionTier(models.Model):
     def __str__(self):
         return self.name.title()
     
-    def get_features_list(self):
+    def get_features_list(self):  # noqa: C901
         """Return list of enabled features"""
         features = []
         
@@ -450,8 +450,8 @@ class Subscription(models.Model):
             addon__addon_type=addon_type,
             status='active'
         ).filter(
-            models.Q(expiry_date__isnull=True) | 
-            models.Q(expiry_date__gte=timezone.now())
+            models.Q(expiry_date__isnull=True)
+            | models.Q(expiry_date__gte=timezone.now())
         ).exists()
     
     def get_active_addons(self):
@@ -460,8 +460,8 @@ class Subscription(models.Model):
         return self.addon_purchases.filter(
             status='active'
         ).filter(
-            models.Q(expiry_date__isnull=True) | 
-            models.Q(expiry_date__gte=timezone.now())
+            models.Q(expiry_date__isnull=True)
+            | models.Q(expiry_date__gte=timezone.now())
         )
     
     def can_access_feature(self, feature_name):

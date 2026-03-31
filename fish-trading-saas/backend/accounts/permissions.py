@@ -409,7 +409,7 @@ class LoginThrottle(permissions.BasePermission):
     message = "Too many login attempts. Try again later."
 
     def has_permission(self, request, view):
-        from accounts.models_audit import LoginAttempt, get_client_ip
+        from accounts.models_audit import LoginAttempt
         email = request.data.get('email') or request.data.get('username')
         if email:
             attempts = LoginAttempt.get_failed_attempts(email, minutes=60)

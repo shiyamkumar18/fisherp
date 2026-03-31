@@ -89,7 +89,7 @@ class Company(models.Model):
     def get_full_address(self):
         """Return formatted full address"""
         parts = [self.address_line1, self.address_line2, self.city, self.state,
-             self.postal_code, self.country]
+                 self.postal_code, self.country]
         return ", ".join(filter(None, parts))
     
     def get_primary_contact(self):

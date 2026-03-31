@@ -539,7 +539,7 @@ class TenantIsolationTestCase(TestCase):
 
     def test_platform_operator_needs_impersonation(self):
         """Test platform operator cannot directly access tenant data"""
-        _platform_op = User.objects.create_user(
+        User.objects.create_user(
             username='platform_op',
             password='testpass123',
             email='platform@example.com',
