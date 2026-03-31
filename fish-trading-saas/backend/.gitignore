@@ -1,0 +1,57 @@
+# =============================================================================
+# FisherP Backend – .gitignore
+# =============================================================================
+
+# --- Secrets & credentials ---
+.env
+.env.local
+.env.production
+*.pem
+*.key
+*.crt
+*.p12
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+.Python
+pip-wheel-metadata/
+
+# --- Virtual environments ---
+venv/
+.venv/
+env/
+ENV/
+
+# --- Django ---
+db.sqlite3
+*.sqlite3
+staticfiles/
+media/
+logs/*.log
+*.log
+
+# --- Celery ---
+celerybeat-schedule
+celerybeat.pid
+
+# --- Testing ---
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+
+# --- IDE / OS ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
