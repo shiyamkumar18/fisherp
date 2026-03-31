@@ -92,18 +92,16 @@ def _make_inventory(batch, fish=None, tenant=None):
     fish = fish or batch.fish
     company = batch.company
     inv, _ = Inventory.objects.get_or_create(
-        batch=batch,
+        purchase_batch=batch,
         fish=fish,
         defaults=dict(
             tenant=tenant,
             company=company,
-            total_packages_purchased=batch.number_of_packages,
-            packages_sold=0,
+            initial_packages=batch.number_of_packages,
             remaining_packages=batch.number_of_packages,
-            total_weight_purchased=batch.total_weight,
-            remaining_weight=batch.total_weight,
-            cost_per_kg=batch.actual_cost_per_kg,
-            is_active=True,
+            sold_packages=0,
+            initial_weight_kg=batch.total_weight,
+            remaining_weight_kg=batch.total_weight,
         ),
     )
     return inv

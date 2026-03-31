@@ -103,12 +103,22 @@ class TestRoleReadPermissions:
             resp = client.get(url)
             assert resp.status_code == status.HTTP_200_OK, f"Accountant failed GET {url}"
 
+    # Trader-accessible URLs (sales and read-only fish/category)
+    TRADER_URLS = [
+        "/api/trading/fish-categories/",
+        "/api/trading/fish/",
+        "/api/trading/sales/",
+        "/api/trading/inventory/",
+    ]
+
     def test_trader_can_read_trading_data(self):
+        """Traders can access sales-side endpoints.
+        Note: purchase-batches require store/accountant/admin per business rules."""
         tenant = _make_user(role="tenant_admin")
         trader = _make_user(role="trader", company=tenant.company)
         client = APIClient()
         client.force_authenticate(user=trader)
-        for url in self.TRADING_URLS:
+        for url in self.TRADER_URLS:
             resp = client.get(url)
             assert resp.status_code == status.HTTP_200_OK, f"Trader failed GET {url}"
 

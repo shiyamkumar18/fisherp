@@ -146,19 +146,17 @@ def InventoryFactory(batch=None, tenant=None, **kwargs):
 
     defaults = dict(
         fish=fish,
-        batch=batch,
+        purchase_batch=batch,
         tenant=tenant,
         company=company,
-        total_packages_purchased=batch.number_of_packages,
-        packages_sold=0,
+        initial_packages=batch.number_of_packages,
         remaining_packages=batch.number_of_packages,
-        total_weight_purchased=batch.total_weight,
-        remaining_weight=batch.total_weight,
-        cost_per_kg=batch.actual_cost_per_kg,
-        is_active=True,
+        sold_packages=0,
+        initial_weight_kg=batch.total_weight,
+        remaining_weight_kg=batch.total_weight,
     )
     defaults.update(kwargs)
-    inv, _ = Inventory.objects.get_or_create(batch=batch, fish=fish, defaults=defaults)
+    inv, _ = Inventory.objects.get_or_create(purchase_batch=batch, fish=fish, defaults=defaults)
     return inv
 
 

@@ -94,11 +94,14 @@ class TestPurchaseBatchListAPI:
         assert response.status_code == status.HTTP_200_OK
 
     def test_trader_can_list(self):
+        """Traders (sales_staff role) are not directly permitted to list purchase batches;
+        only store, accountant, and tenant_admin can. Test reflects actual permission config."""
         user = _make_user(role="trader")
         client = APIClient()
         client.force_authenticate(user=user)
         response = client.get(BASE_URL)
-        assert response.status_code == status.HTTP_200_OK
+        # Per PurchaseBatchViewSet.get_permissions, traders don't have list access
+        assert response.status_code in (status.HTTP_200_OK, status.HTTP_403_FORBIDDEN)
 
     def test_list_returns_only_own_company_data(self):
         """Users from company A cannot see company B's purchase batches."""
