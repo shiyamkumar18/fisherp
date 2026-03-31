@@ -207,7 +207,7 @@ services:
     depends_on:
       - backend
       - redis
-    command: celery -A trading.celery:app beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    command: celery -A trading.celery:app beat --loglevel=info
 
 volumes:
   postgres_data:

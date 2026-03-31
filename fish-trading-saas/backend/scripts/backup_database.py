@@ -7,7 +7,6 @@ Automated PostgreSQL backup script for FisherP.
 Features:
   - Creates compressed pg_dump backups (.sql.gz)
   - Retains the last N days of backups (default: 30)
-  - Optionally encrypts the archive with GPG
   - Logs success/failure to stdout (suitable for cron)
   - Exits with non-zero status on failure (for alerting)
 
@@ -96,19 +95,25 @@ def create_backup(output_dir: Path) -> Path:
 
     cmd = ["pg_dump"] + _pg_args()
 
-    with gzip.open(backup_path, "wt", encoding="utf-8") as gz_file:
+    with gzip.open(backup_path, "wb") as gz_file:
         result = subprocess.run(
             cmd,
             env=_pg_env(),
-            stdout=gz_file,
+            stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            text=True,
+            text=False,
         )
+
+        if result.stdout:
+            gz_file.write(result.stdout)
 
     if result.returncode != 0:
         # Remove incomplete file
         backup_path.unlink(missing_ok=True)
-        raise RuntimeError(f"pg_dump failed (exit {result.returncode}):\n{result.stderr}")
+        stderr_text = (
+            result.stderr.decode("utf-8", errors="replace") if result.stderr else ""
+        )
+        raise RuntimeError(f"pg_dump failed (exit {result.returncode}):\n{stderr_text}")
 
     size_mb = backup_path.stat().st_size / (1024 * 1024)
     log.info("Backup complete: %s (%.2f MB)", backup_path.name, size_mb)

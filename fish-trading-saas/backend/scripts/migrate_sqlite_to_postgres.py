@@ -85,7 +85,7 @@ def _table_columns(sqlite_conn: sqlite3.Connection, table: str) -> list[str]:
 # Phases
 # ---------------------------------------------------------------------------
 
-def phase1_validate_connections(dry_run: bool) -> tuple[sqlite3.Connection, "psycopg2.connection"]:
+def phase1_validate_connections(dry_run: bool) -> tuple[sqlite3.Connection | None, "psycopg2.connection"]:
     """Validate that both databases are accessible."""
     print("\n[Phase 1] Validating database connections …")
 
@@ -121,7 +121,7 @@ def phase2_run_migrations(dry_run: bool) -> None:
 
     from django.core.management import call_command  # noqa: PLC0415
 
-    call_command("migrate", "--database", "default", verbosity=1)
+    call_command("migrate", database="default", verbosity=1)
     print("  [OK]  Migrations applied.")
 
 
@@ -159,10 +159,9 @@ def phase3_copy_data(
             col_names = ", ".join(f'"{c}"' for c in columns)
             sql = f'INSERT INTO "{table}" ({col_names}) VALUES ({placeholders}) ON CONFLICT DO NOTHING'
 
-            # Disable triggers/FK checks during bulk load for performance.
-            pg_cur.execute("SET session_replication_role = 'replica'")
+            # Insert rows in FK-safe table order; do not change
+            # session_replication_role so this script works with non-superuser roles.
             pg_cur.executemany(sql, [tuple(r) for r in rows])
-            pg_cur.execute("SET session_replication_role = 'origin'")
 
             pg_conn.commit()
             stats[table] = len(rows)
@@ -195,7 +194,7 @@ def phase4_validate(
             print(f"  [WARN] {table}: copy failed – skipping validation")
             continue
 
-    sqlite_count = sqlite_conn.execute(f'SELECT COUNT(*) FROM "{table}"').fetchone()[0]
+        sqlite_count = sqlite_conn.execute(f'SELECT COUNT(*) FROM "{table}"').fetchone()[0]
         pg_cur.execute(f'SELECT COUNT(*) FROM "{table}"')
         pg_count = pg_cur.fetchone()[0]
 
