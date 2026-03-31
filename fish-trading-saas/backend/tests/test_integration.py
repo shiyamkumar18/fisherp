@@ -18,14 +18,6 @@ User = get_user_model()
 
 pytestmark = pytest.mark.django_db
 
-
-# ---------------------------------------------------------------------------
-# Import factories
-# ---------------------------------------------------------------------------
-import sys
-import os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 from tests.factories import (
     CompanyFactory, UserFactory, FishCategoryFactory, FishFactory,
     SupplierFactory, BuyerFactory, PurchaseBatchFactory, InventoryFactory,
