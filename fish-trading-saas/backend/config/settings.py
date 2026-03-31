@@ -160,7 +160,8 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
 REFERRER_POLICY = 'strict-origin-when-cross-origin'
 
-if not DEBUG:
+_testing = "test" in sys.argv
+if not DEBUG and not _testing:
     SECURE_HSTS_SECONDS = 31536000  # 1 year
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
