@@ -1,0 +1,215 @@
+# docker-compose-postgres.yml
+# ---------------------------------------------------------------------------
+# Production-grade PostgreSQL stack for FisherP.
+#
+# Services:
+#   postgres   – Primary PostgreSQL 15 database
+#   pgbouncer  – Connection pooler (transaction mode)
+#   redis      – Cache & Celery broker
+#   backend    – Django / Gunicorn application server
+#   celery     – Celery worker
+#   celerybeat – Celery periodic task scheduler
+#
+# Usage:
+#   docker compose -f docker-compose-postgres.yml up -d
+#
+# Environment:
+#   Copy .env.example → .env and fill in all required values.
+# ---------------------------------------------------------------------------
+
+version: "3.9"
+
+services:
+  # -------------------------------------------------------------------------
+  # PostgreSQL 15 primary
+  # -------------------------------------------------------------------------
+  postgres:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres_init.sql:/docker-entrypoint-initdb.d/postgres_init.sql:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command: >
+      postgres
+        -c max_connections=200
+        -c shared_buffers=256MB
+        -c effective_cache_size=768MB
+        -c maintenance_work_mem=64MB
+        -c checkpoint_completion_target=0.9
+        -c wal_buffers=16MB
+        -c default_statistics_target=100
+        -c random_page_cost=1.1
+        -c effective_io_concurrency=200
+        -c log_min_duration_statement=1000
+        -c log_line_prefix='%t [%p]: [%l-1] user=%u,db=%d,app=%a,client=%h '
+        -c log_checkpoints=on
+        -c log_connections=on
+        -c log_disconnections=on
+        -c log_lock_waits=on
+        -c deadlock_timeout=1s
+
+  # -------------------------------------------------------------------------
+  # PgBouncer connection pooler
+  # -------------------------------------------------------------------------
+  pgbouncer:
+    image: bitnami/pgbouncer:1.22.1
+    restart: unless-stopped
+    environment:
+      POSTGRESQL_HOST: postgres
+      POSTGRESQL_PORT: 5432
+      POSTGRESQL_DATABASE: ${DB_NAME}
+      POSTGRESQL_USERNAME: ${DB_USER}
+      POSTGRESQL_PASSWORD: ${DB_PASSWORD}
+      PGBOUNCER_DATABASE: ${DB_NAME}
+      PGBOUNCER_POOL_MODE: transaction
+      PGBOUNCER_MAX_CLIENT_CONN: 200
+      PGBOUNCER_DEFAULT_POOL_SIZE: 20
+      PGBOUNCER_MIN_POOL_SIZE: 5
+      PGBOUNCER_RESERVE_POOL_SIZE: 5
+      PGBOUNCER_SERVER_IDLE_TIMEOUT: 600
+      PGBOUNCER_CLIENT_IDLE_TIMEOUT: 0
+      PGBOUNCER_LOG_CONNECTIONS: 0
+      PGBOUNCER_LOG_DISCONNECTIONS: 0
+      PGBOUNCER_STATS_USERS: ${DB_USER}
+    ports:
+      - "6432:6432"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # -------------------------------------------------------------------------
+  # Redis (cache + Celery broker)
+  # -------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # -------------------------------------------------------------------------
+  # Django / Gunicorn backend
+  # -------------------------------------------------------------------------
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings_postgres
+      SECRET_KEY: ${SECRET_KEY}
+      DEBUG: "False"
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS}
+      # Route through PgBouncer
+      DB_ENGINE: postgresql
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_HOST: pgbouncer
+      DB_PORT: "6432"
+      DB_CONN_MAX_AGE: "0"          # Must be 0 when using PgBouncer transaction mode
+      USE_PGBOUNCER: "True"
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      pgbouncer:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             python manage.py collectstatic --noinput &&
+             gunicorn config.wsgi:application
+               --bind 0.0.0.0:8000
+               --workers 4
+               --worker-class sync
+               --timeout 120
+               --access-logfile -
+               --error-logfile -"
+    volumes:
+      - static_files:/app/staticfiles
+      - ./logs:/app/logs
+
+  # -------------------------------------------------------------------------
+  # Celery worker
+  # -------------------------------------------------------------------------
+  celery:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings_postgres
+      SECRET_KEY: ${SECRET_KEY}
+      DEBUG: "False"
+      DB_ENGINE: postgresql
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_HOST: pgbouncer
+      DB_PORT: "6432"
+      DB_CONN_MAX_AGE: "0"
+      USE_PGBOUNCER: "True"
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+    depends_on:
+      - backend
+      - redis
+    command: celery -A trading.celery:app worker --loglevel=info --concurrency=4
+
+  # -------------------------------------------------------------------------
+  # Celery Beat (periodic tasks)
+  # -------------------------------------------------------------------------
+  celerybeat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings_postgres
+      SECRET_KEY: ${SECRET_KEY}
+      DEBUG: "False"
+      DB_ENGINE: postgresql
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_HOST: pgbouncer
+      DB_PORT: "6432"
+      DB_CONN_MAX_AGE: "0"
+      USE_PGBOUNCER: "True"
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+    depends_on:
+      - backend
+      - redis
+    command: celery -A trading.celery:app beat --loglevel=info
+
+volumes:
+  postgres_data:
+  redis_data:
+  static_files:

@@ -7,6 +7,8 @@ from rest_framework.response import Response
 from django.db import connection
 from django.core.cache import cache
 
+from health.postgres_health import full_health_check
+
 logger = logging.getLogger(__name__)
 
 class HealthLiveView(APIView):
@@ -40,3 +42,18 @@ class HealthReadyView(APIView):
                 {'status': 'not ready', 'error': 'dependency check failed'},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE
             )
+
+
+class HealthPostgresView(APIView):
+    """Detailed PostgreSQL health check (connection + replication lag)."""
+
+    permission_classes = [permissions.IsAdminUser]
+
+    def get(self, request):
+        result = full_health_check()
+        http_status = (
+            status.HTTP_200_OK
+            if result["overall"] in ("ok", "not_applicable", "warning")
+            else status.HTTP_503_SERVICE_UNAVAILABLE
+        )
+        return Response(result, status=http_status)
