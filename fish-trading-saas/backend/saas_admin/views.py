@@ -13,11 +13,10 @@ Security:
 - No business data visible without impersonation
 """
 
-from rest_framework import generics, permissions, status
+from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.decorators import api_view, permission_classes
-from django.db.models import Count, Sum, Q, F
+from django.db.models import Count, Sum, Q
 from django.utils import timezone
 from django.contrib.auth import get_user_model
 from django.core.paginator import Paginator
@@ -25,11 +24,10 @@ from datetime import timedelta
 import secrets
 import string
 
-from accounts.models import User
 from accounts.permissions import IsPlatformOperator, CanUseImpersonation
 from accounts.models_audit import AuditLog, ImpersonationLog, get_client_ip
 from companies.models import Company
-from subscriptions.models import Subscription, SubscriptionTier, SubscriptionAddOn
+from subscriptions.models import Subscription, SubscriptionTier
 
 User = get_user_model()
 
@@ -63,7 +61,6 @@ class PlatformDashboardView(APIView):
     def get(self, request):
         now = timezone.now()
         thirty_days_ago = now - timedelta(days=30)
-        seven_days_ago = now - timedelta(days=7)
         
         # ===== TENANT STATS =====
         total_tenants = Company.objects.count()
@@ -76,7 +73,7 @@ class PlatformDashboardView(APIView):
         active_tenants = active_subscriptions.count()
         
         expired_tenants = Subscription.objects.filter(
-            Q(status='expired') | 
+            Q(status='expired') |  # noqa: W504
             Q(expiry_date__lt=now.date())
         ).count()
         
@@ -244,7 +241,7 @@ class TenantListView(APIView):
                 ).distinct()
             elif status_filter == 'expired':
                 companies = companies.filter(
-                    Q(subscription__status='expired') |
+                    Q(subscription__status='expired') |  # noqa: W504
                     Q(subscription__expiry_date__lt=timezone.now().date())
                 ).distinct()
             elif status_filter == 'suspended':
@@ -252,8 +249,8 @@ class TenantListView(APIView):
         
         if search:
             companies = companies.filter(
-                Q(name__icontains=search) |
-                Q(slug__icontains=search) |
+                Q(name__icontains=search) |  # noqa: W504
+                Q(slug__icontains=search) |  # noqa: W504
                 Q(admin__email__icontains=search)
             )
         
@@ -984,9 +981,9 @@ class TenantSearchView(APIView):
             )
         
         companies = Company.objects.filter(
-            Q(name__icontains=query) |
-            Q(slug__icontains=query) |
-            Q(admin__email__icontains=query) |
+            Q(name__icontains=query) |  # noqa: W504
+            Q(slug__icontains=query) |  # noqa: W504
+            Q(admin__email__icontains=query) |  # noqa: W504
             Q(phone__icontains=query)
         )[:10]
         
@@ -994,10 +991,10 @@ class TenantSearchView(APIView):
         for company in companies:
             try:
                 subscription = Subscription.objects.get(company=company)
-                status = subscription.status
+                sub_status = subscription.status
                 tier = subscription.tier.name
             except Subscription.DoesNotExist:
-                status = 'none'
+                sub_status = 'none'
                 tier = None
             
             results.append({
@@ -1006,7 +1003,7 @@ class TenantSearchView(APIView):
                 'slug': company.slug,
                 'email': company.admin.email if company.admin else None,
                 'phone': company.phone,
-                'subscription_status': status,
+                'subscription_status': sub_status,
                 'tier': tier,
             })
         
@@ -1659,10 +1656,6 @@ class BackupStatusView(APIView):
     
     def get(self, request):
         # Simulated backup status (in production, connect to actual backup system)
-        # Get database size
-        from django.db import connection
-        from django.db.backends.utils import CursorDebugWrapper
-        
         # Get last audit log timestamp as proxy for data freshness
         last_activity = AuditLog.objects.order_by('-timestamp').first()
         
