@@ -11,6 +11,7 @@ from rest_framework.test import APIClient
 
 from companies.models import Company
 from trading.models import FishCategory, Fish, Buyer, PurchaseBatch, Inventory
+from tests.factories import SubscriptionFactory
 
 User = get_user_model()
 
@@ -86,22 +87,22 @@ def _make_buyer(tenant=None, company=None):
     )
 
 
-def _make_inventory(batch, fish=None, tenant=None):
+def _make_inventory(purchase_batch, fish=None, tenant=None):
     """Create or update inventory for a purchase batch."""
-    tenant = tenant or batch.tenant
-    fish = fish or batch.fish
-    company = batch.company
+    tenant = tenant or purchase_batch.tenant
+    fish = fish or purchase_batch.fish
+    company = purchase_batch.company
     inv, _ = Inventory.objects.get_or_create(
-        purchase_batch=batch,
+        purchase_batch=purchase_batch,
         fish=fish,
         defaults=dict(
             tenant=tenant,
             company=company,
-            initial_packages=batch.number_of_packages,
-            remaining_packages=batch.number_of_packages,
+            initial_packages=purchase_batch.number_of_packages,
+            remaining_packages=purchase_batch.number_of_packages,
             sold_packages=0,
-            initial_weight_kg=batch.total_weight,
-            remaining_weight_kg=batch.total_weight,
+            initial_weight_kg=purchase_batch.total_weight,
+            remaining_weight_kg=purchase_batch.total_weight,
         ),
     )
     return inv
@@ -139,7 +140,9 @@ class TestSaleCreateAPI:
         assert response.status_code in (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN)
 
     def test_create_sale_requires_batch_and_buyer(self):
+        """Sending incomplete data should return 400 validation error."""
         user = _make_user(role="tenant_admin")
+        SubscriptionFactory(company=user.company)
         client = APIClient()
         client.force_authenticate(user=user)
         response = client.post(SALES_URL, {"sale_type": "retail"}, format="json")
@@ -148,6 +151,7 @@ class TestSaleCreateAPI:
     def test_create_sale_success(self):
         """Test successful sale creation with valid data."""
         user = _make_user(role="tenant_admin")
+        SubscriptionFactory(company=user.company)
         batch = _make_purchase_batch(tenant=user)
         buyer = _make_buyer(tenant=user)
         _make_inventory(batch)
@@ -165,17 +169,15 @@ class TestSaleCreateAPI:
             "amount_received": "0.00",
         }
         response = client.post(SALES_URL, payload, format="json")
-        # 201 = success, 400 = business logic validation
-        assert response.status_code in (status.HTTP_201_CREATED, status.HTTP_400_BAD_REQUEST)
-        if response.status_code == status.HTTP_201_CREATED:
-            # Verify calculated fields
-            data = response.data
-            total_revenue = Decimal(str(data.get("total_revenue", "0")))
-            assert total_revenue > 0
+        assert response.status_code == status.HTTP_201_CREATED
+        data = response.data
+        total_revenue = Decimal(str(data.get("total_revenue", "0")))
+        assert total_revenue > 0
 
     def test_sale_profit_is_calculated(self):
         """profit = (selling_price - cost_price) × weight"""
         user = _make_user(role="tenant_admin")
+        SubscriptionFactory(company=user.company)
         batch = _make_purchase_batch(
             tenant=user,
             number_of_packages=20,
@@ -197,14 +199,15 @@ class TestSaleCreateAPI:
             "amount_received": "0.00",
         }
         response = client.post(SALES_URL, payload, format="json")
-        if response.status_code == status.HTTP_201_CREATED:
-            data = response.data
-            profit = Decimal(str(data.get("profit", "0")))
-            # With price_per_kg=100 and selling=150, profit should be positive
-            assert profit > 0
+        assert response.status_code == status.HTTP_201_CREATED
+        data = response.data
+        profit = Decimal(str(data.get("profit", "0")))
+        # With price_per_kg=100 and selling=150, profit should be positive
+        assert profit > 0
 
     def test_sale_pending_amount_equals_total_revenue_when_no_payment(self):
         user = _make_user(role="tenant_admin")
+        SubscriptionFactory(company=user.company)
         batch = _make_purchase_batch(tenant=user, number_of_packages=20)
         buyer = _make_buyer(tenant=user)
         _make_inventory(batch)
@@ -221,6 +224,6 @@ class TestSaleCreateAPI:
             "amount_received": "0.00",
         }
         response = client.post(SALES_URL, payload, format="json")
-        if response.status_code == status.HTTP_201_CREATED:
-            data = response.data
-            assert Decimal(str(data["pending_amount"])) == Decimal(str(data["total_revenue"]))
+        assert response.status_code == status.HTTP_201_CREATED
+        data = response.data
+        assert Decimal(str(data["pending_amount"])) == Decimal(str(data["total_revenue"]))

@@ -14,6 +14,7 @@ from rest_framework.test import APIClient
 from trading.models import PurchaseBatch
 from tests.factories import (
     UserFactory, FishFactory, BuyerFactory, PurchaseBatchFactory, InventoryFactory,
+    SubscriptionFactory,
 )
 
 User = get_user_model()
@@ -51,7 +52,7 @@ class TestPurchaseToSaleWorkflow:
     def test_inventory_can_be_created_for_purchase_batch(self):
         tenant = UserFactory(role="tenant_admin")
         batch = PurchaseBatchFactory(tenant=tenant, number_of_packages=20)
-        inv = InventoryFactory(batch=batch, tenant=tenant)
+        inv = InventoryFactory(purchase_batch=batch, tenant=tenant)
         assert inv.initial_packages == 20
         assert inv.remaining_packages == 20
         assert inv.sold_packages == 0
@@ -59,6 +60,7 @@ class TestPurchaseToSaleWorkflow:
     def test_full_workflow_via_api(self):
         """Test the complete flow: purchase batch creation → sale via API."""
         tenant = UserFactory(role="tenant_admin")
+        SubscriptionFactory(company=tenant.company)
         fish = FishFactory(tenant=tenant)
         buyer = BuyerFactory(tenant=tenant)
 
@@ -88,7 +90,7 @@ class TestPurchaseToSaleWorkflow:
 
         # Step 3: Create inventory for the batch (if required before sale)
         batch_obj = PurchaseBatch.objects.get(id=batch_id)
-        InventoryFactory(batch=batch_obj, tenant=tenant)
+        InventoryFactory(purchase_batch=batch_obj, tenant=tenant)
 
         # Step 4: Create a sale
         sale_payload = {
@@ -101,8 +103,7 @@ class TestPurchaseToSaleWorkflow:
             "amount_received": "0.00",
         }
         sale_response = client.post("/api/trading/sales/", sale_payload, format="json")
-        # Either success (201) or validation error (400) depending on business rules
-        assert sale_response.status_code in (status.HTTP_201_CREATED, status.HTTP_400_BAD_REQUEST)
+        assert sale_response.status_code == status.HTTP_201_CREATED
 
 
 # ---------------------------------------------------------------------------

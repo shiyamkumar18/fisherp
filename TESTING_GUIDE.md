@@ -219,7 +219,7 @@ admin = UserFactory(role="tenant_admin", company=company)
 trader = UserFactory(role="trader", company=company)
 fish = FishFactory(tenant=admin)
 batch = PurchaseBatchFactory(tenant=admin, number_of_packages=20, price_per_kg=Decimal("100.00"))
-inv = InventoryFactory(batch=batch)
+inv = InventoryFactory(purchase_batch=batch)
 buyer = BuyerFactory(tenant=admin)
 ```
 
@@ -230,10 +230,16 @@ buyer = BuyerFactory(tenant=admin)
 import pytest
 from decimal import Decimal
 from rest_framework.test import APIClient
+from tests.factories import SubscriptionFactory
 
 @pytest.mark.django_db
 def test_create_purchase_batch(tenant_admin_user, fish):
-    """Test purchase batch creation with auto-calculated fields"""
+    """Test purchase batch creation with auto-calculated fields.
+    
+    Note: An active subscription is required for POST requests due to
+    SubscriptionEnforcementMiddleware.
+    """
+    SubscriptionFactory(company=tenant_admin_user.company)
     client = APIClient()
     client.force_authenticate(user=tenant_admin_user)
 

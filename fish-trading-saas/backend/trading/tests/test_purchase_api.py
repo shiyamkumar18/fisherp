@@ -12,6 +12,7 @@ from rest_framework.test import APIClient
 
 from companies.models import Company
 from trading.models import FishCategory, Fish, PurchaseBatch
+from tests.factories import SubscriptionFactory
 
 User = get_user_model()
 
@@ -129,6 +130,7 @@ class TestPurchaseBatchCreateAPI:
     def test_create_purchase_batch_calculates_totals(self):
         """POST creates batch and auto-calculates total_weight and fish_cost."""
         user = _make_user(role="tenant_admin")
+        SubscriptionFactory(company=user.company)
         fish = _make_fish(tenant=user)
         client = APIClient()
         client.force_authenticate(user=user)
@@ -156,6 +158,7 @@ class TestPurchaseBatchCreateAPI:
 
     def test_create_requires_fish(self):
         user = _make_user(role="tenant_admin")
+        SubscriptionFactory(company=user.company)
         client = APIClient()
         client.force_authenticate(user=user)
         payload = {
@@ -173,6 +176,7 @@ class TestPurchaseBatchCreateAPI:
 
     def test_pending_amount_is_full_expense_when_no_payment(self):
         user = _make_user(role="tenant_admin")
+        SubscriptionFactory(company=user.company)
         fish = _make_fish(tenant=user)
         client = APIClient()
         client.force_authenticate(user=user)

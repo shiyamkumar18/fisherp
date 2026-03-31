@@ -137,26 +137,28 @@ def PurchaseBatchFactory(
     )
 
 
-def InventoryFactory(batch=None, tenant=None, **kwargs):
-    if batch is None:
-        batch = PurchaseBatchFactory()
-    tenant = tenant or batch.tenant
-    company = batch.company
-    fish = batch.fish
+def InventoryFactory(purchase_batch=None, tenant=None, **kwargs):
+    if purchase_batch is None:
+        purchase_batch = PurchaseBatchFactory()
+    tenant = tenant or purchase_batch.tenant
+    company = purchase_batch.company
+    fish = purchase_batch.fish
 
     defaults = dict(
         fish=fish,
-        purchase_batch=batch,
+        purchase_batch=purchase_batch,
         tenant=tenant,
         company=company,
-        initial_packages=batch.number_of_packages,
-        remaining_packages=batch.number_of_packages,
+        initial_packages=purchase_batch.number_of_packages,
+        remaining_packages=purchase_batch.number_of_packages,
         sold_packages=0,
-        initial_weight_kg=batch.total_weight,
-        remaining_weight_kg=batch.total_weight,
+        initial_weight_kg=purchase_batch.total_weight,
+        remaining_weight_kg=purchase_batch.total_weight,
     )
     defaults.update(kwargs)
-    inv, _ = Inventory.objects.get_or_create(purchase_batch=batch, fish=fish, defaults=defaults)
+    inv, _ = Inventory.objects.get_or_create(
+        purchase_batch=purchase_batch, fish=fish, defaults=defaults,
+    )
     return inv
 
 
