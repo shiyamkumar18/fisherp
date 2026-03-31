@@ -348,4 +348,3 @@ class Command(BaseCommand):
             self.stdout.write(f'  Features: {len(tier.get_features_list())} enabled')
         
         self.stdout.write('\n' + '='*60)
-

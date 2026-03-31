@@ -19,4 +19,3 @@ urlpatterns = [
     # Audit Logs
     path('audit-logs/', views.AuditLogListView.as_view(), name='audit_log_list'),
 ]
-

@@ -112,4 +112,3 @@ urlpatterns = [
     # Filter Options (for dropdowns)
     path("dashboard/filters/", FilterOptionsView.as_view(), name="dashboard-filter-options"),
 ]
-

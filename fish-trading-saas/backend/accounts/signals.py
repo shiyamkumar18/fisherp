@@ -1,8 +1,6 @@
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from .models_audit import AuditLog
-from django.contrib.contenttypes.models import ContentType
-from companies.models import Company
 
 
 @receiver(post_save, sender='trading.Sale')

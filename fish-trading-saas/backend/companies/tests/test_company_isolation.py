@@ -4,7 +4,6 @@ Verifies that company (tenant) data is properly isolated and users cannot
 access data belonging to other companies.
 """
 import pytest
-from decimal import Decimal
 from django.contrib.auth import get_user_model
 from rest_framework import status
 from rest_framework.test import APIClient

@@ -1,6 +1,5 @@
 from django.db import models
 from django.conf import settings
-from companies.models import Company
 
 
 class ImpersonationLogManager(models.Manager):

@@ -41,7 +41,7 @@ class TenantAdminSite(AdminSite):
 
     def has_permission(self, request):
         return request.user.is_active and request.user.is_authenticated and (
-            request.user.role == 'tenant_admin' or
+            request.user.role == 'tenant_admin' or  # noqa: W504
             request.user.is_superuser
         )
 

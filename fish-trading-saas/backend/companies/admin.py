@@ -1,5 +1,4 @@
 from django.contrib import admin
-from django.utils.html import format_html
 from .models import Company, Domain
 
 
@@ -101,4 +100,3 @@ class DomainAdmin(PlatformOperatorOnlyMixin, admin.ModelAdmin):
     search_fields = ('domain', 'company__name')
     ordering = ('-is_primary', '-created_at')
     readonly_fields = ('created_at',)
-

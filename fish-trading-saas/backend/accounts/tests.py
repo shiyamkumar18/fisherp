@@ -2,8 +2,7 @@ from django.test import TestCase, override_settings
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient, APITestCase
 from rest_framework import status
-from unittest.mock import patch, MagicMock
-from decimal import Decimal
+from unittest.mock import MagicMock
 # FIX 7: timezone and timedelta were used in DataMaskingTestCase but never imported
 from django.utils import timezone
 from datetime import timedelta
@@ -382,7 +381,6 @@ class DataMaskingTestCase(TestCase):
     def test_can_edit_sale_time_restrictions(self):
         """Test CanEditSale time-based permissions"""
         from accounts.permissions import CanEditSale
-        from trading.models import Sale
 
         permission = CanEditSale()
 
@@ -542,7 +540,7 @@ class TenantIsolationTestCase(TestCase):
 
     def test_platform_operator_needs_impersonation(self):
         """Test platform operator cannot directly access tenant data"""
-        platform_op = User.objects.create_user(
+        _platform_op = User.objects.create_user(
             username='platform_op',
             password='testpass123',
             email='platform@example.com',

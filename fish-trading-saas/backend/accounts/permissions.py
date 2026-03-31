@@ -235,9 +235,9 @@ class CanRecordPayment(permissions.BasePermission):
     def has_permission(self, request, view):
         if not request.user or not request.user.is_authenticated:
             return False
-        return (request.user.is_tenant_admin or 
-                request.user.is_accountant or 
-                request.user.is_sales_staff or 
+        return (request.user.is_tenant_admin or  # noqa: W504
+                request.user.is_accountant or  # noqa: W504
+                request.user.is_sales_staff or  # noqa: W504
                 request.user.is_store_accounts)
 
 
@@ -410,7 +410,6 @@ class LoginThrottle(permissions.BasePermission):
 
     def has_permission(self, request, view):
         from accounts.models_audit import LoginAttempt, get_client_ip
-        ip = get_client_ip(request)
         email = request.data.get('email') or request.data.get('username')
         if email:
             attempts = LoginAttempt.get_failed_attempts(email, minutes=60)
@@ -580,7 +579,7 @@ def end_impersonation(request):
     End impersonation session for platform operator.
     """
     from .models_audit import ImpersonationLog, get_client_ip
-    tenant_id = request.session.pop('impersonating_tenant_id', None)
+    request.session.pop('impersonating_tenant_id', None)
     log_id = request.session.pop('impersonation_log_id', None)
     request.session.pop('impersonating_user_id', None)
     request.session.pop('impersonation_start_time', None)
