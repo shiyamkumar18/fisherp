@@ -206,4 +206,3 @@ class ScriptSyntaxTests(unittest.TestCase):
 
     def test_restore_script_valid_syntax(self):
         self._assert_script_parseable("restore_database.py")
-

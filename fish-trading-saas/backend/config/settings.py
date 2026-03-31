@@ -360,7 +360,7 @@ LOGGING = {
             'level': 'INFO',
             'class': 'logging.handlers.RotatingFileHandler',
             'filename': BASE_DIR / 'logs/django.log',
-            'maxBytes': 1024*1024*5,  # 5MB
+            'maxBytes': 1024 * 1024 * 5,  # 5MB
             'backupCount': 5,
             'formatter': 'verbose',
         },
@@ -373,7 +373,7 @@ LOGGING = {
             'level': 'INFO',
             'class': 'logging.handlers.RotatingFileHandler',
             'filename': BASE_DIR / 'logs/security.log',
-            'maxBytes': 1024*1024*5,  # 5MB
+            'maxBytes': 1024 * 1024 * 5,  # 5MB
             'backupCount': 10,
             'formatter': 'verbose',
         },

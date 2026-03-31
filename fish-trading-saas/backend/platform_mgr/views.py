@@ -1,4 +1,4 @@
-from rest_framework import generics, permissions, status
+from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.utils import timezone
@@ -7,7 +7,7 @@ from decimal import Decimal
 from datetime import timedelta
 
 from accounts.models import User
-from accounts.permissions import IsPlatformOperator, IsPlatformSuperAdmin
+from accounts.permissions import IsPlatformOperator
 from accounts.models_audit import AuditLog, ImpersonationLog
 from subscriptions.models import Subscription, SubscriptionTier
 from companies.models import Company

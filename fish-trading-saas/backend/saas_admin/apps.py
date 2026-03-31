@@ -18,4 +18,3 @@ class SaasAdminConfig(AppConfig):
         """Run when the app is ready."""
         # Import signals if any
         pass
-

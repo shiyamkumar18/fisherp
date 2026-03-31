@@ -1,6 +1,5 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
-from django.conf import settings
 from django.core.exceptions import ValidationError
 
 # Canonical role choices for SaaS RBAC
@@ -162,7 +161,7 @@ class User(AbstractUser):
         return self.is_superuser
     
     @property
-    def is_platform_user(self):
+    def is_platform_user(self):  # noqa: F811
         """Backward-compatible platform flag backed by the model field."""
         return self.__dict__.get('is_platform_user', False) or self.is_superuser or self.role in PLATFORM_ROLES
 

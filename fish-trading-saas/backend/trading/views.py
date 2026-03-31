@@ -6,7 +6,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.core.exceptions import ValidationError
 from django_filters.rest_framework import DjangoFilterBackend
-from django.db.models import Q, Sum, Count
+from django.db.models import Count
 from django.utils import timezone
 from django.db import transaction
 from decimal import Decimal
@@ -26,9 +26,7 @@ from .serializers import (
 )
 from services.trading import SaleService, InventoryService
 from accounts.permissions import (
-    IsPlatformOperator, IsTenantAdmin, IsAccountant, IsSalesStaff, IsStoreAccounts,
-    CanViewFinancials, CanCreateSale, CanCreatePurchase, CanRecordPayment,
-    CanDeleteRecord, CanEditSale, CanEditPurchase, CanEditPayment, HasAnyRole,
+    IsTenantAdmin, CanEditSale, CanEditPurchase, CanEditPayment, HasAnyRole,
     QuerysetProtectionMixin, TenantObjectPermission, is_impersonating, get_impersonated_tenant
 )
 from .helpers import _user_company   # <-- new import
@@ -575,7 +573,8 @@ class InventoryViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
         serializer.instance = instance
 
     def perform_update(self, serializer):
-        service = InventoryService(self.request.user)
+        # InventoryService validates tenant scoping on init
+        InventoryService(self.request.user)
         serializer.save()
 
     @action(detail=True, methods=['post'])

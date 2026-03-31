@@ -3,18 +3,22 @@ def is_impersonating(user):
     from accounts.permissions import is_impersonating
     return is_impersonating(user)
 
+
 def get_impersonated_tenant(user):
     from accounts.permissions import get_impersonated_tenant
     return get_impersonated_tenant(user)
 
-from trading.helpers import _user_company
+
+from trading.helpers import _user_company  # noqa: E402
+
 
 def _get_create_scope(user_dict):
     from trading.views import _get_create_scope
     return _get_create_scope(user_dict)
 
-from django.db import models
-from django.db.models import Q
+
+from django.db import models  # noqa: E402
+from django.db.models import Q  # noqa: E402
 
 
 class CompanyManager(models.Manager):

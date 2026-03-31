@@ -32,9 +32,9 @@ class Command(BaseCommand):
     help = 'Create Django Groups and assign permissions for RBAC'
 
     def handle(self, *args, **options):
-        self.stdout.write(self.style.SUCCESS('\n' + '='*60))
+        self.stdout.write(self.style.SUCCESS('\n' + '=' * 60))
         self.stdout.write('SETTING UP RBAC GROUPS AND PERMISSIONS')
-        self.stdout.write('='*60 + '\n')
+        self.stdout.write('=' * 60 + '\n')
 
         # Create groups
         self.create_groups()
@@ -95,7 +95,7 @@ class Command(BaseCommand):
         # Create custom permissions
         self.create_custom_permissions()
 
-    def get_all_permissions(self):
+    def get_all_permissions(self):  # noqa: C901
         """Get all available permissions organized by role"""
         
         # Get content types
@@ -284,9 +284,9 @@ class Command(BaseCommand):
 
     def print_summary(self):
         """Print summary of created groups and permissions"""
-        self.stdout.write(self.style.SUCCESS('\n' + '='*60))
+        self.stdout.write(self.style.SUCCESS('\n' + '=' * 60))
         self.stdout.write(self.style.SUCCESS('RBAC GROUPS SETUP COMPLETE'))
-        self.stdout.write(self.style.SUCCESS('='*60))
+        self.stdout.write(self.style.SUCCESS('=' * 60))
         
         self.stdout.write('\nGroup Summary:\n')
         
@@ -301,4 +301,4 @@ class Command(BaseCommand):
         self.stdout.write('   1. Run: python manage.py create_default_users')
         self.stdout.write('   2. Users will be automatically assigned to groups')
         self.stdout.write('   3. Or assign users manually in Django Admin')
-        self.stdout.write('\n' + '='*60 + '\n')
+        self.stdout.write('\n' + '=' * 60 + '\n')

@@ -2,7 +2,6 @@
 Management command to seed subscription tiers with all features.
 """
 from django.core.management.base import BaseCommand
-from django.utils import timezone
 from decimal import Decimal
 
 
@@ -10,7 +9,7 @@ class Command(BaseCommand):
     help = 'Seed subscription tiers with default features and pricing'
 
     def handle(self, *args, **options):
-        from subscriptions.models import SubscriptionTier, SubscriptionAddOn
+        from subscriptions.models import SubscriptionTier
         
         self.stdout.write('Seeding subscription tiers...')
         
@@ -335,9 +334,9 @@ class Command(BaseCommand):
         """Print summary of all tiers"""
         from subscriptions.models import SubscriptionTier
         
-        self.stdout.write('\n' + '='*60)
+        self.stdout.write('\n' + '=' * 60)
         self.stdout.write('SUBSCRIPTION TIER SUMMARY')
-        self.stdout.write('='*60)
+        self.stdout.write('=' * 60)
         
         tiers = SubscriptionTier.objects.filter(is_active=True).order_by('display_order')
         
@@ -347,5 +346,4 @@ class Command(BaseCommand):
             self.stdout.write(f'  Max Users: {tier.max_users}')
             self.stdout.write(f'  Features: {len(tier.get_features_list())} enabled')
         
-        self.stdout.write('\n' + '='*60)
-
+        self.stdout.write('\n' + '=' * 60)

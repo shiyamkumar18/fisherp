@@ -1,9 +1,7 @@
 from celery import shared_task
 from django.utils import timezone
-from datetime import timedelta
-from .models import Inventory, Sale, Supplier
+from .models import Inventory, Supplier
 from companies.models import Company
-from services.base import CompanyManager
 
 
 @shared_task

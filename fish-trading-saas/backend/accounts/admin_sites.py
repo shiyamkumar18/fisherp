@@ -1,5 +1,4 @@
 from django.contrib.admin import AdminSite
-from django.template.response import TemplateResponse
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
@@ -42,7 +41,7 @@ class TenantAdminSite(AdminSite):
 
     def has_permission(self, request):
         return request.user.is_active and request.user.is_authenticated and (
-            request.user.role == 'tenant_admin' or
+            request.user.role == 'tenant_admin' or  # noqa: W504
             request.user.is_superuser
         )
 

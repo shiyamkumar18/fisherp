@@ -1,0 +1,7 @@
+[run]
+omit =
+    */migrations/*
+    */settings*.py
+    manage.py
+    */admin.py
+    conftest.py

@@ -5,7 +5,6 @@ from .views import (
     UserRegistrationView,
     UserProfileView,
     UserListView,
-    UserLoginView,
     TenantUserManagementView,
     TwoFactorVerifyView,
     TwoFactorSetupView,

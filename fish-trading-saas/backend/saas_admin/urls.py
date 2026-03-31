@@ -98,4 +98,3 @@ urlpatterns = [
     path('error-tracking/', ErrorTrackingView.as_view(), name='error-tracking'),
     path('backup-status/', BackupStatusView.as_view(), name='backup-status'),
 ]
-

@@ -20,11 +20,11 @@ class PurchaseBatch(models.Model):
     ]
 
     batch_number = models.CharField(max_length=50, unique=True, blank=True, null=True,
-                                  help_text="Auto-generated or manual batch reference")
+                                    help_text="Auto-generated or manual batch reference")
     purchase_type = models.CharField(max_length=15, choices=PURCHASE_TYPE_CHOICES)
     supplier = models.ForeignKey(Supplier, on_delete=models.PROTECT, null=True, blank=True, related_name='purchase_batches')
     fisherman_name = models.CharField(max_length=150, blank=True, null=True,
-                                     help_text="Used if supplier not registered")
+                                      help_text="Used if supplier not registered")
     place_of_buying = models.CharField(max_length=200, blank=True, null=True)
     fish = models.ForeignKey(Fish, on_delete=models.PROTECT, related_name='purchase_batches')
     fish_category = models.ForeignKey(FishCategory, on_delete=models.SET_NULL, null=True, blank=True)
@@ -100,8 +100,8 @@ class PurchaseBatch(models.Model):
         self.total_weight = number_of_packages * package_weight
         self.fish_cost = self.total_weight * price_per_kg
 
-        self.total_expense = (self.fish_cost + labour_cost + ice_cost +
-                              transport_cost + commission_cost + other_cost)
+        self.total_expense = (self.fish_cost + labour_cost + ice_cost
+                              + transport_cost + commission_cost + other_cost)
 
         if self.total_weight > 0:
             self.actual_cost_per_kg = self.total_expense / self.total_weight

@@ -49,7 +49,7 @@ except Exception as exc:  # pragma: no cover
     sys.exit(1)
 
 import psycopg2  # noqa: E402
-from django.db import connection as django_conn  # noqa: E402
+from django.db import connection as django_conn  # noqa: E402, F401
 
 # ---------------------------------------------------------------------------
 # Helpers

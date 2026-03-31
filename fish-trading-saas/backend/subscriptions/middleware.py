@@ -10,6 +10,7 @@ This middleware ensures that:
 
 from datetime import date, datetime
 import logging
+from functools import wraps
 from django.http import JsonResponse
 from django.utils import timezone
 from rest_framework import status
@@ -58,7 +59,7 @@ class SubscriptionEnforcementMiddleware:
     # Paths that don't require subscription check
     EXEMPT_PATHS = [
         '/api/auth/',           # Authentication endpoints
-        '/api/subscriptions/', # Subscription management
+        '/api/subscriptions/',  # Subscription management
         '/admin/',             # Django admin
         '/api/tiers/',         # Subscription tiers (public)
     ]
@@ -235,8 +236,6 @@ def require_active_subscription(view_func):
     """
     @wraps(view_func)
     def wrapper(request, *args, **kwargs):
-        from subscriptions.models import Subscription
-        
         # Skip for superusers
         if request.user.is_superuser:
             return view_func(request, *args, **kwargs)
@@ -271,8 +270,6 @@ def check_subscription_status(user):
     Returns:
         dict with 'is_valid', 'subscription', 'error', 'message'
     """
-    from subscriptions.models import Subscription
-    
     if user.is_superuser:
         return {
             'is_valid': True,

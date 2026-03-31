@@ -85,7 +85,7 @@ class Command(BaseCommand):
             # Assign to group
             if assign_user_to_group(platform_operator):
                 self.stdout.write(self.style.SUCCESS('   -> Assigned to platform_operator group'))
-            self.stdout.write(self.style.SUCCESS(f'Platform Operator created: platform_operator / platform123'))
+            self.stdout.write(self.style.SUCCESS('Platform Operator created: platform_operator / platform123'))
             self.stdout.write(self.style.WARNING('  ⚠️ NOT a superuser - must use impersonation to access tenant data'))
         else:
             self.stdout.write(self.style.WARNING('Platform Operator user already exists'))
@@ -130,7 +130,7 @@ class Command(BaseCommand):
             # Assign to group
             if assign_user_to_group(admin_user):
                 self.stdout.write(self.style.SUCCESS('   -> Assigned to tenant_admin group'))
-            self.stdout.write(self.style.SUCCESS(f'Tenant Admin created: admin / admin123'))
+            self.stdout.write(self.style.SUCCESS('Tenant Admin created: admin / admin123'))
         else:
             self.stdout.write(self.style.WARNING('Admin user already exists'))
 
@@ -155,7 +155,7 @@ class Command(BaseCommand):
             # Assign to group
             if assign_user_to_group(accountant_user):
                 self.stdout.write(self.style.SUCCESS('   -> Assigned to accountant group'))
-            self.stdout.write(self.style.SUCCESS(f'Accountant created: accountant / accountant123'))
+            self.stdout.write(self.style.SUCCESS('Accountant created: accountant / accountant123'))
         else:
             self.stdout.write(self.style.WARNING('Accountant user already exists'))
 
@@ -232,11 +232,11 @@ class Command(BaseCommand):
             # Assign to group
             if assign_user_to_group(tenant2_admin):
                 self.stdout.write(self.style.SUCCESS('   -> Assigned to tenant_admin group'))
-            self.stdout.write(self.style.SUCCESS(f'Tenant 2 Admin created: tenant2_admin / tenant2123'))
+            self.stdout.write(self.style.SUCCESS('Tenant 2 Admin created: tenant2_admin / tenant2123'))
 
-        self.stdout.write(self.style.SUCCESS('\n' + '='*60))
+        self.stdout.write(self.style.SUCCESS('\n' + '=' * 60))
         self.stdout.write(self.style.SUCCESS('DEFAULT USERS CREATED SUCCESSFULLY'))
-        self.stdout.write(self.style.SUCCESS('='*60))
+        self.stdout.write(self.style.SUCCESS('=' * 60))
         self.stdout.write('\n📋 CREDENTIALS:\n')
         self.stdout.write('  🔧 Platform Operator: platform_operator / platform123')
         self.stdout.write('     → Role: platform_operator')

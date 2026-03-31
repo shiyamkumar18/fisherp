@@ -1,10 +1,10 @@
-from rest_framework import generics, permissions, status, viewsets
+from rest_framework import permissions, status, viewsets
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.utils import timezone
 
 from .models import SubscriptionTier, Subscription, SubscriptionAddOn, SubscriptionAddOnPurchase
-from accounts.permissions import IsPlatformOperator, IsTenantAdmin
+from accounts.permissions import IsTenantAdmin
 from .serializers import SubscriptionSerializer, SubscriptionTierSerializer
 
 

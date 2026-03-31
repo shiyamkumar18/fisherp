@@ -32,7 +32,7 @@ class Sale(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     number_of_packages_sold = models.PositiveIntegerField(help_text="Number of packages sold")
     selling_weight_per_package = models.DecimalField(max_digits=5, decimal_places=2,
-                                                      help_text="Weight per package sold (e.g., 27kg)")
+                                                     help_text="Weight per package sold (e.g., 27kg)")
     selling_price_per_kg = models.DecimalField(max_digits=10, decimal_places=2, help_text="Selling price per kg")
     total_revenue = models.DecimalField(max_digits=10, decimal_places=2, editable=False)
     total_cost = models.DecimalField(max_digits=10, decimal_places=2, editable=False)
@@ -45,7 +45,7 @@ class Sale(models.Model):
     delivery_address = models.TextField(blank=True, null=True)
     delivery_status = models.CharField(max_length=20, blank=True, null=True,
                                        choices=[('pending', 'Pending'), ('shipped', 'Shipped'),
-                                               ('delivered', 'Delivered'), ('cancelled', 'Cancelled')])
+                                                ('delivered', 'Delivered'), ('cancelled', 'Cancelled')])
     notes = models.TextField(blank=True, null=True)
     discount_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0,
                                           help_text="Flat discount amount")
@@ -115,9 +115,9 @@ class Sale(models.Model):
         selling_price_per_kg = self.selling_price_per_kg or Decimal("0.00")
         amount_received = self.amount_received or Decimal("0.00")
 
-        self.total_revenue = (number_of_packages_sold *
-                              selling_weight_per_package *
-                              selling_price_per_kg)
+        self.total_revenue = (number_of_packages_sold
+                              * selling_weight_per_package
+                              * selling_price_per_kg)
 
         batch_buy_price = self.batch.price_per_kg if self.batch and self.batch.price_per_kg is not None else Decimal("0.00")
         self.total_cost = number_of_packages_sold * selling_weight_per_package * batch_buy_price

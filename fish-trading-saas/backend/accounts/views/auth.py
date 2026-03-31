@@ -194,7 +194,7 @@ class TenantLoginView(APIView):
                 'error': 'Company not found.',
             })
 
-    def post(self, request, tenant_slug):
+    def post(self, request, tenant_slug):  # noqa: C901
         """Handle tenant-specific login."""
         from django.utils import timezone
         from companies.models import Company
@@ -364,7 +364,7 @@ class UnifiedLoginView(APIView):
 
         return render(request, 'login.html', context)
 
-    def post(self, request, tenant_slug=None):
+    def post(self, request, tenant_slug=None):  # noqa: C901
         """Handle unified login for all company users."""
         from django.utils import timezone
         from companies.models import Company
