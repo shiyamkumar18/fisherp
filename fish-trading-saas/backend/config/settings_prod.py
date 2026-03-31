@@ -17,7 +17,8 @@ from .settings import *  # noqa: F401, F403
 
 DEBUG = False
 
-if os.getenv("DEBUG", "False") == "True":
+_debug_env = os.getenv("DEBUG", "False").strip().lower()
+if _debug_env in ("true", "1", "yes", "on"):
     raise RuntimeError(
         "DEBUG must not be True in production. "
         "Unset the DEBUG environment variable or set it to False."
@@ -104,16 +105,18 @@ REST_FRAMEWORK = {  # type: ignore[assignment]
 # Cache (Redis required in production)
 # -------------------------
 
-_redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379/1")
+_redis_url = os.environ.get("REDIS_URL")
+if not _redis_url:
+    raise RuntimeError(
+        "REDIS_URL environment variable is required in production. "
+        "Example: redis://redis-host:6379/1"
+    )
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.redis.RedisCache",
         "LOCATION": _redis_url,
     }
 }
-
-# Use Redis-backed rate-limit cache (avoids hitting the DB for throttling)
-REST_FRAMEWORK_THROTTLE_CACHE = "default"
 
 # -------------------------
 # Email (production SMTP)

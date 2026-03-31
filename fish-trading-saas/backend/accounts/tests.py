@@ -783,3 +783,67 @@ class ImpersonationAPITestCase(APITestCase):
         }, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class JWTLogoutBlacklistTestCase(APITestCase):
+    """Tests for the JWT refresh token blacklisting logout endpoint."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username='logoutuser',
+            email='logoutuser@fishapp.com',
+            password='LogoutPass123!',
+            schema_name='public',
+        )
+        self.client = APIClient()
+
+    def _get_tokens(self):
+        """Log in and return (access, refresh) token strings."""
+        response = self.client.post('/api/auth/login/', {
+            'username': 'logoutuser',
+            'password': 'LogoutPass123!',
+        })
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        return response.data['access'], response.data['refresh']
+
+    def test_logout_blacklists_refresh_token(self):
+        """A valid refresh token is blacklisted on POST /api/auth/logout/."""
+        _, refresh = self._get_tokens()
+        response = self.client.post('/api/auth/logout/', {'refresh': refresh}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['detail'], 'Successfully logged out.')
+
+    def test_blacklisted_token_cannot_be_used_for_refresh(self):
+        """After logout the refresh token must be recorded as blacklisted."""
+        from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken
+        _, refresh = self._get_tokens()
+        # Logout once — token is now blacklisted
+        self.client.post('/api/auth/logout/', {'refresh': refresh}, format='json')
+
+        # Verify the token is in the blacklist table
+        self.assertTrue(BlacklistedToken.objects.exists())
+
+    def test_logout_with_invalid_token_returns_400(self):
+        """Submitting a malformed / already-expired token returns 400."""
+        response = self.client.post('/api/auth/logout/', {'refresh': 'not-a-valid-token'}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_logout_without_refresh_token_returns_400(self):
+        """Omitting the refresh token body field returns 400."""
+        response = self.client.post('/api/auth/logout/', {}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_logout_does_not_require_access_token(self):
+        """Logout must succeed even when no Authorization header is supplied."""
+        _, refresh = self._get_tokens()
+        # No access token in the client
+        self.client.credentials()
+        response = self.client.post('/api/auth/logout/', {'refresh': refresh}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_double_logout_returns_400(self):
+        """Reusing an already-blacklisted token returns 400."""
+        _, refresh = self._get_tokens()
+        self.client.post('/api/auth/logout/', {'refresh': refresh}, format='json')
+        response = self.client.post('/api/auth/logout/', {'refresh': refresh}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

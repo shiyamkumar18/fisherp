@@ -358,7 +358,7 @@ LOGGING = {
         'django.request': {
             'handlers': ['file', 'console'],
             'level': 'ERROR',
-            'propagate': True,
+            'propagate': False,
         },
         'accounts.auth': {
             'handlers': ['security_file', 'console'],

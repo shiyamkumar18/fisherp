@@ -12,6 +12,7 @@ import logging
 from django.contrib.auth.backends import ModelBackend
 from django.contrib.auth import get_user_model
 from rest_framework import status
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import TokenError
@@ -56,7 +57,13 @@ class LogoutView(APIView):
 
     POST /api/auth/logout/
     Body: { "refresh": "<refresh_token>" }
+
+    Authentication is not required — clients whose access token has already
+    expired can still invalidate their refresh token.
     """
+
+    authentication_classes = []
+    permission_classes = [AllowAny]
 
     def post(self, request):
         refresh_token = request.data.get("refresh")
