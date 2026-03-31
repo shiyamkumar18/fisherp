@@ -98,32 +98,38 @@ TEMPLATES = [
 WSGI_APPLICATION = "config.wsgi.application"
 
 # =========================
-# DATABASE (SQLite for development - Use PostgreSQL for production)
+# DATABASE (Auto-detect: PostgreSQL for production, SQLite for development)
 # =========================
 
-# SQLite configuration (development)
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+_db_engine = os.getenv("DB_ENGINE", "")
+
+if _db_engine == "postgresql":
+    # PostgreSQL configuration (production/staging)
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.getenv("DB_NAME"),
+            "USER": os.getenv("DB_USER"),
+            "PASSWORD": os.getenv("DB_PASSWORD"),
+            "HOST": os.getenv("DB_HOST", "localhost"),
+            "PORT": os.getenv("DB_PORT", "5432"),
+            # Connection pooling & resilience
+            "CONN_MAX_AGE": int(os.getenv("DB_CONN_MAX_AGE", "600")),
+            "OPTIONS": {
+                "connect_timeout": int(os.getenv("DB_CONNECT_TIMEOUT", "10")),
+                "application_name": "fisherp",
+                "options": "-c default_transaction_isolation='read committed'",
+            },
+        }
     }
-}
-
-# Uncomment for PostgreSQL (production):
-# DATABASES = {
-#     "default": {
-#         "ENGINE": "django_tenants.postgresql_backend",
-#         "NAME": os.getenv("DB_NAME"),
-#         "USER": os.getenv("DB_USER"),
-#         "PASSWORD": os.getenv("DB_PASSWORD"),
-#         "HOST": os.getenv("DB_HOST"),
-#         "PORT": os.getenv("DB_PORT"),
-#     }
-# }
-
-# DATABASE_ROUTERS = (
-#     "django_tenants.routers.TenantSyncRouter",
-# )
+else:
+    # SQLite configuration (local development only)
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
 
 # =========================
 # AUTHENTICATION
