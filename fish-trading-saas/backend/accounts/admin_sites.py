@@ -1,5 +1,4 @@
 from django.contrib.admin import AdminSite
-from django.template.response import TemplateResponse
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
