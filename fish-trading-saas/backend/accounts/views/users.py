@@ -1,10 +1,14 @@
 # accounts/views/users.py
 
+import re
+
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.validators import validate_email
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.views.generic import RedirectView
 from rest_framework_simplejwt.tokens import RefreshToken
 from datetime import timedelta
@@ -227,19 +231,20 @@ class UserProfileView(APIView):
 
     def put(self, request):
         """Update user profile"""
-        import re
         user = request.user
 
         email = request.data.get('email', user.email)
         phone = request.data.get('phone', user.phone)
 
-        # Validate email format
-        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-        if email and not re.match(email_pattern, email):
-            return Response(
-                {'error': 'Invalid email format'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        # Validate email format using Django's built-in validator
+        if email:
+            try:
+                validate_email(email)
+            except DjangoValidationError:
+                return Response(
+                    {'error': 'Invalid email format'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
         # Validate phone format (10 digits)
         if phone and not re.match(r'^[0-9]{10}$', str(phone)):
