@@ -1,0 +1,111 @@
+# =============================================================================
+# FisherP – Development Docker Compose
+# Minimal stack using SQLite + hot-reload Django dev server.
+#
+# Usage:
+#   docker compose up
+#   docker compose exec web python manage.py createsuperuser
+# =============================================================================
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # Redis – cache and Celery broker
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_dev_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # Django development server (runserver with auto-reload)
+  # ---------------------------------------------------------------------------
+  web:
+    build:
+      context: ./fish-trading-saas/backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings
+      SECRET_KEY: ${SECRET_KEY:-dev-only-insecure-key-change-in-production}
+      DEBUG: "True"
+      ALLOWED_HOSTS: "localhost,127.0.0.1,web"
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+    ports:
+      - "8000:8000"
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      # Hot-reload: mount the source code into the container
+      - ./fish-trading-saas/backend:/app
+      - dev_static:/app/staticfiles
+      - dev_media:/app/media
+    # Override the default Gunicorn CMD with Django's dev server
+    command: python manage.py runserver 0.0.0.0:8000
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:8000/health/"]
+      interval: 30s
+      timeout: 10s
+      start_period: 40s
+      retries: 3
+
+  # ---------------------------------------------------------------------------
+  # Celery worker
+  # ---------------------------------------------------------------------------
+  celery:
+    build:
+      context: ./fish-trading-saas/backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings
+      SECRET_KEY: ${SECRET_KEY:-dev-only-insecure-key-change-in-production}
+      DEBUG: "True"
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+    depends_on:
+      - web
+      - redis
+    volumes:
+      - ./fish-trading-saas/backend:/app
+    command: celery -A trading.celery:app worker --loglevel=info --concurrency=2
+
+  # ---------------------------------------------------------------------------
+  # Celery Beat – periodic task scheduler
+  # ---------------------------------------------------------------------------
+  celery-beat:
+    build:
+      context: ./fish-trading-saas/backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings
+      SECRET_KEY: ${SECRET_KEY:-dev-only-insecure-key-change-in-production}
+      DEBUG: "True"
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+    depends_on:
+      - web
+      - redis
+    volumes:
+      - ./fish-trading-saas/backend:/app
+    command: celery -A trading.celery:app beat --loglevel=info
+
+volumes:
+  redis_dev_data:
+  dev_static:
+  dev_media:

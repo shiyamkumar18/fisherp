@@ -1,0 +1,17 @@
+# Docker build context exclusions for fish-trading-saas/nginx/
+# Applies when docker build context is ./fish-trading-saas/nginx
+
+# Git
+.git
+.gitignore
+
+# IDE / editor metadata
+.vscode/
+.idea/
+*.swp
+*.swo
+*.DS_Store
+
+# Docker files themselves
+Dockerfile*
+.dockerignore
