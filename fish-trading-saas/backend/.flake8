@@ -1,0 +1,28 @@
+[flake8]
+max-line-length = 120
+max-complexity = 15
+exclude =
+    .git,
+    __pycache__,
+    venv,
+    .venv,
+    migrations,
+    *.egg-info,
+    dist,
+    build,
+    staticfiles,
+    .tox
+ignore =
+    E501,
+    W503,
+    E302,
+    E303,
+    W291,
+    W293
+per-file-ignores =
+    */tests/*.py: S101
+    */tests.py: S101
+    conftest.py: S101
+statistics = True
+count = True
+show-source = True

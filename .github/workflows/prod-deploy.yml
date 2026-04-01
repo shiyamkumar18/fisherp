@@ -1,0 +1,183 @@
+name: Production Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Docker image tag to deploy to production"
+        required: true
+        default: "latest"
+      skip_backup:
+        description: "Skip database backup (NOT recommended)"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository_owner }}/fisherp
+
+jobs:
+  pre-deployment-checks:
+    name: Pre-Deployment Checks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify staging is healthy
+        run: |
+          STAGING_URL="${{ vars.STAGING_URL }}"
+          if [ -z "$STAGING_URL" ]; then
+            echo "⚠️  STAGING_URL not configured – skipping staging health check."
+            exit 0
+          fi
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${STAGING_URL}/health/" || true)
+          if [ "$STATUS" = "200" ]; then
+            echo "✅ Staging is healthy – proceeding with production deploy."
+          else
+            echo "❌ Staging health check returned HTTP ${STATUS}."
+            echo "Fix staging before deploying to production."
+            exit 1
+          fi
+
+      - name: Log deployment intent
+        run: |
+          echo "### 🚀 Production Deployment Requested" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image tag:** ${{ github.event.inputs.image_tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Requested by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Timestamp:** $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Skip backup:** ${{ github.event.inputs.skip_backup }}" >> $GITHUB_STEP_SUMMARY
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: pre-deployment-checks
+    permissions:
+      contents: read
+
+    environment:
+      name: production
+      url: ${{ vars.PRODUCTION_URL }}
+
+    concurrency:
+      group: production-deploy
+      cancel-in-progress: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create database backup before deployment
+        uses: appleboy/ssh-action@v1.0.3
+        if: ${{ vars.PRODUCTION_HOST != '' && github.event.inputs.skip_backup == 'false' }}
+        with:
+          host: ${{ vars.PRODUCTION_HOST }}
+          username: ${{ vars.PRODUCTION_USER }}
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          script: |
+            set -e
+            BACKUP_FILE="/srv/fisherp/backups/db_backup_$(date +%Y%m%d_%H%M%S).sql"
+            mkdir -p /srv/fisherp/backups
+
+            echo "Creating database backup: $BACKUP_FILE"
+            docker exec fisherp-prod \
+              python manage.py dumpdata \
+              --natural-foreign --natural-primary \
+              --indent 2 \
+              > "$BACKUP_FILE" 2>&1
+            gzip "$BACKUP_FILE"
+            echo "✅ Backup saved: ${BACKUP_FILE}.gz"
+
+            # Retain last 7 backups
+            ls -t /srv/fisherp/backups/db_backup_*.sql.gz 2>/dev/null | tail -n +8 | xargs rm -f || true
+        continue-on-error: true
+
+      - name: Deploy to production server via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        if: ${{ vars.PRODUCTION_HOST != '' }}
+        with:
+          host: ${{ vars.PRODUCTION_HOST }}
+          username: ${{ vars.PRODUCTION_USER }}
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          script: |
+            set -e
+            IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.event.inputs.image_tag }}"
+
+            echo "Pulling production image: $IMAGE"
+            docker pull "$IMAGE"
+
+            # Store current image for rollback
+            CURRENT_IMAGE=$(docker inspect --format='{{.Config.Image}}' fisherp-prod 2>/dev/null || echo "none")
+            echo "$CURRENT_IMAGE" > /srv/fisherp/previous_image.txt
+
+            echo "Running database migrations..."
+            docker run --rm \
+              --env-file /srv/fisherp/production/.env \
+              "$IMAGE" \
+              python manage.py migrate --noinput
+
+            echo "Restarting production container..."
+            docker stop fisherp-prod 2>/dev/null || true
+            docker rm fisherp-prod 2>/dev/null || true
+
+            docker run -d \
+              --name fisherp-prod \
+              --restart unless-stopped \
+              --env-file /srv/fisherp/production/.env \
+              -p 8000:8000 \
+              "$IMAGE"
+
+            echo "✅ Production container started."
+
+      - name: Post-deployment health check
+        run: |
+          PROD_URL="${{ vars.PRODUCTION_URL }}"
+          if [ -z "$PROD_URL" ]; then
+            echo "PRODUCTION_URL not set – skipping health check."
+            exit 0
+          fi
+          echo "Waiting for production to become healthy..."
+          sleep 30
+          for i in $(seq 1 10); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${PROD_URL}/health/" || true)
+            if [ "$STATUS" = "200" ]; then
+              echo "✅ Production is healthy (attempt $i)."
+              exit 0
+            fi
+            echo "Attempt $i: status $STATUS – retrying in 15 s..."
+            sleep 15
+          done
+          echo "❌ Production health check failed."
+          exit 1
+
+      - name: Post-deployment smoke tests
+        run: |
+          PROD_URL="${{ vars.PRODUCTION_URL }}"
+          if [ -z "$PROD_URL" ]; then
+            echo "PRODUCTION_URL not set – skipping smoke tests."
+            exit 0
+          fi
+          for endpoint in /health/ /health/ready/ /health/live/ /api/schema/; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${PROD_URL}${endpoint}" || true)
+            echo "  ${endpoint} → HTTP ${STATUS}"
+          done
+          echo "✅ Smoke tests complete."
+
+      - name: Summarise deployment result
+        if: always()
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "✅ **Production deployment succeeded.**" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Production deployment failed.** Consider running the rollback workflow." >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image deployed:** ${{ github.event.inputs.image_tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Deployed by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Timestamp:** $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_STEP_SUMMARY

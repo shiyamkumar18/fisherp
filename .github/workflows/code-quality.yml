@@ -1,0 +1,122 @@
+name: Code Quality
+
+on:
+  push:
+    branches: [ main, develop, "copilot/**" ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  lint:
+    name: Lint & Format Check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: fish-trading-saas/backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: fish-trading-saas/backend/requirements.txt
+
+      - name: Install quality tools
+        run: |
+          pip install --upgrade pip
+          pip install flake8 black isort
+
+      - name: Lint with flake8 (errors only)
+        run: |
+          flake8 . \
+            --count \
+            --select=E9,F63,F7,F82 \
+            --show-source \
+            --statistics \
+            --exclude=migrations,*.egg-info,.git,__pycache__,venv,.venv
+
+      - name: Lint with flake8 (full check)
+        run: |
+          flake8 . \
+            --config=.flake8 \
+            --statistics
+
+      - name: Check code formatting with black
+        run: |
+          black --check --diff \
+            --exclude '/(migrations|venv|\.venv)/' \
+            .
+
+      - name: Check import sorting with isort
+        run: |
+          isort --check-only --diff \
+            --skip migrations \
+            --skip venv \
+            --skip .venv \
+            .
+
+  type-check:
+    name: Type Checking
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: fish-trading-saas/backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: fish-trading-saas/backend/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install mypy django-stubs
+
+      - name: Run mypy type checking
+        run: |
+          mypy . \
+            --ignore-missing-imports \
+            --exclude '(migrations|venv|\.venv)' \
+            --no-error-summary \
+            2>&1 || true
+
+  complexity:
+    name: Complexity Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: fish-trading-saas/backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install radon
+        run: pip install radon
+
+      - name: Analyse code complexity
+        run: |
+          echo "=== Cyclomatic Complexity ==="
+          radon cc . -a -nb --exclude "migrations,venv,.venv" || true
+          echo ""
+          echo "=== Maintainability Index ==="
+          radon mi . --exclude "migrations,venv,.venv" || true

@@ -1,0 +1,73 @@
+[tool.black]
+line-length = 120
+target-version = ["py312"]
+exclude = '''
+/(
+    \.git
+  | \.venv
+  | venv
+  | migrations
+  | __pycache__
+  | \.eggs
+  | dist
+  | build
+  | staticfiles
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 120
+skip = ["migrations", "venv", ".venv", "__pycache__"]
+skip_glob = ["*/migrations/*"]
+known_django = ["django", "rest_framework", "django_filters"]
+sections = ["FUTURE", "STDLIB", "THIRDPARTY", "DJANGO", "FIRSTPARTY", "LOCALFOLDER"]
+
+[tool.mypy]
+python_version = "3.12"
+check_untyped_defs = true
+warn_return_any = false
+warn_unused_ignores = true
+ignore_missing_imports = true
+exclude = [
+    "migrations/",
+    "venv/",
+    ".venv/",
+]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings_test"
+python_files = ["tests.py", "test_*.py", "*_tests.py"]
+python_classes = ["Test*", "*Test*", "*Tests"]
+python_functions = ["test_*"]
+addopts = [
+    "--no-header",
+    "--import-mode=importlib",
+    "-ra",
+    "-q",
+]
+testpaths = [
+    "accounts",
+    "trading",
+    "dashboard",
+    "subscriptions",
+    "companies",
+    "health",
+    "tests",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+    "api: marks tests as API tests",
+    "permissions: marks tests as permission tests",
+]
+
+[tool.coverage.run]
+omit = [
+    "*/migrations/*",
+    "*/settings*.py",
+    "manage.py",
+    "*/admin.py",
+    "conftest.py",
+]

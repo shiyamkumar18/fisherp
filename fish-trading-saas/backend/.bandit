@@ -1,0 +1,12 @@
+[bandit]
+exclude_dirs = [
+    tests,
+    venv,
+    .venv,
+    migrations,
+    __pycache__,
+    .git,
+]
+skips =
+    B101,
+    B601

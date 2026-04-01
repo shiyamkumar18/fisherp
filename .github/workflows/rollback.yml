@@ -1,0 +1,116 @@
+name: Rollback Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Image tag to roll back to (leave blank to use previous image)"
+        required: false
+        default: ""
+      reason:
+        description: "Reason for rollback"
+        required: true
+        default: "Emergency rollback"
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository_owner }}/fisherp
+
+jobs:
+  rollback:
+    name: Rollback Production Deployment
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    environment:
+      name: production
+      url: ${{ vars.PRODUCTION_URL }}
+
+    concurrency:
+      group: production-deploy
+      cancel-in-progress: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log rollback intent
+        run: |
+          echo "### ⏪ Production Rollback Initiated" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Reason:** ${{ github.event.inputs.reason }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Target tag:** ${{ github.event.inputs.image_tag || 'previous image' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Initiated by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Timestamp:** $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_STEP_SUMMARY
+
+      - name: Perform rollback on production server
+        uses: appleboy/ssh-action@v1.0.3
+        if: ${{ vars.PRODUCTION_HOST != '' }}
+        with:
+          host: ${{ vars.PRODUCTION_HOST }}
+          username: ${{ vars.PRODUCTION_USER }}
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          script: |
+            set -e
+
+            # Determine target image
+            TARGET_TAG="${{ github.event.inputs.image_tag }}"
+            if [ -z "$TARGET_TAG" ]; then
+              if [ -f /srv/fisherp/previous_image.txt ]; then
+                ROLLBACK_IMAGE=$(cat /srv/fisherp/previous_image.txt)
+                echo "Rolling back to previous image: $ROLLBACK_IMAGE"
+              else
+                echo "❌ No previous image found and no tag specified."
+                exit 1
+              fi
+            else
+              ROLLBACK_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${TARGET_TAG}"
+              echo "Rolling back to specified image: $ROLLBACK_IMAGE"
+            fi
+
+            # Pull rollback image
+            docker pull "$ROLLBACK_IMAGE"
+
+            # Restart container with rollback image
+            docker stop fisherp-prod 2>/dev/null || true
+            docker rm fisherp-prod 2>/dev/null || true
+
+            docker run -d \
+              --name fisherp-prod \
+              --restart unless-stopped \
+              --env-file /srv/fisherp/production/.env \
+              -p 8000:8000 \
+              "$ROLLBACK_IMAGE"
+
+            echo "✅ Rollback complete. Running image: $ROLLBACK_IMAGE"
+
+      - name: Verify production health after rollback
+        run: |
+          PROD_URL="${{ vars.PRODUCTION_URL }}"
+          if [ -z "$PROD_URL" ]; then
+            echo "PRODUCTION_URL not set – skipping health check."
+            exit 0
+          fi
+          echo "Waiting for production to recover after rollback..."
+          sleep 20
+          for i in $(seq 1 10); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${PROD_URL}/health/" || true)
+            if [ "$STATUS" = "200" ]; then
+              echo "✅ Production is healthy after rollback (attempt $i)."
+              exit 0
+            fi
+            echo "Attempt $i: status $STATUS – retrying in 10 s..."
+            sleep 10
+          done
+          echo "❌ Production health check still failing after rollback."
+          exit 1
+
+      - name: Summarise rollback result
+        if: always()
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "✅ **Rollback succeeded.**" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Rollback failed. Manual intervention required.**" >> $GITHUB_STEP_SUMMARY
+          fi
