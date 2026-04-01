@@ -44,7 +44,7 @@ class Payment(models.Model):
     cleared_date = models.DateField(null=True, blank=True)
     notes = models.TextField(blank=True, null=True)
     receipt_number = models.CharField(max_length=50, unique=True, blank=True, null=True)
-    receipt_image = models.ImageField(
+    receipt_image = models.FileField(
         upload_to='payment_receipts/%Y/%m/', blank=True, null=True,
         validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'webp', 'pdf'])]
     )

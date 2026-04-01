@@ -1,6 +1,7 @@
 import logging
 
 from celery import shared_task
+from celery.exceptions import Retry
 from django.utils import timezone
 from .models import Inventory, Supplier
 from companies.models import Company
@@ -57,6 +58,8 @@ def check_overdue_suppliers(self, company_id=None):
             for cid in company_ids:
                 try:
                     total += check_overdue_suppliers(cid)
+                except Retry:
+                    raise
                 except Exception:
                     logger.exception('Overdue check failed for company %s', cid)
             return total

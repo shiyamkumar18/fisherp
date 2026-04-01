@@ -15,7 +15,7 @@ class FishCategory(models.Model):
     icon = models.ImageField(
         upload_to='fish_category_icons/', blank=True, null=True,
         help_text="Icon image for the category",
-        validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'webp', 'svg'])]
+        validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'webp'])]
     )
     color_code = models.CharField(max_length=7, blank=True, null=True,
                                   help_text="Hex color code for UI (e.g., #FF5733)")

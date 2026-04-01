@@ -1,8 +1,6 @@
-import logging
 import time
 from decimal import Decimal
 from django.db import models
-from django.db.models import F
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.utils import OperationalError
@@ -10,8 +8,6 @@ from django.db.utils import OperationalError
 from .fish import Fish
 from .purchase_batch import PurchaseBatch
 from services.base import CompanyManager
-
-logger = logging.getLogger('trading.inventory')
 
 
 class Inventory(models.Model):
