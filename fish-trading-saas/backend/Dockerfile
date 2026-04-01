@@ -26,10 +26,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Install Python dependencies (layer-cached until requirements change)
-COPY requirements.txt .
+# Install production Python dependencies (layer-cached until requirements change)
+COPY requirements-prod.txt .
 RUN pip install --upgrade pip \
- && pip install --no-cache-dir -r requirements.txt
+ && pip install --no-cache-dir -r requirements-prod.txt
 
 # ---------------------------------------------------------------------------
 # Stage 2: Runtime – minimal image with only what is needed to run

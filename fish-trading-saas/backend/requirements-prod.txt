@@ -1,0 +1,89 @@
+# =============================================================================
+# FisherP – Production Python Dependencies
+# These are the packages required to run the application in production.
+# Development/notebook packages (Jupyter, IPython, etc.) are excluded.
+# For the full development environment, use requirements.txt.
+# =============================================================================
+
+# Core Django
+Django==6.0.2
+asgiref==3.11.1
+sqlparse==0.5.5
+
+# Django REST framework + extensions
+djangorestframework==3.16.1
+djangorestframework_simplejwt==5.5.1
+djangorestframework-ratelimit==1.0.0
+django-filter>=2.4.0
+django-cors-headers==4.9.0
+drf-spectacular==0.27.0
+
+# Database
+psycopg2-binary==2.9.11
+
+# Cache / Queue / WSGI server
+celery[redis]==5.4.0
+redis==5.0.8
+gunicorn==22.0.0
+
+# Security / Authentication
+argon2-cffi==25.1.0
+argon2-cffi-bindings==25.1.0
+cffi==2.0.0
+pycparser==2.23
+pyotp==2.9.0
+PyJWT==2.11.0
+
+# Media / file handling
+pillow==12.1.1
+
+# Configuration / logging
+python-dotenv==1.2.1
+python-json-logger==4.0.0
+PyYAML==6.0.3
+
+# HTTP client
+requests==2.32.5
+certifi==2025.11.12
+charset-normalizer==3.4.4
+idna==3.11
+urllib3==2.5.0
+httpx==0.28.1
+httpcore==1.0.9
+h11==0.16.0
+
+# Async / IO (httpx deps)
+anyio==4.11.0
+sniffio==1.3.1
+
+# Date / time utilities
+arrow==1.4.0
+python-dateutil==2.9.0.post0
+six==1.17.0
+tzdata==2025.2
+
+# JSON Schema (required by drf-spectacular)
+jsonschema==4.25.1
+jsonschema-specifications==2025.9.1
+referencing==0.37.0
+rpds-py==0.29.0
+attrs==25.4.0
+jsonpointer==3.0.0
+uri-template==1.3.0
+webcolors==25.10.0
+
+# Templating (drf-spectacular UI templates)
+Jinja2==3.1.6
+MarkupSafe==3.0.3
+
+# Syntax highlighting (drf-spectacular browsable API)
+Pygments==2.19.2
+
+# XML / HTML security
+defusedxml==0.7.1
+
+# Misc runtime
+packaging==25.0
+setuptools==80.9.0
+typing_extensions==4.15.0
+platformdirs==4.5.0
