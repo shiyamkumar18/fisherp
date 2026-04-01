@@ -1,0 +1,76 @@
+# =============================================================================
+# FisherP – Docker Build Context Exclusions
+# Prevents unnecessary files from being sent to the Docker daemon.
+# =============================================================================
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Python byte-code & caches
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+.Python
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Test & coverage artifacts
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+.tox/
+*.egg-info/
+dist/
+build/
+
+# IDE / editor metadata
+.vscode/
+.idea/
+*.swp
+*.swo
+*.DS_Store
+Thumbs.db
+
+# Environment files (secrets must NOT be baked into the image)
+.env
+.env.*
+!.env.example
+
+# SQLite development databases
+*.sqlite3
+db.sqlite3
+
+# Logs
+logs/
+*.log
+
+# Static / media collected locally (re-generated at container startup)
+staticfiles/
+media/
+
+# Documentation that is not needed at runtime
+*.md
+docs/
+
+# Node.js (frontend, not needed in backend image)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# CI/CD configuration (not needed in image)
+.github/
+.circleci/
+
+# Docker files themselves (avoid recursive context)
+Dockerfile*
+docker-compose*.yml
+.dockerignore
