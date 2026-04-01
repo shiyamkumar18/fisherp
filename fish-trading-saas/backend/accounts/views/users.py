@@ -14,6 +14,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from datetime import timedelta
 from django.utils import timezone
 
+PHONE_PATTERN = r'^[0-9]{10}$'
+
 from ..utils import (
     get_client_ip,
     user_role_flags,
@@ -247,7 +249,7 @@ class UserProfileView(APIView):
                 )
 
         # Validate phone format (10 digits)
-        if phone and not re.match(r'^[0-9]{10}$', str(phone)):
+        if phone and not re.match(PHONE_PATTERN, str(phone)):
             return Response(
                 {'error': 'Phone must be 10 digits'},
                 status=status.HTTP_400_BAD_REQUEST

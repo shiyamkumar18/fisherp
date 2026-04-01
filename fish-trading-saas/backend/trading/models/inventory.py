@@ -9,6 +9,8 @@ from .fish import Fish
 from .purchase_batch import PurchaseBatch
 from services.base import CompanyManager
 
+MAX_STOCK_UPDATE_RETRIES = 10
+
 
 class Inventory(models.Model):
     STATUS_CHOICES = [
@@ -101,13 +103,13 @@ class Inventory(models.Model):
         return inventory
 
     def update_stock(self, packages_sold):
-        for attempt in range(10):
+        for attempt in range(MAX_STOCK_UPDATE_RETRIES):
             try:
                 with transaction.atomic():
                     inventory = self._apply_stock_delta(packages_sold)
                 break
             except OperationalError:
-                if attempt == 9:
+                if attempt == MAX_STOCK_UPDATE_RETRIES - 1:
                     raise
                 time.sleep(0.01)
 
