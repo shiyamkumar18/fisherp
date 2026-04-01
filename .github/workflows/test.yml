@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [ main, develop ]
 
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -13,18 +16,38 @@ jobs:
       run:
         working-directory: fish-trading-saas/backend
 
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: fisherp_test
+          POSTGRES_USER: fisherp_user
+          POSTGRES_PASSWORD: postgres_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python 3.12
+      - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python-version }}
           cache: "pip"
           cache-dependency-path: fish-trading-saas/backend/requirements.txt
 
       - name: Install dependencies
         run: |
+          pip install --upgrade pip
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
 
@@ -33,9 +56,16 @@ jobs:
 
       - name: Set up environment
         run: |
-          cp .env.example .env 2>/dev/null || echo "SECRET_KEY=ci-test-only-not-for-production
+          cat > .env << 'EOF'
+          SECRET_KEY=ci-test-only-not-for-production-change-this-in-real-env
           DEBUG=True
-          ALLOWED_HOSTS=localhost,127.0.0.1" > .env
+          ALLOWED_HOSTS=localhost,127.0.0.1
+          DB_NAME=fisherp_test
+          DB_USER=fisherp_user
+          DB_PASSWORD=postgres_test_password
+          DB_HOST=localhost
+          DB_PORT=5432
+          EOF
 
       - name: Run database migrations
         run: python manage.py migrate --run-syncdb
@@ -56,6 +86,14 @@ jobs:
             -v \
             --tb=short \
             -m "not slow" \
+            2>&1
+
+      - name: Run integration tests
+        run: |
+          python -m pytest \
+            -m "integration" \
+            --tb=short \
+            -v \
             2>&1
 
       - name: Upload coverage reports
@@ -86,9 +124,5 @@ jobs:
       - name: Lint with flake8
         run: |
           flake8 . \
-            --count \
-            --max-line-length=120 \
-            --exclude=migrations,*.egg-info,.git,__pycache__ \
-            --ignore=E501,W503,E302,E303,W291,W293,E501 \
-            --statistics \
-            --max-complexity=15
+            --config=.flake8 \
+            --statistics

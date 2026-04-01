@@ -1,0 +1,47 @@
+[tool.black]
+line-length = 120
+target-version = ["py312"]
+exclude = '''
+/(
+    \.git
+  | \.venv
+  | venv
+  | migrations
+  | __pycache__
+  | \.eggs
+  | dist
+  | build
+  | staticfiles
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 120
+skip = ["migrations", "venv", ".venv", "__pycache__"]
+skip_glob = ["*/migrations/*"]
+known_django = ["django", "rest_framework", "django_filters"]
+sections = ["FUTURE", "STDLIB", "THIRDPARTY", "DJANGO", "FIRSTPARTY", "LOCALFOLDER"]
+
+[tool.mypy]
+python_version = "3.12"
+check_untyped_defs = true
+warn_return_any = false
+warn_unused_ignores = true
+ignore_missing_imports = true
+exclude = [
+    "migrations/",
+    "venv/",
+    ".venv/",
+    "tests/",
+    "tests.py",
+]
+
+[tool.coverage.run]
+omit = [
+    "*/migrations/*",
+    "*/settings*.py",
+    "manage.py",
+    "*/admin.py",
+    "conftest.py",
+]

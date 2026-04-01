@@ -1,0 +1,139 @@
+name: Staging Deployment
+
+on:
+  workflow_run:
+    workflows: ["Build Docker Image"]
+    types:
+      - completed
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Docker image tag to deploy (default: sha-<commit>)"
+        required: false
+        default: ""
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository_owner }}/fisherp
+
+jobs:
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    permissions:
+      contents: read
+
+    environment:
+      name: staging
+      url: ${{ vars.STAGING_URL }}
+
+    concurrency:
+      group: staging-deploy
+      cancel-in-progress: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Determine image tag
+        id: tag
+        run: |
+          if [ -n "${{ github.event.inputs.image_tag }}" ]; then
+            echo "tag=${{ github.event.inputs.image_tag }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event_name }}" = "workflow_run" ]; then
+            echo "tag=sha-${{ github.event.workflow_run.head_sha }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=sha-${{ github.sha }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Log deployment start
+        run: |
+          COMMIT_SHA="${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}"
+          echo "### 🚀 Staging Deployment Started" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image:** ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Triggered by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** ${COMMIT_SHA}" >> $GITHUB_STEP_SUMMARY
+
+      # -----------------------------------------------------------------------
+      # SSH-based deployment (replace with kubectl/helm/etc. as appropriate)
+      # -----------------------------------------------------------------------
+      - name: Deploy to staging server via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        if: ${{ vars.STAGING_HOST != '' }}
+        with:
+          host: ${{ vars.STAGING_HOST }}
+          username: ${{ vars.STAGING_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          script: |
+            set -e
+            IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.tag }}"
+
+            echo "Pulling image: $IMAGE"
+            docker pull "$IMAGE"
+
+            echo "Stopping existing container..."
+            docker stop fisherp-staging 2>/dev/null || true
+            docker rm fisherp-staging 2>/dev/null || true
+
+            echo "Starting new container..."
+            docker run -d \
+              --name fisherp-staging \
+              --restart unless-stopped \
+              --env-file /srv/fisherp/staging/.env \
+              -p 8001:8000 \
+              "$IMAGE"
+
+            echo "Running migrations..."
+            docker exec fisherp-staging python manage.py migrate --noinput
+
+            echo "Deployment complete."
+
+      - name: Health check – staging
+        run: |
+          STAGING_URL="${{ vars.STAGING_URL }}"
+          if [ -z "$STAGING_URL" ]; then
+            echo "STAGING_URL not set – skipping health check."
+            exit 0
+          fi
+          echo "Waiting for staging to be healthy..."
+          for i in $(seq 1 12); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${STAGING_URL}/health/" || true)
+            if [ "$STATUS" = "200" ]; then
+              echo "✅ Staging is healthy (attempt $i)."
+              exit 0
+            fi
+            echo "Attempt $i: status $STATUS – retrying in 10 s..."
+            sleep 10
+          done
+          echo "❌ Staging health check failed after 12 attempts."
+          exit 1
+
+      - name: Run smoke tests against staging
+        run: |
+          STAGING_URL="${{ vars.STAGING_URL }}"
+          if [ -z "$STAGING_URL" ]; then
+            echo "STAGING_URL not set – skipping smoke tests."
+            exit 0
+          fi
+          # Basic endpoint availability checks
+          for endpoint in /health/ /health/ready/ /health/live/ /api/schema/; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${STAGING_URL}${endpoint}" || true)
+            echo "  ${endpoint} → HTTP ${STATUS}"
+            if [ "$STATUS" != "200" ] && [ "$STATUS" != "401" ] && [ "$STATUS" != "403" ]; then
+              echo "❌ Unexpected status for ${endpoint}: ${STATUS}"
+              exit 1
+            fi
+          done
+          echo "✅ All smoke tests passed."
+
+      - name: Summarise deployment result
+        if: always()
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "✅ **Staging deployment succeeded.**" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Staging deployment failed.**" >> $GITHUB_STEP_SUMMARY
+          fi

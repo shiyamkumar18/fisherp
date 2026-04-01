@@ -1,0 +1,143 @@
+name: Scheduled Security & Dependency Checks
+
+on:
+  schedule:
+    # Runs every night at 01:00 UTC
+    - cron: "0 1 * * *"
+  workflow_dispatch:
+
+jobs:
+  dependency-check:
+    name: Dependency Vulnerability Scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: fish-trading-saas/backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install pip-audit
+        run: pip install pip-audit
+
+      - name: Audit production dependencies
+        id: audit
+        run: |
+          pip install -r requirements.txt
+          pip-audit \
+            --requirement requirements.txt \
+            --format json \
+            --output /tmp/pip-audit-nightly.json \
+            2>&1 || true
+
+          VULN_COUNT=$(python3 -c "
+          import json, sys
+          try:
+              data = json.load(open('/tmp/pip-audit-nightly.json'))
+              vulns = [d for d in data.get('dependencies', []) if d.get('vulns')]
+              print(len(vulns))
+          except Exception as e:
+              print(0)
+          ")
+          echo "vuln_count=$VULN_COUNT" >> $GITHUB_OUTPUT
+          echo "### 🔍 Nightly Dependency Audit" >> $GITHUB_STEP_SUMMARY
+          echo "- **Vulnerable packages found:** $VULN_COUNT" >> $GITHUB_STEP_SUMMARY
+
+          if [ "$VULN_COUNT" -gt 0 ]; then
+            echo "::warning::$VULN_COUNT vulnerable package(s) found. Review /tmp/pip-audit-nightly.json."
+          fi
+
+      - name: Upload audit report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nightly-dependency-audit-${{ github.run_id }}
+          path: /tmp/pip-audit-nightly.json
+          retention-days: 30
+
+  bandit-nightly:
+    name: Nightly Bandit Security Scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: fish-trading-saas/backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install bandit
+        run: pip install bandit
+
+      - name: Run bandit
+        run: |
+          bandit -r . \
+            --exclude ./migrations,./venv,./.venv,./.git,./tests \
+            --skip B101,B601 \
+            -f json \
+            -o /tmp/bandit-nightly.json \
+            2>&1 || true
+
+          HIGH_COUNT=$(python3 -c "
+          import json
+          try:
+              data = json.load(open('/tmp/bandit-nightly.json'))
+              results = data.get('results', [])
+              high = [r for r in results if r.get('issue_severity') in ('HIGH', 'CRITICAL')]
+              print(len(high))
+          except Exception:
+              print(0)
+          ")
+          echo "### 🔒 Nightly Bandit Scan" >> $GITHUB_STEP_SUMMARY
+          echo "- **High/Critical issues found:** $HIGH_COUNT" >> $GITHUB_STEP_SUMMARY
+          if [ "$HIGH_COUNT" -gt 0 ]; then
+            echo "::warning::$HIGH_COUNT high/critical security issue(s) detected by bandit."
+          fi
+
+      - name: Upload bandit report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nightly-bandit-report-${{ github.run_id }}
+          path: /tmp/bandit-nightly.json
+          retention-days: 30
+
+  stale-dependency-check:
+    name: Stale Dependency Check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: fish-trading-saas/backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install pip-outdated tools
+        run: pip install pip-check
+
+      - name: Check for outdated packages
+        run: |
+          pip install -r requirements.txt
+          echo "### 📦 Outdated Packages" >> $GITHUB_STEP_SUMMARY
+          pip list --outdated --format=columns >> $GITHUB_STEP_SUMMARY 2>/dev/null || true
+        continue-on-error: true
