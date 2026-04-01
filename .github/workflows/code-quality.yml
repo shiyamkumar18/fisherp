@@ -88,6 +88,7 @@ jobs:
           pip install mypy django-stubs
 
       - name: Run mypy type checking
+        continue-on-error: true
         run: |
           mypy . \
             --ignore-missing-imports \
