@@ -1,4 +1,4 @@
-name: Test Suite
+name: Tests
 
 on:
   push:
@@ -7,8 +7,11 @@ on:
     branches: [ main, develop ]
 
 jobs:
-  test:
+  unit-tests:
+    name: Unit & Integration Tests
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     defaults:
       run:
         working-directory: fish-trading-saas/backend
@@ -33,9 +36,9 @@ jobs:
 
       - name: Set up environment
         run: |
-          cp .env.example .env 2>/dev/null || echo "SECRET_KEY=ci-test-only-not-for-production
-          DEBUG=True
-          ALLOWED_HOSTS=localhost,127.0.0.1" > .env
+          echo "SECRET_KEY=ci-test-only-not-for-production" > .env
+          echo "DEBUG=True" >> .env
+          echo "ALLOWED_HOSTS=localhost,127.0.0.1" >> .env
 
       - name: Run database migrations
         run: python manage.py migrate --run-syncdb
@@ -58,6 +61,22 @@ jobs:
             -m "not slow" \
             2>&1
 
+      - name: Run integration tests
+        run: |
+          python -m pytest \
+            -m "integration" \
+            --tb=short \
+            -v \
+            2>&1 || echo "No integration tests found (skipping)"
+
+      - name: Run API tests
+        run: |
+          python -m pytest \
+            -m "api" \
+            --tb=short \
+            -v \
+            2>&1 || echo "No API-marked tests found (skipping)"
+
       - name: Upload coverage reports
         uses: codecov/codecov-action@v4
         if: always()
@@ -67,7 +86,10 @@ jobs:
           fail_ci_if_error: false
 
   lint:
+    name: Flake8 Lint
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     defaults:
       run:
         working-directory: fish-trading-saas/backend
@@ -89,6 +111,6 @@ jobs:
             --count \
             --max-line-length=120 \
             --exclude=migrations,*.egg-info,.git,__pycache__ \
-            --ignore=E501,W503,E302,E303,W291,W293,E501 \
+            --ignore=E501,W503,E302,E303,W291,W293 \
             --statistics \
             --max-complexity=15

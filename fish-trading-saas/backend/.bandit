@@ -1,0 +1,18 @@
+[bandit]
+# Exclude test files, migrations, and virtual environments from security scanning
+exclude_dirs = [
+    "tests",
+    "migrations",
+    "venv",
+    ".venv",
+]
+
+# Skip low-confidence/low-severity results in CI (comment out to see all)
+# -l = low severity, -i = low confidence
+# Equivalent CLI: bandit -r . -ll -ii
+
+# Tests to skip:
+# B101 - assert_used: asserts are used in tests which are excluded anyway
+# B104 - hardcoded_bind_all_interfaces: 0.0.0.0 used intentionally in dev/Docker
+# B311 - random: standard random used only for non-security purposes
+skips = ["B101", "B104", "B311"]

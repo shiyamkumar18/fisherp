@@ -1,0 +1,42 @@
+[MASTER]
+jobs = 1
+extension-pkg-whitelist = pydantic
+ignore-patterns = migrations
+
+[MESSAGES CONTROL]
+disable =
+    C0114,  # missing-module-docstring
+    C0115,  # missing-class-docstring
+    C0116,  # missing-function-docstring
+    R0903,  # too-few-public-methods (common in DRF serializers/views)
+    W0212,  # protected-access (needed in tests)
+    W0611,  # unused-import (handled by flake8 / isort)
+    R0801,  # duplicate-code
+    E1101,  # generated-members (false positives with Django models)
+    W0613,  # unused-argument (common in DRF method signatures)
+
+[FORMAT]
+max-line-length = 120
+indent-string = "    "
+
+[DESIGN]
+max-args = 10
+max-attributes = 15
+max-bool-expr = 5
+max-branches = 15
+max-locals = 20
+max-returns = 8
+max-statements = 60
+min-public-methods = 1
+
+[SIMILARITIES]
+min-similarity-lines = 6
+ignore-comments = yes
+ignore-docstrings = yes
+ignore-imports = yes
+
+[VARIABLES]
+good-names = i,j,k,e,v,pk,id,qs,db,f,g
+
+[TYPECHECK]
+generated-members = objects,pk,id,DoesNotExist,MultipleObjectsReturned

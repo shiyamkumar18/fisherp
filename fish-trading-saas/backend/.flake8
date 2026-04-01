@@ -1,0 +1,30 @@
+[flake8]
+max-line-length = 120
+exclude =
+    .git,
+    __pycache__,
+    venv,
+    .venv,
+    migrations,
+    *.egg-info,
+    staticfiles,
+    media,
+    node_modules
+ignore =
+    # whitespace before ':'  (conflicts with black)
+    E203,
+    # line break before binary operator (conflicts with black)
+    W503,
+    # blank line warnings – handled by black
+    E302,
+    E303,
+    # trailing whitespace – handled by black
+    W291,
+    W293
+per-file-ignores =
+    # Allow wildcard imports in settings overrides and conftest
+    config/settings*.py: F401, F403, F405
+    conftest.py: F401, F811
+max-complexity = 15
+statistics = True
+count = True

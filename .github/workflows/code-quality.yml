@@ -1,0 +1,192 @@
+name: Code Quality
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+  push:
+    branches: [ main ]
+
+jobs:
+  flake8:
+    name: Flake8 Linting
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: fish-trading-saas/backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install flake8
+        run: pip install flake8 flake8-bugbear
+
+      - name: Lint – critical errors (fail build)
+        run: |
+          flake8 . \
+            --count \
+            --select=E9,F63,F7,F82 \
+            --show-source \
+            --statistics \
+            --exclude=migrations,*.egg-info,.git,__pycache__
+
+      - name: Lint – full report (informational)
+        run: |
+          flake8 . \
+            --count \
+            --exit-zero \
+            --max-line-length=120 \
+            --max-complexity=15 \
+            --exclude=migrations,*.egg-info,.git,__pycache__ \
+            --ignore=E501,W503,E302,E303,W291,W293 \
+            --statistics
+
+  black:
+    name: Black Formatting
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: fish-trading-saas/backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install black
+        run: pip install black
+
+      - name: Check formatting with black
+        run: black --check --diff --line-length=120 --exclude="/(migrations)/" .
+
+  isort:
+    name: Import Sorting
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: fish-trading-saas/backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install isort
+        run: pip install isort
+
+      - name: Check import sorting with isort
+        run: isort --check-only --diff --profile=black --line-length=120 --skip=migrations .
+
+  bandit:
+    name: Bandit Security Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: fish-trading-saas/backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install bandit
+        run: pip install bandit[toml]
+
+      - name: Run bandit security analysis
+        run: |
+          bandit -r . \
+            --exclude ./migrations,./venv,./.venv \
+            -ll \
+            --format json \
+            --output bandit-report.json \
+            2>&1 || true
+          bandit -r . \
+            --exclude ./migrations,./venv,./.venv \
+            -ll
+
+      - name: Upload bandit report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bandit-security-report
+          path: fish-trading-saas/backend/bandit-report.json
+
+  complexity:
+    name: Code Complexity
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: fish-trading-saas/backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install radon
+        run: pip install radon
+
+      - name: Analyze cyclomatic complexity
+        run: radon cc . -a --exclude="migrations/*" --min=C || true
+
+      - name: Analyze maintainability index
+        run: radon mi . --exclude="migrations/*" -s || true
+
+  pip-audit:
+    name: Dependency Vulnerability Scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: fish-trading-saas/backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install pip-audit
+        run: pip install pip-audit
+
+      - name: Audit dependencies for known vulnerabilities
+        run: pip-audit -r requirements.txt --format=json --output=pip-audit-report.json || true
+
+      - name: Print audit summary
+        run: pip-audit -r requirements.txt || true
+
+      - name: Upload pip-audit report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pip-audit-report
+          path: fish-trading-saas/backend/pip-audit-report.json

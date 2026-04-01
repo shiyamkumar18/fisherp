@@ -1,0 +1,186 @@
+name: Performance Tests
+
+on:
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      users:
+        description: "Concurrent users for load test"
+        required: false
+        default: "50"
+      duration:
+        description: "Test duration in seconds"
+        required: false
+        default: "60"
+
+jobs:
+  load-test:
+    name: Load & Performance Testing
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: fish-trading-saas/backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: fish-trading-saas/backend/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install locust
+
+      - name: Create required directories
+        run: mkdir -p logs
+
+      - name: Set up test environment
+        run: |
+          echo "SECRET_KEY=perf-test-key-ci-only" > .env
+          echo "DEBUG=True" >> .env
+          echo "ALLOWED_HOSTS=localhost,127.0.0.1" >> .env
+
+      - name: Run database migrations
+        run: python manage.py migrate --run-syncdb
+
+      - name: Start Django dev server
+        run: |
+          python manage.py runserver 0.0.0.0:8000 &
+          echo "SERVER_PID=$!" >> "$GITHUB_ENV"
+          # Wait for server to be ready
+          for i in $(seq 1 30); do
+            python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/')" 2>/dev/null && break
+            echo "Waiting for server... ($i/30)"
+            sleep 2
+          done
+
+      - name: Run health endpoint performance test
+        run: |
+          locust \
+            --host=http://localhost:8000 \
+            --users=${{ github.event.inputs.users || '10' }} \
+            --spawn-rate=5 \
+            --run-time=${{ github.event.inputs.duration || '30' }}s \
+            --headless \
+            --only-summary \
+            --csv=perf-results \
+            -f /dev/stdin << 'EOF'
+          from locust import HttpUser, task, between
+
+          class FisherPHealthUser(HttpUser):
+              wait_time = between(0.5, 2)
+
+              @task(3)
+              def health_check(self):
+                  self.client.get("/health/", name="GET /health/")
+
+              @task(1)
+              def health_ready(self):
+                  self.client.get("/health/ready/", name="GET /health/ready/")
+          EOF
+
+      - name: Display performance results
+        if: always()
+        run: |
+          if [ -f perf-results_stats.csv ]; then
+            echo "=== Performance Test Results ==="
+            cat perf-results_stats.csv
+            echo ""
+            echo "=== Failures ==="
+            cat perf-results_failures.csv 2>/dev/null || echo "No failures"
+          fi
+
+      - name: Upload performance results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: performance-test-results
+          path: fish-trading-saas/backend/perf-results*.csv
+
+      - name: Stop dev server
+        if: always()
+        run: kill $SERVER_PID 2>/dev/null || true
+
+  response-time-benchmark:
+    name: Response Time Benchmark
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: fish-trading-saas/backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: fish-trading-saas/backend/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Create required directories & environment
+        run: |
+          mkdir -p logs
+          echo "SECRET_KEY=bench-test-key-ci-only" > .env
+          echo "DEBUG=True" >> .env
+          echo "ALLOWED_HOSTS=localhost,127.0.0.1" >> .env
+
+      - name: Run database migrations
+        run: python manage.py migrate --run-syncdb
+
+      - name: Start Django dev server
+        run: |
+          python manage.py runserver 0.0.0.0:8000 &
+          sleep 5
+          for i in $(seq 1 20); do
+            python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/')" 2>/dev/null && break
+            sleep 2
+          done
+
+      - name: Measure response times
+        run: |
+          python3 << 'EOF'
+          import urllib.request
+          import time
+          import statistics
+
+          BASE = "http://localhost:8000"
+          endpoints = ["/health/", "/health/ready/", "/health/live/"]
+          ITERATIONS = 20
+          THRESHOLD_MS = 500  # 500ms threshold
+
+          results = {}
+          for ep in endpoints:
+              url = BASE + ep
+              times = []
+              for _ in range(ITERATIONS):
+                  start = time.perf_counter()
+                  try:
+                      urllib.request.urlopen(url, timeout=5)
+                      elapsed = (time.perf_counter() - start) * 1000
+                      times.append(elapsed)
+                  except Exception as exc:
+                      print(f"  ⚠️  {url}: {exc}")
+              if times:
+                  avg = statistics.mean(times)
+                  p95 = sorted(times)[int(len(times) * 0.95)]
+                  results[ep] = {"avg": avg, "p95": p95, "min": min(times), "max": max(times)}
+                  status = "✅" if p95 < THRESHOLD_MS else "⚠️"
+                  print(f"{status} {ep}: avg={avg:.1f}ms  p95={p95:.1f}ms  min={min(times):.1f}ms  max={max(times):.1f}ms")
+
+          print("\nBenchmark complete.")
+          EOF

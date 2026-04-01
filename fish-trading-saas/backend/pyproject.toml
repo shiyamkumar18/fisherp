@@ -1,0 +1,56 @@
+[tool.black]
+line-length = 120
+target-version = ["py312"]
+exclude = '''
+/(
+    \.git
+  | __pycache__
+  | \.venv
+  | venv
+  | migrations
+  | staticfiles
+  | media
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 120
+known_django = ["django", "rest_framework", "rest_framework_simplejwt"]
+known_first_party = [
+    "accounts",
+    "companies",
+    "config",
+    "dashboard",
+    "health",
+    "platform_mgr",
+    "saas_admin",
+    "subscriptions",
+    "trading",
+]
+sections = ["FUTURE", "STDLIB", "THIRDPARTY", "DJANGO", "FIRSTPARTY", "LOCALFOLDER"]
+skip = ["migrations", "venv", ".venv"]
+skip_glob = ["*/migrations/*"]
+
+[tool.mypy]
+python_version = "3.12"
+check_untyped_defs = true
+warn_return_any = false
+warn_unused_configs = true
+ignore_missing_imports = true
+exclude = [
+    "migrations/",
+    "venv/",
+    ".venv/",
+]
+# Django-specific
+plugins = []
+
+[tool.coverage.run]
+omit = [
+    "*/migrations/*",
+    "*/settings*.py",
+    "manage.py",
+    "*/admin.py",
+    "conftest.py",
+]
