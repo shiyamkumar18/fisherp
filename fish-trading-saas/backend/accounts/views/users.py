@@ -227,10 +227,38 @@ class UserProfileView(APIView):
 
     def put(self, request):
         """Update user profile"""
+        import re
         user = request.user
-        user.email = request.data.get('email', user.email)
-        user.phone = request.data.get('phone', user.phone)
-        user.save()
+
+        email = request.data.get('email', user.email)
+        phone = request.data.get('phone', user.phone)
+
+        # Validate email format
+        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if email and not re.match(email_pattern, email):
+            return Response(
+                {'error': 'Invalid email format'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Validate phone format (10 digits)
+        if phone and not re.match(r'^[0-9]{10}$', str(phone)):
+            return Response(
+                {'error': 'Phone must be 10 digits'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Check email uniqueness (excluding current user)
+        if email and email != user.email:
+            if User.objects.filter(email__iexact=email).exclude(pk=user.pk).exists():
+                return Response(
+                    {'error': 'Email already in use by another account'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        user.email = email
+        user.phone = phone
+        user.save(update_fields=['email', 'phone'])
 
         return Response({
             'message': 'Profile updated successfully',

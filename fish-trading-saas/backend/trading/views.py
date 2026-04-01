@@ -106,7 +106,7 @@ class FishViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.Mode
         return [IsAuthenticated()]
 
     def get_queryset(self):
-        return _scoped_queryset(self.request, Fish)
+        return _scoped_queryset(self.request, Fish).select_related('category', 'tenant', 'company')
 
     def get_serializer_class(self):
         if self.action == 'list':
@@ -175,7 +175,7 @@ class SupplierViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.
         return [IsAuthenticated()]
 
     def get_queryset(self):
-        return _scoped_queryset(self.request, Supplier)
+        return _scoped_queryset(self.request, Supplier).select_related('tenant', 'company')
 
     @transaction.atomic
     def perform_create(self, serializer):
@@ -330,7 +330,7 @@ class BuyerViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.Mod
         return [IsAuthenticated()]
 
     def get_queryset(self):
-        return _scoped_queryset(self.request, Buyer)
+        return _scoped_queryset(self.request, Buyer).select_related('tenant', 'company')
 
     def perform_create(self, serializer):
         serializer.save(**_get_create_scope(self.request))
@@ -391,7 +391,9 @@ class PurchaseBatchViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
         return [IsAuthenticated()]
 
     def get_queryset(self):
-        return _scoped_queryset(self.request, PurchaseBatch)
+        return _scoped_queryset(self.request, PurchaseBatch).select_related(
+            'supplier', 'fish', 'fish_category', 'tenant', 'company'
+        )
 
     @transaction.atomic
     def perform_create(self, serializer):
@@ -444,7 +446,9 @@ class SaleViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
         return [IsAuthenticated()]
 
     def get_queryset(self):
-        return _scoped_queryset(self.request, Sale)
+        return _scoped_queryset(self.request, Sale).select_related(
+            'batch', 'buyer', 'tenant', 'company'
+        )
 
     def perform_create(self, serializer):
         instance = serializer.save(**_get_create_scope(self.request))
@@ -519,7 +523,9 @@ class PaymentViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
         return [IsAuthenticated()]
 
     def get_queryset(self):
-        queryset = _scoped_queryset(self.request, Payment)
+        queryset = _scoped_queryset(self.request, Payment).select_related(
+            'purchase_batch', 'sale', 'supplier', 'buyer', 'tenant', 'company'
+        )
         return _filter_role_visible_payments(queryset, self.request.user)
 
     def perform_create(self, serializer):
@@ -566,7 +572,9 @@ class InventoryViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
         return [IsAuthenticated()]
 
     def get_queryset(self):
-        return _scoped_queryset(self.request, Inventory)
+        return _scoped_queryset(self.request, Inventory).select_related(
+            'fish', 'purchase_batch', 'tenant', 'company'
+        )
 
     def perform_create(self, serializer):
         instance = serializer.save(**_get_create_scope(self.request))

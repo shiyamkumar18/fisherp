@@ -1,4 +1,5 @@
 import logging
+import time
 from decimal import Decimal
 from django.db import models
 from django.db.models import F
@@ -104,16 +105,15 @@ class Inventory(models.Model):
         return inventory
 
     def update_stock(self, packages_sold):
-        with _inventory_update_lock:
-            for attempt in range(10):
-                try:
-                    with transaction.atomic():
-                        inventory = self._apply_stock_delta(packages_sold)
-                    break
-                except OperationalError:
-                    if attempt == 9:
-                        raise
-                    time.sleep(0.01)
+        for attempt in range(10):
+            try:
+                with transaction.atomic():
+                    inventory = self._apply_stock_delta(packages_sold)
+                break
+            except OperationalError:
+                if attempt == 9:
+                    raise
+                time.sleep(0.01)
 
         self.sold_packages = inventory.sold_packages
         self.remaining_packages = inventory.remaining_packages
