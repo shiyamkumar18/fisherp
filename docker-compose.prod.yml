@@ -1,0 +1,320 @@
+# =============================================================================
+# FisherP – Production Docker Compose
+# Full production stack: Postgres, Redis, PgBouncer, Gunicorn, Celery, Nginx
+#
+# Pre-requisites:
+#   1. Copy fish-trading-saas/.env.docker.example to .env and fill in values.
+#   2. Place SSL certificates at fish-trading-saas/nginx/ssl/fullchain.pem
+#      and fish-trading-saas/nginx/ssl/privkey.pem
+#
+# Usage:
+#   docker compose -f docker-compose.prod.yml pull
+#   docker compose -f docker-compose.prod.yml up -d
+#   docker compose -f docker-compose.prod.yml exec web python manage.py createsuperuser
+# =============================================================================
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL 15
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-fisherp_prod}
+      POSTGRES_USER: ${DB_USER:-fisherp_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - postgres_backup:/var/backups/postgresql
+      - ./fish-trading-saas/backend/postgres_init.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
+      - ./fish-trading-saas/scripts/postgres-init.sh:/docker-entrypoint-initdb.d/02_init.sh:ro
+    expose:
+      - "5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-fisherp_user} -d ${DB_NAME:-fisherp_prod}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    command: >
+      postgres
+        -c max_connections=200
+        -c shared_buffers=256MB
+        -c effective_cache_size=768MB
+        -c maintenance_work_mem=64MB
+        -c checkpoint_completion_target=0.9
+        -c wal_buffers=16MB
+        -c default_statistics_target=100
+        -c random_page_cost=1.1
+        -c effective_io_concurrency=200
+        -c log_min_duration_statement=500
+        -c log_line_prefix='%t [%p]: [%l-1] user=%u,db=%d,app=%a,client=%h '
+        -c log_checkpoints=on
+        -c log_connections=on
+        -c log_disconnections=on
+        -c log_lock_waits=on
+        -c deadlock_timeout=1s
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    networks:
+      - backend_net
+
+  # ---------------------------------------------------------------------------
+  # PgBouncer – connection pooler (transaction mode)
+  # ---------------------------------------------------------------------------
+  pgbouncer:
+    image: bitnami/pgbouncer:1.22.1
+    restart: unless-stopped
+    environment:
+      POSTGRESQL_HOST: postgres
+      POSTGRESQL_PORT: 5432
+      POSTGRESQL_DATABASE: ${DB_NAME:-fisherp_prod}
+      POSTGRESQL_USERNAME: ${DB_USER:-fisherp_user}
+      POSTGRESQL_PASSWORD: ${DB_PASSWORD}
+      PGBOUNCER_DATABASE: ${DB_NAME:-fisherp_prod}
+      PGBOUNCER_POOL_MODE: transaction
+      PGBOUNCER_MAX_CLIENT_CONN: 200
+      PGBOUNCER_DEFAULT_POOL_SIZE: 20
+      PGBOUNCER_MIN_POOL_SIZE: 5
+      PGBOUNCER_RESERVE_POOL_SIZE: 5
+      PGBOUNCER_SERVER_IDLE_TIMEOUT: 600
+      PGBOUNCER_LOG_CONNECTIONS: 0
+      PGBOUNCER_LOG_DISCONNECTIONS: 0
+    expose:
+      - "6432"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 128M
+    networks:
+      - backend_net
+
+  # ---------------------------------------------------------------------------
+  # Redis – cache + Celery broker
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    expose:
+      - "6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 768M
+        reservations:
+          memory: 256M
+    networks:
+      - backend_net
+
+  # ---------------------------------------------------------------------------
+  # Django / Gunicorn application server
+  # ---------------------------------------------------------------------------
+  web:
+    build:
+      context: ./fish-trading-saas/backend
+      dockerfile: Dockerfile
+    image: fisherp-backend:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings_postgres
+      SECRET_KEY: ${SECRET_KEY}
+      DEBUG: "False"
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS}
+      DB_NAME: ${DB_NAME:-fisherp_prod}
+      DB_USER: ${DB_USER:-fisherp_user}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_HOST: pgbouncer
+      DB_PORT: "6432"
+      DB_CONN_MAX_AGE: "0"
+      USE_PGBOUNCER: "True"
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
+      JWT_ACCESS_TOKEN_LIFETIME_MINUTES: ${JWT_ACCESS_TOKEN_LIFETIME_MINUTES:-15}
+    expose:
+      - "8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      pgbouncer:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    volumes:
+      - static_files:/app/staticfiles
+      - media_files:/app/media
+      - prod_logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:8000/health/"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+    networks:
+      - backend_net
+      - frontend_net
+
+  # ---------------------------------------------------------------------------
+  # Celery worker
+  # ---------------------------------------------------------------------------
+  celery:
+    build:
+      context: ./fish-trading-saas/backend
+      dockerfile: Dockerfile
+    image: fisherp-backend:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings_postgres
+      SECRET_KEY: ${SECRET_KEY}
+      DEBUG: "False"
+      DB_NAME: ${DB_NAME:-fisherp_prod}
+      DB_USER: ${DB_USER:-fisherp_user}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_HOST: pgbouncer
+      DB_PORT: "6432"
+      DB_CONN_MAX_AGE: "0"
+      USE_PGBOUNCER: "True"
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+    depends_on:
+      - web
+      - redis
+    volumes:
+      - prod_logs:/app/logs
+    command: >
+      celery -A trading.celery:app worker
+        --loglevel=info
+        --concurrency=4
+        --max-tasks-per-child=1000
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    networks:
+      - backend_net
+
+  # ---------------------------------------------------------------------------
+  # Celery Beat – periodic task scheduler (single instance only)
+  # ---------------------------------------------------------------------------
+  celery-beat:
+    build:
+      context: ./fish-trading-saas/backend
+      dockerfile: Dockerfile
+    image: fisherp-backend:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings_postgres
+      SECRET_KEY: ${SECRET_KEY}
+      DEBUG: "False"
+      DB_NAME: ${DB_NAME:-fisherp_prod}
+      DB_USER: ${DB_USER:-fisherp_user}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_HOST: pgbouncer
+      DB_PORT: "6432"
+      DB_CONN_MAX_AGE: "0"
+      USE_PGBOUNCER: "True"
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+    depends_on:
+      - web
+      - redis
+    volumes:
+      - prod_logs:/app/logs
+    command: celery -A trading.celery:app beat --loglevel=info
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+    networks:
+      - backend_net
+
+  # ---------------------------------------------------------------------------
+  # Nginx – reverse proxy with SSL termination
+  # ---------------------------------------------------------------------------
+  nginx:
+    build:
+      context: ./fish-trading-saas/nginx
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      web:
+        condition: service_healthy
+    volumes:
+      - static_files:/var/www/static:ro
+      - media_files:/var/www/media:ro
+      - ./fish-trading-saas/nginx/ssl:/etc/nginx/ssl:ro
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost/health/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+    networks:
+      - frontend_net
+
+volumes:
+  postgres_data:
+  postgres_backup:
+  redis_data:
+  static_files:
+  media_files:
+  prod_logs:
+
+networks:
+  backend_net:
+    driver: bridge
+    internal: true     # Not accessible from the host – only service-to-service
+  frontend_net:
+    driver: bridge     # Nginx + web services accessible from the host
