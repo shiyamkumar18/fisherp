@@ -82,6 +82,12 @@ jobs:
                   echo "   Expected a fully qualified image name, e.g.: ghcr.io/OWNER/fisherp:tag"
                   exit 1
                 fi
+                # Validate previous image value before using it
+                if [ -z "$ROLLBACK_IMAGE" ] || ! echo "$ROLLBACK_IMAGE" | grep -q '/' || ! echo "$ROLLBACK_IMAGE" | grep -q ':'; then
+                  echo "❌ Invalid previous image value '$ROLLBACK_IMAGE' in /srv/fisherp/previous_image.txt."
+                  echo "   Expected a fully qualified image name, e.g.: ghcr.io/OWNER/fisherp:tag"
+                  exit 1
+                fi
                 echo "Rolling back to previous image: $ROLLBACK_IMAGE"
               else
                 echo "❌ No previous image found and no tag specified."
