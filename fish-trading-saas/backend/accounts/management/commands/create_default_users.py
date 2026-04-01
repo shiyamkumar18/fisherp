@@ -1,4 +1,4 @@
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.utils import timezone
@@ -21,7 +21,6 @@ ROLE_GROUP_MAP = {
     'store_accounts': 'store',
 }
 
-
 def assign_user_to_group(user):
     """Assign a user to their role-based group"""
     group_name = ROLE_GROUP_MAP.get(user.role)
@@ -36,7 +35,7 @@ def assign_user_to_group(user):
 
 
 class Command(BaseCommand):
-    help = 'Creates default users with proper RBAC roles'
+    help = 'Creates default users with proper RBAC roles (LOCAL / DEV ONLY)'
 
     def get_or_create_company(self, name, slug):
         company, _ = Company.objects.get_or_create(
@@ -50,6 +49,25 @@ class Command(BaseCommand):
         return company
 
     def handle(self, *args, **options):
+        # =================================================================
+        # PRODUCTION GUARD – this command must never run against a live DB.
+        # =================================================================
+        from django.conf import settings
+        if not settings.DEBUG:
+            raise CommandError(
+                "\n\n"
+                "  ╔══════════════════════════════════════════════════════╗\n"
+                "  ║  BLOCKED: create_default_users is a DEV-ONLY command ║\n"
+                "  ║                                                      ║\n"
+                "  ║  DEBUG=False detected — this is a production         ║\n"
+                "  ║  environment. Running this command would seed weak,  ║\n"
+                "  ║  well-known credentials into your live database.     ║\n"
+                "  ║                                                      ║\n"
+                "  ║  To create production users, use:                   ║\n"
+                "  ║    manage.py createsuperuser                         ║\n"
+                "  ╚══════════════════════════════════════════════════════╝\n"
+            )
+
         # Create or get subscription tiers
         tier, _ = SubscriptionTier.objects.get_or_create(
             name='free',
@@ -68,7 +86,7 @@ class Command(BaseCommand):
         # Ensure tenant companies exist for tenant-side users.
         tenant1 = self.get_or_create_company('Tenant 1 Company', 'tenant1')
         tenant2 = self.get_or_create_company('Tenant 2 Company', 'tenant2')
-        
+
         # =====================
         # PLATFORM OPERATOR
         # =====================
@@ -77,7 +95,7 @@ class Command(BaseCommand):
             platform_operator = User.objects.create_user(
                 username='platform_operator',
                 email='platform.operator@fishapp.com',
-                password='platform123',  # Change this in production!
+                password='platform123',  # DEV ONLY – never use in production
                 role='platform_operator',
                 is_staff=True,  # Can access admin for tenant management
                 is_superuser=False  # NOT a superuser for security!
@@ -97,7 +115,7 @@ class Command(BaseCommand):
             platform_support = User.objects.create_user(
                 username='platform_support',
                 email='support@fishapp.com',
-                password='support123',  # Change in production
+                password='support123',  # DEV ONLY
                 role='platform_support',
                 is_superuser=False
             )
@@ -114,7 +132,7 @@ class Command(BaseCommand):
             admin_user = User.objects.create_user(
                 username='admin',
                 email='admin@fishapp.com',
-                password='admin123',
+                password='admin123',  # DEV ONLY
                 role='tenant_admin',
                 company=tenant1,
             )
@@ -141,7 +159,7 @@ class Command(BaseCommand):
             accountant_user = User.objects.create_user(
                 username='accountant',
                 email='accountant@fishapp.com',
-                password='accountant123',
+                password='accountant123',  # DEV ONLY
                 role='accountant',
                 company=tenant1,
             )
@@ -166,7 +184,7 @@ class Command(BaseCommand):
             trader_user = User.objects.create_user(
                 username='trader',
                 email='trader@fishapp.com',
-                password='trader123',
+                password='trader123',  # DEV ONLY
                 role='trader',
                 company=tenant1,
             )
@@ -191,7 +209,7 @@ class Command(BaseCommand):
             store_user = User.objects.create_user(
                 username='store',
                 email='store@fishapp.com',
-                password='store123',
+                password='store123',  # DEV ONLY
                 role='store',
                 company=tenant1,
             )
@@ -216,7 +234,7 @@ class Command(BaseCommand):
             tenant2_admin = User.objects.create_user(
                 username='tenant2_admin',
                 email='tenant2@fishapp.com',
-                password='tenant2123',
+                password='tenant2123',  # DEV ONLY
                 role='tenant_admin',
                 company=tenant2,
             )
@@ -245,28 +263,29 @@ class Command(BaseCommand):
         self.stdout.write('  🛟 Platform Support: platform_support / support123')
         self.stdout.write('     → Role: platform_support')
         self.stdout.write('     → Can troubleshoot tenant issues with limited rights\n')
-        
+
         self.stdout.write('  👑 Tenant Admin: admin / admin123')
         self.stdout.write('     → Role: tenant_admin')
         self.stdout.write('     → Full access within tenant\n')
-        
+
         self.stdout.write('  💰 Accountant: accountant / accountant123')
         self.stdout.write('     → Role: accountant')
         self.stdout.write('     → Financial authority\n')
-        
+
         self.stdout.write('  📈 Trader: trader / trader123')
         self.stdout.write('     → Role: trader')
         self.stdout.write('     → Sales operations only\n')
-        
+
         self.stdout.write('  📦 Store: store / store123')
         self.stdout.write('     → Role: store')
         self.stdout.write('     → Purchase & inventory only\n')
-        
+
         self.stdout.write('  👑 Tenant 2: tenant2_admin / tenant2123')
         self.stdout.write('     → Second tenant for isolation testing\n')
-        
+
         self.stdout.write('\n🔒 SECURITY NOTES:')
         self.stdout.write('  - Platform Operator is NOT a superuser')
         self.stdout.write('  - Must use impersonation to access tenant data')
         self.stdout.write('  - All impersonation actions are logged')
         self.stdout.write('  - Tenant data is fully isolated')
+        self.stdout.write(self.style.WARNING('\n  ⚠️  DEV CREDENTIALS ONLY – rotate all passwords before any real use'))
