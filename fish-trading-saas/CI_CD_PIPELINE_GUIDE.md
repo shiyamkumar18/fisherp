@@ -259,7 +259,7 @@ Located at `fish-trading-saas/backend/.bandit`.
 3. Enable:
    - ✅ Require status checks to pass before merging
    - ✅ Require branches to be up to date
-   - ✅ Required status checks: `test / test`, `lint / lint`, `Code Quality / lint`
+   - ✅ Required status checks: `Test Suite / test`, `Test Suite / lint`, `Code Quality / lint`
    - ✅ Require pull request reviews before merging
    - ✅ Dismiss stale pull request approvals when new commits are pushed
 

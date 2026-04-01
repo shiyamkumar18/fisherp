@@ -43,9 +43,27 @@ jobs:
           echo "- **Initiated by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Timestamp:** $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_STEP_SUMMARY
 
+      - name: Validate production rollback configuration
+        env:
+          PRODUCTION_HOST: ${{ vars.PRODUCTION_HOST }}
+          PRODUCTION_USER: ${{ vars.PRODUCTION_USER }}
+        run: |
+          MISSING=0
+          if [ -z "$PRODUCTION_HOST" ]; then
+            echo "❌ Missing required configuration: vars.PRODUCTION_HOST"
+            MISSING=1
+          fi
+          if [ -z "$PRODUCTION_USER" ]; then
+            echo "❌ Missing required configuration: vars.PRODUCTION_USER"
+            MISSING=1
+          fi
+          if [ "$MISSING" -ne 0 ]; then
+            echo "Rollback configuration is incomplete. Failing job."
+            exit 1
+          fi
+
       - name: Perform rollback on production server
         uses: appleboy/ssh-action@v1.0.3
-        if: ${{ vars.PRODUCTION_HOST != '' }}
         with:
           host: ${{ vars.PRODUCTION_HOST }}
           username: ${{ vars.PRODUCTION_USER }}
@@ -58,6 +76,12 @@ jobs:
             if [ -z "$TARGET_TAG" ]; then
               if [ -f /srv/fisherp/previous_image.txt ]; then
                 ROLLBACK_IMAGE=$(cat /srv/fisherp/previous_image.txt)
+                # Validate previous image value before using it
+                if [ -z "$ROLLBACK_IMAGE" ] || ! echo "$ROLLBACK_IMAGE" | grep -q '/' || ! echo "$ROLLBACK_IMAGE" | grep -q ':'; then
+                  echo "❌ Invalid previous image value '$ROLLBACK_IMAGE' in /srv/fisherp/previous_image.txt."
+                  echo "   Expected a fully qualified image name, e.g.: ghcr.io/OWNER/fisherp:tag"
+                  exit 1
+                fi
                 echo "Rolling back to previous image: $ROLLBACK_IMAGE"
               else
                 echo "❌ No previous image found and no tag specified."

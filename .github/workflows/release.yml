@@ -66,9 +66,15 @@ jobs:
             git log --pretty=format:"- %s (%h)" --no-merges >> /tmp/changelog.md
           fi
 
-          echo "" >> /tmp/changelog.md
-          echo "" >> /tmp/changelog.md
-          echo "**Full Changelog:** https://github.com/${{ github.repository }}/compare/${PREV_TAG}...${TAG}" >> /tmp/changelog.md
+          if [ -n "$PREV_TAG" ]; then
+            echo "" >> /tmp/changelog.md
+            echo "" >> /tmp/changelog.md
+            echo "**Full Changelog:** https://github.com/${{ github.repository }}/compare/${PREV_TAG}...${TAG}" >> /tmp/changelog.md
+          else
+            echo "" >> /tmp/changelog.md
+            echo "" >> /tmp/changelog.md
+            echo "**Full Changelog:** https://github.com/${{ github.repository }}/releases/tag/${TAG}" >> /tmp/changelog.md
+          fi
 
           cat /tmp/changelog.md
 

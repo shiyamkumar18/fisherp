@@ -19,10 +19,6 @@ ignore =
     E303,
     W291,
     W293
-per-file-ignores =
-    */tests/*.py: S101
-    */tests.py: S101
-    conftest.py: S101
 statistics = True
 count = True
 show-source = True

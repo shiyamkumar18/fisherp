@@ -81,7 +81,7 @@ jobs:
           key: ${{ secrets.PRODUCTION_SSH_KEY }}
           script: |
             set -e
-            BACKUP_FILE="/srv/fisherp/backups/db_backup_$(date +%Y%m%d_%H%M%S).sql"
+            BACKUP_FILE="/srv/fisherp/backups/db_backup_$(date +%Y%m%d_%H%M%S).json"
             mkdir -p /srv/fisherp/backups
 
             echo "Creating database backup: $BACKUP_FILE"
@@ -89,17 +89,31 @@ jobs:
               python manage.py dumpdata \
               --natural-foreign --natural-primary \
               --indent 2 \
-              > "$BACKUP_FILE" 2>&1
+              > "$BACKUP_FILE"
             gzip "$BACKUP_FILE"
             echo "✅ Backup saved: ${BACKUP_FILE}.gz"
 
             # Retain last 7 backups
-            ls -t /srv/fisherp/backups/db_backup_*.sql.gz 2>/dev/null | tail -n +8 | xargs rm -f || true
-        continue-on-error: true
+            ls -t /srv/fisherp/backups/db_backup_*.json.gz 2>/dev/null | tail -n +8 | xargs rm -f || true
+
+      - name: Validate production deployment configuration
+        run: |
+          MISSING=0
+          if [ -z "${{ vars.PRODUCTION_HOST }}" ]; then
+            echo "❌ Missing required configuration: vars.PRODUCTION_HOST"
+            MISSING=1
+          fi
+          if [ -z "${{ vars.PRODUCTION_USER }}" ]; then
+            echo "❌ Missing required configuration: vars.PRODUCTION_USER"
+            MISSING=1
+          fi
+          if [ "$MISSING" -ne 0 ]; then
+            echo "Production deployment configuration is incomplete. Failing job."
+            exit 1
+          fi
 
       - name: Deploy to production server via SSH
         uses: appleboy/ssh-action@v1.0.3
-        if: ${{ vars.PRODUCTION_HOST != '' }}
         with:
           host: ${{ vars.PRODUCTION_HOST }}
           username: ${{ vars.PRODUCTION_USER }}
@@ -162,11 +176,20 @@ jobs:
             echo "PRODUCTION_URL not set – skipping smoke tests."
             exit 0
           fi
+          FAILED=0
           for endpoint in /health/ /health/ready/ /health/live/ /api/schema/; do
             STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${PROD_URL}${endpoint}" || true)
             echo "  ${endpoint} → HTTP ${STATUS}"
+            if [ "$STATUS" != "200" ]; then
+              echo "    ❌ Unexpected status for ${endpoint}: HTTP ${STATUS}"
+              FAILED=1
+            fi
           done
-          echo "✅ Smoke tests complete."
+          if [ "$FAILED" -ne 0 ]; then
+            echo "❌ Smoke tests failed: one or more endpoints returned a non-200 status."
+            exit 1
+          fi
+          echo "✅ Smoke tests passed."
 
       - name: Summarise deployment result
         if: always()

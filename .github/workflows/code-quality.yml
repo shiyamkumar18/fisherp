@@ -93,7 +93,7 @@ jobs:
             --ignore-missing-imports \
             --exclude '(migrations|venv|\.venv)' \
             --no-error-summary \
-            2>&1 || true
+            2>&1
 
   complexity:
     name: Complexity Analysis

@@ -41,17 +41,20 @@ jobs:
         run: |
           if [ -n "${{ github.event.inputs.image_tag }}" ]; then
             echo "tag=${{ github.event.inputs.image_tag }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event_name }}" = "workflow_run" ]; then
+            echo "tag=sha-${{ github.event.workflow_run.head_sha }}" >> $GITHUB_OUTPUT
           else
             echo "tag=sha-${{ github.sha }}" >> $GITHUB_OUTPUT
           fi
 
       - name: Log deployment start
         run: |
+          COMMIT_SHA="${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}"
           echo "### 🚀 Staging Deployment Started" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- **Image:** ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Triggered by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** ${COMMIT_SHA}" >> $GITHUB_STEP_SUMMARY
 
       # -----------------------------------------------------------------------
       # SSH-based deployment (replace with kubectl/helm/etc. as appropriate)
@@ -86,7 +89,6 @@ jobs:
             docker exec fisherp-staging python manage.py migrate --noinput
 
             echo "Deployment complete."
-        continue-on-error: true
 
       - name: Health check – staging
         run: |

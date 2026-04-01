@@ -35,34 +35,6 @@ exclude = [
     ".venv/",
 ]
 
-[tool.pytest.ini_options]
-DJANGO_SETTINGS_MODULE = "config.settings_test"
-python_files = ["tests.py", "test_*.py", "*_tests.py"]
-python_classes = ["Test*", "*Test*", "*Tests"]
-python_functions = ["test_*"]
-addopts = [
-    "--no-header",
-    "--import-mode=importlib",
-    "-ra",
-    "-q",
-]
-testpaths = [
-    "accounts",
-    "trading",
-    "dashboard",
-    "subscriptions",
-    "companies",
-    "health",
-    "tests",
-]
-markers = [
-    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
-    "integration: marks tests as integration tests",
-    "unit: marks tests as unit tests",
-    "api: marks tests as API tests",
-    "permissions: marks tests as permission tests",
-]
-
 [tool.coverage.run]
 omit = [
     "*/migrations/*",

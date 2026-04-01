@@ -64,6 +64,7 @@ jobs:
           context: fish-trading-saas/backend
           file: fish-trading-saas/backend/Dockerfile
           push: ${{ github.event_name != 'pull_request' && (github.event.inputs.push_image != 'false') }}
+          load: ${{ github.event_name == 'pull_request' || github.event.inputs.push_image == 'false' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
@@ -73,7 +74,7 @@ jobs:
             VCS_REF=${{ github.sha }}
 
       - name: Scan image for vulnerabilities with Trivy
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0.20.0
         with:
           image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}
           format: sarif
