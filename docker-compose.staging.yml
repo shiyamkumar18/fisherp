@@ -22,7 +22,7 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
       - staging_postgres_data:/var/lib/postgresql/data
-      - ./fish-trading-saas/backend/postgres_init.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
+      - ./fish-trading-saas/scripts/postgres-init.sh:/docker-entrypoint-initdb.d/01_init.sh:ro
     expose:
       - "5432"
     healthcheck:
@@ -62,7 +62,8 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     environment:
-      DJANGO_SETTINGS_MODULE: config.settings_postgres
+      DJANGO_SETTINGS_MODULE: config.settings_staging
+      APP_ROLE: web
       SECRET_KEY: ${SECRET_KEY}
       DEBUG: "False"
       ALLOWED_HOSTS: ${ALLOWED_HOSTS:-staging.fisherp.com,localhost}
@@ -105,7 +106,8 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     environment:
-      DJANGO_SETTINGS_MODULE: config.settings_postgres
+      DJANGO_SETTINGS_MODULE: config.settings_staging
+      APP_ROLE: celery
       SECRET_KEY: ${SECRET_KEY}
       DEBUG: "False"
       DB_NAME: ${DB_NAME:-fisherp_staging}
@@ -135,7 +137,8 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     environment:
-      DJANGO_SETTINGS_MODULE: config.settings_postgres
+      DJANGO_SETTINGS_MODULE: config.settings_staging
+      APP_ROLE: celery-beat
       SECRET_KEY: ${SECRET_KEY}
       DEBUG: "False"
       DB_NAME: ${DB_NAME:-fisherp_staging}
@@ -158,6 +161,7 @@ services:
 
   # ---------------------------------------------------------------------------
   # Nginx – reverse proxy (HTTP only for staging; HTTPS via external LB)
+  # Uses a staging-specific config that omits SSL enforcement.
   # ---------------------------------------------------------------------------
   nginx:
     build:
@@ -172,6 +176,7 @@ services:
     volumes:
       - staging_static:/var/www/static:ro
       - staging_media:/var/www/media:ro
+      - ./fish-trading-saas/nginx/nginx-staging.conf:/etc/nginx/nginx.conf:ro
     networks:
       - staging_net
 

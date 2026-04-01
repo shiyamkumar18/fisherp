@@ -19,38 +19,76 @@ APP_PASS="${DB_PASSWORD:-${POSTGRES_PASSWORD:-CHANGE_ME}}"
 
 echo "[postgres-init] Initializing database '$APP_DB' for user '$APP_USER'..."
 
-psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
+# Use psql -v to pass values as named variables, then reference them via
+# :'varname' (quoted literal) or :"varname" (quoted identifier) in the SQL.
+# The format() function with %I/%L handles identifier/literal escaping safely,
+# preventing SQL injection even when values contain single quotes or special chars.
+psql -v ON_ERROR_STOP=1 \
+     --username "$POSTGRES_USER" \
+     --dbname   "$POSTGRES_DB"   \
+     -v app_user="$APP_USER"     \
+     -v app_pass="$APP_PASS"     \
+     -v app_db="$APP_DB"         \
+     <<-'EOSQL'
 
     -- ------------------------------------------------------------------
     -- 1. Create application user (idempotent)
+    -- Use format(%I/%L) to safely handle special chars in name/password.
     -- ------------------------------------------------------------------
-    DO \$\$
+    DO $$
+    DECLARE
+        v_user TEXT := :'app_user';
+        v_pass TEXT := :'app_pass';
     BEGIN
-        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '${APP_USER}') THEN
-            CREATE ROLE "${APP_USER}" WITH LOGIN PASSWORD '${APP_PASS}';
-            RAISE NOTICE 'Created role: ${APP_USER}';
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = v_user) THEN
+            EXECUTE format('CREATE ROLE %I WITH LOGIN PASSWORD %L', v_user, v_pass);
+            RAISE NOTICE 'Created role: %', v_user;
         ELSE
-            ALTER ROLE "${APP_USER}" WITH PASSWORD '${APP_PASS}';
-            RAISE NOTICE 'Updated password for existing role: ${APP_USER}';
+            EXECUTE format('ALTER ROLE %I WITH PASSWORD %L', v_user, v_pass);
+            RAISE NOTICE 'Updated password for existing role: %', v_user;
         END IF;
     END
-    \$\$;
+    $$;
 
     -- ------------------------------------------------------------------
     -- 2. Create application database (idempotent)
     -- ------------------------------------------------------------------
-    SELECT 'CREATE DATABASE "${APP_DB}" OWNER "${APP_USER}" ENCODING ''UTF8'' LC_COLLATE ''en_US.UTF-8'' LC_CTYPE ''en_US.UTF-8'' TEMPLATE template0'
-    WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = '${APP_DB}')\gexec
+    DO $$
+    DECLARE
+        v_db   TEXT := :'app_db';
+        v_user TEXT := :'app_user';
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = v_db) THEN
+            EXECUTE format(
+                'CREATE DATABASE %I OWNER %I ENCODING ''UTF8'' '
+                'LC_COLLATE ''en_US.UTF-8'' LC_CTYPE ''en_US.UTF-8'' TEMPLATE template0',
+                v_db, v_user
+            );
+            RAISE NOTICE 'Created database: %', v_db;
+        END IF;
+    END
+    $$;
 
     -- ------------------------------------------------------------------
     -- 3. Grant privileges
     -- ------------------------------------------------------------------
-    GRANT ALL PRIVILEGES ON DATABASE "${APP_DB}" TO "${APP_USER}";
+    DO $$
+    DECLARE
+        v_db   TEXT := :'app_db';
+        v_user TEXT := :'app_user';
+    BEGIN
+        EXECUTE format('GRANT ALL PRIVILEGES ON DATABASE %I TO %I', v_db, v_user);
+    END
+    $$;
 
 EOSQL
 
 # Connect to the application database to enable extensions
-psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$APP_DB" <<-EOSQL
+psql -v ON_ERROR_STOP=1 \
+     --username "$POSTGRES_USER" \
+     --dbname   "$APP_DB"        \
+     -v app_user="$APP_USER"     \
+     <<-'EOSQL'
 
     -- ------------------------------------------------------------------
     -- 4. Enable extensions
@@ -62,8 +100,14 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$APP_DB" <<-EOSQL
     -- ------------------------------------------------------------------
     -- 5. Schema ownership
     -- ------------------------------------------------------------------
-    ALTER SCHEMA public OWNER TO "${APP_USER}";
-    GRANT ALL ON SCHEMA public TO "${APP_USER}";
+    DO $$
+    DECLARE
+        v_user TEXT := :'app_user';
+    BEGIN
+        EXECUTE format('ALTER SCHEMA public OWNER TO %I', v_user);
+        EXECUTE format('GRANT ALL ON SCHEMA public TO %I', v_user);
+    END
+    $$;
 
 EOSQL
 

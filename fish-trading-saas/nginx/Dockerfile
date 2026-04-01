@@ -21,6 +21,6 @@ RUN mkdir -p /etc/nginx/ssl \
 EXPOSE 80 443
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD curl -fsSL http://localhost/health/ || exit 1
+    CMD wget -q -O - http://localhost/health/ > /dev/null 2>&1 || exit 1
 
 CMD ["nginx", "-g", "daemon off;"]

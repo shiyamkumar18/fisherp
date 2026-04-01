@@ -2,7 +2,6 @@
 # =============================================================================
 # FisherP – Docker Entrypoint Script
 # Runs inside the Django/Gunicorn container on every startup.
-# Build context: fish-trading-saas/backend/
 # =============================================================================
 set -e
 
@@ -20,13 +19,11 @@ fi
 
 # ---------------------------------------------------------------------------
 # Wait for Redis to be ready (if REDIS_URL is set)
+# Use redis-cli -u to avoid fragile URL parsing (handles missing port safely).
 # ---------------------------------------------------------------------------
 if [ -n "$REDIS_URL" ]; then
-    REDIS_HOST=$(echo "$REDIS_URL" | sed -E 's|redis://([^:/]+).*|\1|')
-    REDIS_PORT=$(echo "$REDIS_URL" | sed -E 's|redis://[^:]+:([0-9]+).*|\1|')
-    REDIS_PORT="${REDIS_PORT:-6379}"
-    echo "[entrypoint] Waiting for Redis at $REDIS_HOST:$REDIS_PORT..."
-    until redis-cli -h "$REDIS_HOST" -p "$REDIS_PORT" ping > /dev/null 2>&1; do
+    echo "[entrypoint] Waiting for Redis at $REDIS_URL..."
+    until redis-cli -u "$REDIS_URL" ping > /dev/null 2>&1; do
         echo "[entrypoint] Redis not ready – retrying in 2 s..."
         sleep 2
     done
@@ -34,16 +31,17 @@ if [ -n "$REDIS_URL" ]; then
 fi
 
 # ---------------------------------------------------------------------------
-# Run database migrations (idempotent, safe on every restart)
+# Run database migrations and collect static files.
+# Gated to the "web" role to prevent race conditions in multi-replica and
+# multi-service setups (celery/celery-beat share the same image).
 # ---------------------------------------------------------------------------
-echo "[entrypoint] Running database migrations..."
-python manage.py migrate --noinput
+if [ "${APP_ROLE:-web}" = "web" ]; then
+    echo "[entrypoint] Running database migrations..."
+    python manage.py migrate --noinput
 
-# ---------------------------------------------------------------------------
-# Collect static files
-# ---------------------------------------------------------------------------
-echo "[entrypoint] Collecting static files..."
-python manage.py collectstatic --noinput --clear
+    echo "[entrypoint] Collecting static files..."
+    python manage.py collectstatic --noinput
+fi
 
 # ---------------------------------------------------------------------------
 # Create default superuser from environment variables (first deploy only)

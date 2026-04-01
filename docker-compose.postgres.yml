@@ -22,8 +22,7 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./fish-trading-saas/backend/postgres_init.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
-      - ./fish-trading-saas/scripts/postgres-init.sh:/docker-entrypoint-initdb.d/02_init.sh:ro
+      - ./fish-trading-saas/scripts/postgres-init.sh:/docker-entrypoint-initdb.d/01_init.sh:ro
     ports:
       - "5432:5432"
     healthcheck:
@@ -72,6 +71,7 @@ services:
     restart: unless-stopped
     environment:
       DJANGO_SETTINGS_MODULE: config.settings_postgres
+      APP_ROLE: web
       SECRET_KEY: ${SECRET_KEY}
       DEBUG: "False"
       ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1}
@@ -84,6 +84,10 @@ services:
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/1
+    # NOTE: Port 8000 is exposed for direct access in this stack (no Nginx proxy).
+    # settings_postgres enables SECURE_SSL_REDIRECT, so run this stack behind an
+    # HTTPS-terminating proxy and ensure X-Forwarded-Proto is set to https, OR
+    # use the dev compose (docker-compose.yml) for plain HTTP local access.
     ports:
       - "8000:8000"
     depends_on:
@@ -112,6 +116,7 @@ services:
     restart: unless-stopped
     environment:
       DJANGO_SETTINGS_MODULE: config.settings_postgres
+      APP_ROLE: celery
       SECRET_KEY: ${SECRET_KEY}
       DEBUG: "False"
       DB_NAME: ${DB_NAME:-fisherp_prod}
@@ -140,6 +145,7 @@ services:
     restart: unless-stopped
     environment:
       DJANGO_SETTINGS_MODULE: config.settings_postgres
+      APP_ROLE: celery-beat
       SECRET_KEY: ${SECRET_KEY}
       DEBUG: "False"
       DB_NAME: ${DB_NAME:-fisherp_prod}
