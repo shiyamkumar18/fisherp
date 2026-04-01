@@ -130,6 +130,16 @@ jobs:
           EOF
 
       - name: Run Django system security checks
+        # These are dummy values required to import settings_prod.py;
+        # the check --deploy command does NOT connect to any database.
+        env:
+          DB_NAME: fisherp_ci
+          DB_USER: fisherp_user
+          DB_PASSWORD: ci_password
+          DB_HOST: localhost
+          DB_PORT: "5432"
+          CORS_ALLOWED_ORIGINS: https://localhost
+          REDIS_URL: redis://localhost:6379/0
         run: |
           python manage.py check --deploy \
             --settings=config.settings_prod \
@@ -146,7 +156,7 @@ jobs:
           fetch-depth: 0
 
       - name: Detect secrets with TruffleHog
-        uses: trufflesecurity/trufflehog@v3
+        uses: trufflesecurity/trufflehog@v3.94.1
         with:
           path: ./
           base: ${{ github.event.repository.default_branch }}
