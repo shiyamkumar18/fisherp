@@ -4,10 +4,10 @@ Tests for trading business logic: calculated fields on PurchaseBatch and Sale mo
 import pytest
 from decimal import Decimal
 
-from trading.models import PurchaseBatch, Sale, Inventory
+from trading.models import Sale
 from tests.factories import (
-    UserFactory, CompanyFactory, FishFactory, BuyerFactory,
-    PurchaseBatchFactory, InventoryFactory,
+    UserFactory, FishFactory, BuyerFactory,
+    PurchaseBatchFactory,
 )
 
 pytestmark = pytest.mark.django_db

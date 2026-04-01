@@ -7,7 +7,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from tests.factories import (
-    UserFactory, CompanyFactory, BuyerFactory, FishCategoryFactory,
+    UserFactory, BuyerFactory,
     PurchaseBatchFactory,
 )
 from tests.conftest_fixtures import make_active_subscription
@@ -50,7 +50,7 @@ class TestInvalidDataTypes:
     def test_non_integer_packages_returns_400(self):
         user = UserFactory(role="tenant_admin")
         make_active_subscription(user.company)
-        from tests.factories import FishCategoryFactory, FishFactory
+        from tests.factories import FishFactory
         fish = FishFactory(tenant=user)
         payload = {
             "purchase_type": "package",

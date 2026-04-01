@@ -5,7 +5,7 @@ Focuses on field values, calculated fields, and soft-delete behaviour.
 import pytest
 from decimal import Decimal
 
-from trading.models import FishCategory, Fish, Supplier, Buyer, PurchaseBatch, Inventory
+from trading.models import Fish
 from tests.factories import (
     UserFactory, CompanyFactory, FishCategoryFactory, FishFactory,
     SupplierFactory, BuyerFactory, PurchaseBatchFactory, InventoryFactory,

@@ -7,8 +7,8 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from tests.factories import (
-    UserFactory, CompanyFactory, SubscriptionFactory,
-    PurchaseBatchFactory, FishFactory, BuyerFactory, SupplierFactory,
+    UserFactory, CompanyFactory,
+    PurchaseBatchFactory, FishFactory, BuyerFactory,
 )
 from tests.conftest_fixtures import make_active_subscription
 

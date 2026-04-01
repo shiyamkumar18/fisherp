@@ -2,10 +2,8 @@
 Shared helper utilities and pytest fixtures usable across all test modules.
 These complement conftest.py without duplicating its fixtures.
 """
-import uuid
 import pytest
 from datetime import timedelta
-from decimal import Decimal
 from django.utils import timezone
 from rest_framework.test import APIClient
 
@@ -13,12 +11,6 @@ from tests.factories import (
     CompanyFactory,
     UserFactory,
     SubscriptionFactory,
-    SubscriptionTierFactory,
-    FishCategoryFactory,
-    FishFactory,
-    SupplierFactory,
-    BuyerFactory,
-    PurchaseBatchFactory,
 )
 
 

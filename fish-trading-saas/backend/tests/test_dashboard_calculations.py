@@ -7,8 +7,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from tests.factories import (
-    UserFactory, CompanyFactory, FishFactory, BuyerFactory,
-    PurchaseBatchFactory, InventoryFactory,
+    UserFactory, CompanyFactory,
 )
 
 pytestmark = pytest.mark.django_db

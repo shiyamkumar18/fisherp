@@ -7,7 +7,7 @@ import threading
 from decimal import Decimal
 
 from tests.factories import (
-    UserFactory, FishFactory, PurchaseBatchFactory, InventoryFactory,
+    UserFactory, FishFactory, PurchaseBatchFactory,
 )
 
 pytestmark = pytest.mark.django_db(transaction=True)

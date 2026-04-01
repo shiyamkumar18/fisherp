@@ -102,7 +102,7 @@ class TestUserListEndpoint:
 
     def test_accountant_cannot_list_all_users(self):
         company = CompanyFactory()
-        admin = UserFactory(role="tenant_admin", company=company)
+        UserFactory(role="tenant_admin", company=company)
         acc = UserFactory(role="accountant", company=company)
         client = APIClient()
         client.force_authenticate(user=acc)

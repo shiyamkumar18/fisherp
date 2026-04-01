@@ -3,10 +3,9 @@ Tests for the User model in the accounts app.
 Focuses on model-level behaviour: creation, roles, properties, validation.
 """
 import pytest
-from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
 
-from accounts.models import ROLE_HIERARCHY, PLATFORM_ROLES, TENANT_ROLES
+from accounts.models import ROLE_HIERARCHY
 from tests.factories import UserFactory, CompanyFactory
 
 User = get_user_model()

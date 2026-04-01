@@ -6,8 +6,8 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from tests.factories import (
-    UserFactory, CompanyFactory, FishCategoryFactory, FishFactory,
-    BuyerFactory, SupplierFactory, PurchaseBatchFactory,
+    UserFactory, FishCategoryFactory, FishFactory,
+    BuyerFactory,
 )
 
 pytestmark = pytest.mark.django_db
@@ -53,8 +53,8 @@ class TestCategoryFilter:
         user = UserFactory(role="tenant_admin")
         cat_salt = FishCategoryFactory(category_type="saltwater")
         cat_fresh = FishCategoryFactory(category_type="freshwater")
-        fish_salt = FishFactory(tenant=user, category=cat_salt)
-        fish_fresh = FishFactory(tenant=user, category=cat_fresh)
+        FishFactory(tenant=user, category=cat_salt)
+        FishFactory(tenant=user, category=cat_fresh)
 
         resp = _client(user).get("/api/fish/", {"category": cat_salt.id})
         assert resp.status_code == status.HTTP_200_OK

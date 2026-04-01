@@ -6,7 +6,6 @@ from datetime import timedelta
 from decimal import Decimal
 from django.utils import timezone
 
-from subscriptions.models import SubscriptionTier, Subscription
 from tests.factories import (
     CompanyFactory, SubscriptionTierFactory, SubscriptionFactory,
 )
