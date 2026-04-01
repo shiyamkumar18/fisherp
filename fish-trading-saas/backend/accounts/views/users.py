@@ -14,8 +14,6 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from datetime import timedelta
 from django.utils import timezone
 
-PHONE_PATTERN = r'^[0-9]{10}$'
-
 from ..utils import (
     get_client_ip,
     user_role_flags,
@@ -25,6 +23,8 @@ from ..utils import (
 from ..models_audit import AuditLog
 
 User = get_user_model()
+
+PHONE_PATTERN = r'^[0-9]{10}$'
 
 
 class UserRegistrationView(APIView):
