@@ -1,109 +1,198 @@
-<!-- Sales Page - Spec 8 -->
 <div class="page-header">
-    <h1 class="page-title">Sales</h1>
-    <button class="btn-primary" onclick="showAddSaleModal()">+ Add Sale</button>
+    <div>
+        <h1 class="page-title">Sales Execution</h1>
+        <p class="page-subtitle">Capture invoices fast, keep payment status visible, and protect margin with every batch sold.</p>
+    </div>
+    <div class="hero-actions">
+        <button class="btn btn-primary" onclick="showAddSaleModal()">
+            <i class="fas fa-plus"></i>
+            Create Invoice
+        </button>
+        <button class="btn btn-secondary" onclick="App.loadPage('payments')">
+            <i class="fas fa-money-check-dollar"></i>
+            Open Collections
+        </button>
+    </div>
 </div>
 
-<!-- Form - Top Section -->
-<div class="form-section">
-    <h2>Add New Sale</h2>
-    <div class="form-grid">
-        <div class="form-group">
-            <label class="form-label">Buyer</label>
-            <select id="sale-buyer" class="form-select">
-                <option>ABC Retail</option>
-                <option>XYZ Mart</option>
-            </select>
+<section class="kpi-row">
+    <article class="kpi-card">
+        <div class="metric-eyebrow">Sales Today</div>
+        <div class="kpi-value">₹1.24L</div>
+        <div class="kpi-label">Live turnover from completed sales entries.</div>
+    </article>
+    <article class="kpi-card">
+        <div class="metric-eyebrow">Collections</div>
+        <div class="kpi-value">86%</div>
+        <div class="kpi-label">Invoices settled in the current cycle.</div>
+    </article>
+    <article class="kpi-card">
+        <div class="metric-eyebrow">Average Margin</div>
+        <div class="kpi-value">27%</div>
+        <div class="kpi-label">Gross spread across latest transactions.</div>
+    </article>
+</section>
+
+<div class="table-container">
+    <div class="table-header">
+        <div>
+            <h3>Sales Ledger</h3>
+            <span>Invoice, buyer, revenue, margin, and payment status in one stream</span>
         </div>
-        <div class="form-group">
-            <label class="form-label">Fish</label>
-            <select id="sale-fish" class="form-select">
-                <option>Salmon</option>
-                <option>Tilapia</option>
-            </select>
-        </div>
-        <div class="form-group">
-            <label class="form-label">Quantity (packages)</label>
-            <input type="number" id="sale-quantity" class="form-input" oninput="calculateSaleTotal()">
-        </div>
-        <div class="form-group">
-            <label class="form-label">Price/kg</label>
-            <input type="number" id="sale-price" class="form-input" step="0.01" oninput="calculateSaleTotal()">
-        </div>
-        <div class="form-group">
-            <label class="form-label">Total</label>
-            <input type="number" id="sale-total" class="form-input" readonly>
+        <div class="table-actions">
+            <input class="form-input" type="text" id="salesSearch" placeholder="Search invoice or buyer" style="min-width: 240px;">
         </div>
     </div>
-    <button class="btn-save" onclick="saveSale()">Save Sale</button>
-</div>
-
-<!-- Sales History Table - Below Form -->
-<div class="table-container">
-    <div class="table-header">Sales History</div>
+    <div class="table-filter-bar">
+        <div class="table-filter-controls">
+            <select class="form-select" id="salesPaymentFilter" style="min-width: 180px;">
+                <option value="">All Payment States</option>
+                <option value="paid">Paid</option>
+                <option value="partial">Partial</option>
+                <option value="pending">Pending</option>
+                <option value="overdue">Overdue</option>
+            </select>
+            <select class="form-select" id="salesMarginFilter" style="min-width: 180px;">
+                <option value="">All Margin Bands</option>
+                <option value="guardrail">Below Guardrail</option>
+                <option value="healthy">Healthy Margin</option>
+            </select>
+        </div>
+        <div class="bulk-selection" id="salesSelectionCount">0 selected</div>
+    </div>
+    <div class="bulk-action-bar">
+        <div class="bulk-action-controls">
+            <button class="btn btn-secondary btn-sm" type="button">Send Collection Prompt</button>
+            <button class="btn btn-ghost btn-sm" type="button">Mark Follow-up</button>
+            <button class="btn btn-ghost btn-sm" type="button">Export Selected</button>
+        </div>
+    </div>
     <table class="data-table">
         <thead>
             <tr>
+                <th>
+                    <input type="checkbox" id="salesSelectAll" aria-label="Select all sales rows" onchange="toggleSalesSelection(this.checked)">
+                </th>
                 <th>Invoice</th>
                 <th>Buyer</th>
-                <th>Fish</th>
+                <th>Fish / Batch</th>
                 <th>Packages</th>
                 <th>Revenue</th>
                 <th>Profit</th>
-                <th>Status</th>
+                <th>Payment</th>
                 <th>Actions</th>
             </tr>
         </thead>
         <tbody id="saleTable">
             <tr>
-                <td>SALE-001</td>
-                <td>ABC Retail</td>
-                <td>Salmon</td>
-                <td>50</td>
-                <td>$2,500</td>
-                <td>$750</td>
-                <td class="status-good">Paid</td>
-                <td>
-                    <button class="btn btn-secondary btn-sm" onclick="editSale(1)">Edit</button>
-                    <button class="btn btn-danger btn-sm" onclick="deleteSale(1)">Delete</button>
-                </td>
+                <td colspan="9" class="text-center">Loading sales ledger...</td>
             </tr>
         </tbody>
     </table>
 </div>
 
+<aside class="insight-card">
+    <div>
+        <div class="section-caption">Invoice Lifecycle</div>
+        <h3>Move partial and overdue invoices quickly</h3>
+    </div>
+    <div class="insight-list">
+        <div class="insight-item">
+            <i class="fas fa-receipt"></i>
+            <div>
+                <strong>Use payment-state filters daily</strong>
+                <p>Keep pending and overdue invoices visible for collection priority calls.</p>
+            </div>
+        </div>
+    </div>
+</aside>
+
 <script>
-function calculateSaleTotal() {
-    const quantity = parseFloat(document.getElementById('sale-quantity').value) || 0;
-    const price = parseFloat(document.getElementById('sale-price').value) || 0;
-    document.getElementById('sale-total').value = (quantity * price).toFixed(2);
+function toggleSalesSelection(checked) {
+    document.querySelectorAll('#saleTable input[type="checkbox"]').forEach((input) => {
+        input.checked = checked;
+    });
+    updateSalesSelectionCount();
 }
 
-function showAddSaleModal() {
-    // Form already visible on page per spec
+function updateSalesSelectionCount() {
+    const selected = document.querySelectorAll('#saleTable input[type="checkbox"]:checked').length;
+    const el = document.getElementById('salesSelectionCount');
+    if (el) el.textContent = `${selected} selected`;
 }
 
-function saveSale() {
-    const data = {
-        buyer: document.getElementById('sale-buyer').value,
-        fish: document.getElementById('sale-fish').value,
-        quantity: document.getElementById('sale-quantity').value,
-        price: document.getElementById('sale-price').value,
-        total: document.getElementById('sale-total').value
-    };
-    // API call
-    console.log('Save sale:', data);
-    loadPage('sales');
+window.updateSalesSelectionCount = updateSalesSelectionCount;
+
+async function showAddSaleModal() {
+    const [buyers, batches] = await Promise.all([
+        window.App.apiCall('/trading/buyers/'),
+        window.App.apiCall('/trading/purchase-batches/')
+    ]);
+
+    const buyerOptions = (buyers || []).map((buyer) =>
+        `<option value="${buyer.id}">${String(buyer.name || 'Unnamed Buyer')}</option>`
+    ).join('');
+    const batchOptions = (batches || []).map((batch) =>
+        `<option value="${batch.id}">${String(batch.batch_number || batch.id)} - ${String(batch.fish_name || 'Fish')}</option>`
+    ).join('');
+
+    showModal(
+        'Create Sale Invoice',
+        `
+        <div class="form-group">
+            <label class="form-label">Buyer</label>
+            <select id="saleBuyerId" class="form-select">${buyerOptions}</select>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Batch / Fish</label>
+            <select id="saleBatchId" class="form-select">${batchOptions}</select>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Packages</label>
+            <input type="number" id="salePackages" class="form-input" min="1" placeholder="0">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Weight Per Package (kg)</label>
+            <input type="number" id="saleWeightPerPackage" class="form-input" min="0.01" step="0.01" placeholder="0.00">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Rate (per kg)</label>
+            <input type="number" id="saleRatePerKg" class="form-input" min="0" step="0.01" placeholder="0.00">
+        </div>
+        `,
+        '<button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveSaleInvoice()">Save Draft</button>'
+    );
 }
 
-function editSale(id) {
-    showModal('Edit Sale', '<p>Edit form would go here</p>');
-}
+async function saveSaleInvoice() {
+    const buyerId = Number(document.getElementById('saleBuyerId')?.value || 0);
+    const batchId = Number(document.getElementById('saleBatchId')?.value || 0);
+    const packages = Number(document.getElementById('salePackages')?.value || 0);
+    const weightPerPackage = Number(document.getElementById('saleWeightPerPackage')?.value || 0);
+    const ratePerKg = Number(document.getElementById('saleRatePerKg')?.value || 0);
 
-function deleteSale(id) {
-    if (confirm('Delete this sale?')) {
-        console.log('Delete sale', id);
-        loadPage('sales');
+    if (!buyerId || !batchId || packages <= 0 || weightPerPackage <= 0 || ratePerKg <= 0) {
+        window.App?.showAlert?.('Fill all sale fields with valid values.', 'danger');
+        return;
     }
+
+    const payload = {
+        buyer: buyerId,
+        batch: batchId,
+        date: new Date().toISOString().slice(0, 10),
+        number_of_packages_sold: packages,
+        selling_weight_per_package: weightPerPackage,
+        selling_price_per_kg: ratePerKg,
+    };
+
+    const created = await window.App.apiCall('/trading/sales/', 'POST', payload);
+    if (!created) {
+        window.App?.showAlert?.('Unable to save sale invoice.', 'danger');
+        return;
+    }
+
+    closeModal();
+    window.App?.showAlert?.('Sale invoice created successfully.', 'success');
+    await window.App.loadPage('sales');
 }
 </script>

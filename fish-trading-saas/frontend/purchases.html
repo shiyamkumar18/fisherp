@@ -1,49 +1,78 @@
-<!-- Purchases Page - Spec 7 -->
 <div class="page-header">
-    <h1 class="page-title">Purchases</h1>
-    <button class="btn-primary" onclick="showAddPurchaseModal()">+ Add Purchase</button>
+    <div>
+        <h1 class="page-title">Purchase Operations</h1>
+        <p class="page-subtitle">Track supplier buying, incoming batches, and payout commitments with full day-level visibility.</p>
+    </div>
+    <div class="hero-actions">
+        <button class="btn btn-primary" onclick="showAddPurchaseModal()">
+            <i class="fas fa-plus"></i>
+            Add Purchase Batch
+        </button>
+        <button class="btn btn-secondary" onclick="App.loadPage('inventory')">
+            <i class="fas fa-boxes-stacked"></i>
+            Review Inventory
+        </button>
+    </div>
 </div>
 
-<!-- Form - Top Section -->
-<div class="form-section">
-    <h2>Add New Purchase</h2>
-    <div class="form-grid">
-        <div class="form-group">
-            <label class="form-label">Fish</label>
-            <select id="purchase-fish" class="form-select">
-                <option>Salmon</option>
-                <option>Tilapia</option>
-            </select>
+<section class="kpi-row">
+    <article class="kpi-card">
+        <div class="metric-eyebrow">Purchases Today</div>
+        <div class="kpi-value">₹89K</div>
+        <div class="kpi-label">Fresh buying value entered this shift.</div>
+    </article>
+    <article class="kpi-card">
+        <div class="metric-eyebrow">Open Batches</div>
+        <div class="kpi-value">14</div>
+        <div class="kpi-label">Batches currently active in storage.</div>
+    </article>
+    <article class="kpi-card">
+        <div class="metric-eyebrow">Supplier Dues</div>
+        <div class="kpi-value">₹2.1L</div>
+        <div class="kpi-label">Outstanding payouts needing schedule control.</div>
+    </article>
+</section>
+
+<div class="table-container">
+    <div class="table-header">
+        <div>
+            <h3>Purchase Ledger</h3>
+            <span>Batch, fish, supplier, cost, status, and date in one traceable record</span>
         </div>
-        <div class="form-group">
-            <label class="form-label">Supplier</label>
-            <select id="purchase-supplier" class="form-select">
-                <option>Fisherman Raj</option>
-                <option>Aqua Farms</option>
-            </select>
-        </div>
-        <div class="form-group">
-            <label class="form-label">Quantity (packages)</label>
-            <input type="number" id="purchase-quantity" class="form-input" oninput="calculatePurchaseTotal()">
-        </div>
-        <div class="form-group">
-            <label class="form-label">Price/kg</label>
-            <input type="number" id="purchase-price" class="form-input" step="0.01" oninput="calculatePurchaseTotal()">
-        </div>
-        <div class="form-group">
-            <label class="form-label">Total</label>
-            <input type="number" id="purchase-total" class="form-input" readonly>
+        <div class="table-actions">
+            <input class="form-input" type="text" id="purchaseSearch" placeholder="Search batch or supplier" style="min-width: 240px;">
         </div>
     </div>
-    <button class="btn-save" onclick="savePurchase()">Save Purchase</button>
-</div>
-
-<!-- Purchase History Table - Below Form -->
-<div class="table-container">
-    <div class="table-header">Purchase History</div>
+    <div class="table-filter-bar">
+        <div class="table-filter-controls">
+            <select class="form-select" id="purchaseStatusFilter" style="min-width: 180px;">
+                <option value="">All Status</option>
+                <option value="pending">Pending</option>
+                <option value="completed">Completed</option>
+                <option value="partial">Partial</option>
+            </select>
+            <select class="form-select" id="purchaseDueFilter" style="min-width: 180px;">
+                <option value="">All Due Windows</option>
+                <option value="today">Due Today</option>
+                <option value="week">Due This Week</option>
+                <option value="overdue">Overdue</option>
+            </select>
+        </div>
+        <div class="bulk-selection" id="purchaseSelectionCount">0 selected</div>
+    </div>
+    <div class="bulk-action-bar">
+        <div class="bulk-action-controls">
+            <button class="btn btn-secondary btn-sm" type="button">Mark Paid</button>
+            <button class="btn btn-ghost btn-sm" type="button">Send Reminder</button>
+            <button class="btn btn-ghost btn-sm" type="button">Export Selected</button>
+        </div>
+    </div>
     <table class="data-table">
         <thead>
             <tr>
+                <th>
+                    <input type="checkbox" id="purchaseSelectAll" aria-label="Select all purchase rows" onchange="togglePurchaseSelection(this.checked)">
+                </th>
                 <th>Batch</th>
                 <th>Fish</th>
                 <th>Supplier</th>
@@ -56,66 +85,119 @@
         </thead>
         <tbody id="purchaseTable">
             <tr>
-                <td>BATCH-045</td>
-                <td>Salmon</td>
-                <td>Fisherman Raj</td>
-                <td>100</td>
-                <td>$1,750</td>
-                <td class="status-good">Paid</td>
-                <td>2024-03-23</td>
-                <td>
-                    <button class="btn btn-secondary btn-sm" onclick="editPurchase(45)">Edit</button>
-                    <button class="btn btn-danger btn-sm" onclick="deletePurchase(45)">Delete</button>
-                </td>
-            </tr>
-            <tr>
-                <td>BATCH-046</td>
-                <td>Tilapia</td>
-                <td>Aqua Farms</td>
-                <td>80</td>
-                <td>$640</td>
-                <td class="status-medium">Partial</td>
-                <td>2024-03-23</td>
-                <td>
-                    <button class="btn btn-secondary btn-sm" onclick="editPurchase(46)">Edit</button>
-                    <button class="btn btn-danger btn-sm" onclick="deletePurchase(46)">Delete</button>
-                </td>
+                <td colspan="9" class="text-center">Loading purchase ledger...</td>
             </tr>
         </tbody>
     </table>
 </div>
 
+<aside class="insight-card">
+    <div>
+        <div class="section-caption">Supplier Group View</div>
+        <h3>Keep due visibility close to each batch</h3>
+    </div>
+    <div class="insight-list">
+        <div class="insight-item">
+            <i class="fas fa-calendar-check"></i>
+            <div>
+                <strong>Prioritize overdue supplier payouts</strong>
+                <p>Use due filters to move highest-risk obligations first.</p>
+            </div>
+        </div>
+    </div>
+</aside>
+
 <script>
-function calculatePurchaseTotal() {
-    const quantity = parseFloat(document.getElementById('purchase-quantity').value) || 0;
-    const price = parseFloat(document.getElementById('purchase-price').value) || 0;
-    document.getElementById('purchase-total').value = (quantity * price).toFixed(2);
+function togglePurchaseSelection(checked) {
+    document.querySelectorAll('#purchaseTable input[type="checkbox"]').forEach((input) => {
+        input.checked = checked;
+    });
+    updatePurchaseSelectionCount();
 }
+
+function updatePurchaseSelectionCount() {
+    const selected = document.querySelectorAll('#purchaseTable input[type="checkbox"]:checked').length;
+    const el = document.getElementById('purchaseSelectionCount');
+    if (el) el.textContent = `${selected} selected`;
+}
+
+window.updatePurchaseSelectionCount = updatePurchaseSelectionCount;
 
 function showAddPurchaseModal() {
-    // Form already visible per spec
+    showModal(
+        'Add Purchase Batch',
+        `
+        <div class="form-group">
+            <label class="form-label">Fish Type</label>
+            <input type="text" id="purchaseFishName" class="form-input" placeholder="Fish type or code">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Supplier</label>
+            <input type="text" id="purchaseSupplierName" class="form-input" placeholder="Supplier name">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Packages</label>
+            <input type="number" id="purchasePackages" class="form-input" min="1" placeholder="0">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Weight Per Package (kg)</label>
+            <input type="number" id="purchasePackageWeight" class="form-input" min="0.01" step="0.01" placeholder="0.00">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Price Per Kg</label>
+            <input type="number" id="purchasePricePerKg" class="form-input" min="0.01" step="0.01" placeholder="0.00">
+        </div>
+        `,
+        '<button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="savePurchaseBatch()">Save Batch</button>'
+    );
 }
 
-function savePurchase() {
-    const data = {
-        fish: document.getElementById('purchase-fish').value,
-        supplier: document.getElementById('purchase-supplier').value,
-        quantity: document.getElementById('purchase-quantity').value,
-        price: document.getElementById('purchase-price').value,
-        total: document.getElementById('purchase-total').value
-    };
-    console.log('Save purchase:', data);
-    loadPage('purchases');
-}
+async function savePurchaseBatch() {
+    const fishName = document.getElementById('purchaseFishName')?.value?.trim();
+    const supplierName = document.getElementById('purchaseSupplierName')?.value?.trim();
+    const packages = Number(document.getElementById('purchasePackages')?.value || 0);
+    const packageWeight = Number(document.getElementById('purchasePackageWeight')?.value || 0);
+    const pricePerKg = Number(document.getElementById('purchasePricePerKg')?.value || 0);
 
-function editPurchase(id) {
-    showModal('Edit Purchase', '<p>Edit purchase form</p>');
-}
+    if (!fishName || !supplierName || packages <= 0 || packageWeight <= 0 || pricePerKg <= 0) {
+        window.App?.showAlert?.('Fill all purchase fields with valid values.', 'danger');
+        return;
+    }
 
-function deletePurchase(id) {
-    if (confirm('Delete this purchase?')) {
-        console.log('Delete purchase', id);
-        loadPage('purchases');
+    try {
+        const [fishList, suppliers] = await Promise.all([
+            window.App.apiCall('/trading/fish/'),
+            window.App.apiCall('/trading/suppliers/')
+        ]);
+
+        const fish = (fishList || []).find((row) => String(row.name || '').toLowerCase() === fishName.toLowerCase());
+        const supplier = (suppliers || []).find((row) => String(row.name || '').toLowerCase() === supplierName.toLowerCase());
+
+        if (!fish || !supplier) {
+            window.App?.showAlert?.('Fish or supplier not found. Please use exact names from master data.', 'warning');
+            return;
+        }
+
+        const payload = {
+            fish: fish.id,
+            supplier: supplier.id,
+            date: new Date().toISOString().slice(0, 10),
+            number_of_packages: packages,
+            package_weight: packageWeight,
+            price_per_kg: pricePerKg,
+        };
+
+        const created = await window.App.apiCall('/trading/purchase-batches/', 'POST', payload);
+        if (!created) {
+            window.App?.showAlert?.('Unable to save purchase batch.', 'danger');
+            return;
+        }
+
+        closeModal();
+        window.App?.showAlert?.('Purchase batch saved successfully.', 'success');
+        await window.App.loadPage('purchases');
+    } catch (error) {
+        window.App?.showAlert?.(error?.message || 'Failed to save purchase batch.', 'danger');
     }
 }
 </script>

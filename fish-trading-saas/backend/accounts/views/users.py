@@ -1,4 +1,5 @@
-# accounts/views/users.py
+import logging
+import re
 
 import re
 
@@ -6,6 +7,12 @@ from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.contrib.auth import get_user_model
+<<<<<<< HEAD
+=======
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.core.validators import EmailValidator
+from django.shortcuts import redirect
+>>>>>>> 7dbf52df (progress save)
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError as DjangoValidationError
@@ -23,6 +30,7 @@ from ..utils import (
 from ..models_audit import AuditLog
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 PHONE_PATTERN = r'^[0-9]{10}$'
 
@@ -59,9 +67,10 @@ class UserRegistrationView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        import re
-        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-        if not re.match(email_pattern, email):
+        email_validator = EmailValidator()
+        try:
+            email_validator(email)
+        except DjangoValidationError:
             return Response(
                 {'error': 'Invalid email format'},
                 status=status.HTTP_400_BAD_REQUEST
@@ -170,8 +179,6 @@ class UserRegistrationView(APIView):
                 )
             except Exception as sub_error:
                 # Log subscription provisioning failure
-                import logging
-                logger = logging.getLogger(__name__)
                 logger.error(f"Failed to provision free-tier subscription for company {company.id}: {str(sub_error)}")
                 
                 # Rollback user and company creation on subscription failure
@@ -202,8 +209,6 @@ class UserRegistrationView(APIView):
             }, status=status.HTTP_201_CREATED)
 
         except Exception as e:
-            import logging
-            logger = logging.getLogger(__name__)
             logger.error(f"Registration failed: {str(e)}")
             
             return Response(

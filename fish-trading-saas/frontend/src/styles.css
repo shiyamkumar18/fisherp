@@ -1,0 +1,58 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply box-border;
+  }
+
+  html,
+  body,
+  #root {
+    @apply min-h-screen;
+  }
+
+  body {
+    @apply m-0 bg-background text-text font-sans antialiased;
+  }
+
+  h1 {
+    @apply text-3xl font-extrabold tracking-tight md:text-4xl;
+  }
+
+  h2 {
+    @apply text-2xl font-extrabold tracking-tight;
+  }
+
+  h3 {
+    @apply text-xl font-bold tracking-tight;
+  }
+
+  h1, h2, h3, h4 {
+    @apply font-extrabold tracking-tight;
+  }
+
+  p, span, label, input, button {
+    @apply font-medium;
+  }
+
+  button,
+  input,
+  textarea,
+  select {
+    @apply text-sm;
+  }
+}
+
+@layer components {
+  .app-shell {
+    @apply min-h-screen bg-gradient-to-b from-white to-slate-100;
+  }
+
+  .surface-card {
+    @apply rounded-xl bg-surface shadow-md border border-slate-200;
+  }
+}

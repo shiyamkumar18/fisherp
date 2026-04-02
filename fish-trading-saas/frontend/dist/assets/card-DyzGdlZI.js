@@ -1,0 +1,1 @@
+import{n as e,t}from"./jsx-runtime-5TQiwEcx.js";var n=t();function r({className:t,...r}){return(0,n.jsx)(`section`,{className:e(`surface-card p-4 md:p-6`,t),...r})}export{r as t};

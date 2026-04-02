@@ -1,90 +1,78 @@
-// Unified Auth Modal - Login/Register Toggle
-// Mobile-first, spec-compliant (420-480px desktop, full mobile)
-// Tabs, validation, loading, role-redirects
+// Landing auth modal controller
 
 let currentTab = 'login';
 
 function openAuthModal(tab = 'login') {
-  currentTab = tab;
-  const container = document.getElementById('auth-modal-container');
-  container.innerHTML = getModalHTML();
-  
-  // Show with animation
-  const modal = container.querySelector('.auth-modal');
-  setTimeout(() => {
-    modal.classList.add('show');
-    document.body.style.overflow = 'hidden';
-    // Auto-focus
-    document.getElementById('login-email')?.focus();
-  }, 10);
-  
-  // Init tab
-  switchTab(tab);
-  attachHandlers();
+    currentTab = tab;
+    const container = document.getElementById('auth-modal-container');
+    if (!container) return;
+
+    container.innerHTML = getModalHTML();
+
+    const modal = container.querySelector('.auth-modal');
+    window.requestAnimationFrame(() => {
+        modal?.classList.add('show');
+        document.body.style.overflow = 'hidden';
+        setInitialFocus(tab);
+    });
+
+    attachHandlers();
+    switchTab(tab);
 }
 
 function closeAuthModal() {
-  const container = document.getElementById('auth-modal-container');
-  const modal = container.querySelector('.auth-modal');
-  modal.classList.remove('show');
-  setTimeout(() => {
-    container.innerHTML = '';
-    document.body.style.overflow = '';
-  }, 300);
+    const container = document.getElementById('auth-modal-container');
+    if (!container) return;
+
+    const modal = container.querySelector('.auth-modal');
+    modal?.classList.remove('show');
+
+    window.setTimeout(() => {
+        container.innerHTML = '';
+        document.body.style.overflow = '';
+    }, 220);
 }
 
-function switchTab(tab) {
-  currentTab = tab;
-  const loginTab = document.querySelector('[data-tab="login"]');
-  const registerTab = document.querySelector('[data-tab="register"]');
-  const loginContent = document.querySelector('.tab-content[data-tab="login"]');
-  const registerContent = document.querySelector('.tab-content[data-tab="register"]');
-  
-  // Tab buttons
-  loginTab.classList.toggle('active', tab === 'login');
-  registerTab.classList.toggle('active', tab === 'register');
-  
-  // Content slide animation
-  loginContent.classList.toggle('active', tab === 'login');
-  registerContent.classList.toggle('active', tab === 'register');
+function setInitialFocus(tab) {
+    const focusTarget = tab === 'register'
+        ? document.getElementById('reg-company')
+        : document.getElementById('login-username');
+    focusTarget?.focus();
 }
 
 function getModalHTML() {
-  return `
-    <div class="auth-modal">
-      <div class="modal-header">
-        <div class="modal-logo"><i class="fas fa-fish"></i> FishTrader</div>
-        <h2 id="modal-title">${currentTab === 'login' ? 'Welcome Back' : 'Create Account'}</h2>
-        <button class="modal-close" onclick="closeAuthModal()">&amp;times;</button>
-      </div>
-      
-      <div class="tab-switcher">
-        <button class="tab-btn active" data-tab="login" onclick="switchTab('login')">
-          Login
-        </button>
-        <button class="tab-btn" data-tab="register" onclick="switchTab('register')">
-          Register
-        </button>
-      </div>
-      
-      <div class="tab-contents">
-        <!-- Login Tab -->
+    return `
+    <div class="auth-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div>
+        <div class="modal-header">
+          <div>
+            <div class="modal-logo"><i class="fas fa-water"></i> FisherP</div>
+            <h2 id="modal-title">Access Your Workspace</h2>
+          </div>
+          <button class="modal-close" type="button" onclick="closeAuthModal()" aria-label="Close">&times;</button>
+        </div>
+
+        <div class="tab-switcher">
+          <button class="tab-btn active" type="button" data-tab="login">Login</button>
+          <button class="tab-btn" type="button" data-tab="register">Register</button>
+        </div>
+
         <div class="tab-content active" data-tab="login">
           <form id="login-form">
             <div class="form-group">
-              <input type="email" id="login-email" placeholder="Email or Phone" required>
-              <div class="error" id="login-email-error"></div>
+              <input type="text" id="login-username" placeholder="Email / mobile / username" autocomplete="username" required>
+              <div class="error" id="login-username-error"></div>
             </div>
             <div class="form-group">
-              <input type="password" id="login-password" placeholder="Password" required>
+              <input type="password" id="login-password" placeholder="Password" autocomplete="current-password" required>
               <div class="error" id="login-password-error"></div>
             </div>
             <div class="form-extras">
               <label class="checkbox">
-                <input type="checkbox" id="remember">
+                <input type="checkbox" id="remember-me">
                 Remember me
               </label>
-              <a href="#" class="forgot-link">Forgot password?</a>
+              <a href="/login.html">Advanced login</a>
             </div>
             <button type="submit" class="auth-btn" id="login-btn">
               <span class="btn-text">Login</span>
@@ -92,28 +80,27 @@ function getModalHTML() {
             </button>
           </form>
         </div>
-        
-        <!-- Register Tab -->
+
         <div class="tab-content" data-tab="register">
           <form id="register-form">
             <div class="form-group">
-              <input type="text" id="reg-company" placeholder="Company Name" required>
+              <input type="text" id="reg-company" placeholder="Company name" required>
               <div class="error" id="reg-company-error"></div>
             </div>
             <div class="form-group">
-              <input type="text" id="reg-name" placeholder="Full Name" required>
+              <input type="text" id="reg-name" placeholder="Admin full name" required>
               <div class="error" id="reg-name-error"></div>
             </div>
             <div class="form-group">
-              <input type="tel" id="reg-phone" placeholder="Phone or Email" required>
-              <div class="error" id="reg-phone-error"></div>
+              <input type="email" id="reg-email" placeholder="Admin email" autocomplete="email" required>
+              <div class="error" id="reg-email-error"></div>
             </div>
             <div class="form-group">
-              <input type="password" id="reg-password" placeholder="Password (min 6 chars)" required>
+              <input type="password" id="reg-password" placeholder="Password (minimum 8 characters)" autocomplete="new-password" required>
               <div class="error" id="reg-password-error"></div>
             </div>
             <button type="submit" class="auth-btn success" id="register-btn">
-              <span class="btn-text">Create Account</span>
+              <span class="btn-text">Create Workspace</span>
               <span class="btn-spinner"><i class="fas fa-spinner fa-spin"></i></span>
             </button>
           </form>
@@ -123,153 +110,184 @@ function getModalHTML() {
   `;
 }
 
+function switchTab(tab) {
+    currentTab = tab;
+    document.querySelectorAll('.tab-btn').forEach((button) => {
+        button.classList.toggle('active', button.dataset.tab === tab);
+    });
+
+    document.querySelectorAll('.tab-content').forEach((content) => {
+        content.classList.toggle('active', content.dataset.tab === tab);
+    });
+
+    setInitialFocus(tab);
+}
+
 function attachHandlers() {
-  // Tab switches
-  document.querySelectorAll('[data-tab]').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.preventDefault();
-      switchTab(btn.dataset.tab);
+    document.querySelectorAll('.tab-btn').forEach((button) => {
+        button.addEventListener('click', () => switchTab(button.dataset.tab));
     });
-  });
 
-  // Login form
-  document.getElementById('login-form').addEventListener('submit', handleLogin);
+    const loginForm = document.getElementById('login-form');
+    const registerForm = document.getElementById('register-form');
 
-  // Register form
-  document.getElementById('register-form').addEventListener('submit', handleRegister);
+    loginForm?.addEventListener('submit', handleLogin);
+    registerForm?.addEventListener('submit', handleRegister);
 
-  // Input validation live
-  ['login-email', 'login-password', 'reg-company', 'reg-name', 'reg-phone', 'reg-password'].forEach(id => {
-    document.getElementById(id).addEventListener('input', clearError);
-  });
+    [
+        'login-username',
+        'login-password',
+        'reg-company',
+        'reg-name',
+        'reg-email',
+        'reg-password'
+    ].forEach((id) => {
+        const input = document.getElementById(id);
+        input?.addEventListener('input', () => clearError(id));
+    });
 }
 
-async function handleLogin(e) {
-  e.preventDefault();
-  
-  const btn = document.getElementById('login-btn');
-  const email = document.getElementById('login-email').value.trim();
-  const password = document.getElementById('login-password').value;
-  const remember = document.getElementById('remember').checked;
-  
-  // Validation
-  if (!email) return showError('login-email', 'Email is required');
-  if (!password || password.length < 6) return showError('login-password', 'Password must be at least 6 characters');
-  
-  setLoading(btn, true);
-  
-  try {
-    // Use central API call
-    const result = await App.apiCall('/api/auth/login/', 'POST', { email, password });
-    
-    if (!result) {
-      showError('login-email', 'Invalid credentials');
-      return;
+async function handleLogin(event) {
+    event.preventDefault();
+
+    const username = document.getElementById('login-username')?.value.trim() || '';
+    const password = document.getElementById('login-password')?.value || '';
+    const button = document.getElementById('login-btn');
+
+    if (!username) return showError('login-username', 'Username/email is required.');
+    if (!password || password.length < 6) return showError('login-password', 'Password must be at least 6 characters.');
+
+    setLoading(button, true);
+
+    try {
+        const payload = await fetchApi('/auth/login/', {
+            username,
+            password
+        });
+
+        if (!payload.ok) {
+            showError('login-username', payload.message || 'Login failed. Please check credentials.');
+            return;
+        }
+
+        const data = payload.data || {};
+        const token = data.token || data.access;
+        const role = data.role || data.userRole || 'tenant_admin';
+        const isPlatform = !!(
+            data.is_platform_operator ||
+            data.is_platform_support ||
+            data.is_platform_super_admin ||
+            ['platform_operator', 'platform_support', 'platform_super_admin'].includes(role)
+        );
+
+        if (token) {
+            localStorage.setItem('token', token);
+            localStorage.setItem('access_token', token);
+        }
+        localStorage.setItem('userRole', role);
+        localStorage.setItem('role', role);
+        localStorage.setItem('username', username);
+        localStorage.setItem('isPlatformUser', String(isPlatform));
+
+        closeAuthModal();
+        window.location.href = isPlatform ? '/platform/dashboard.html' : '/app/dashboard.html';
+    } catch (error) {
+        showError('login-username', 'Unable to connect. Please try again.');
+    } finally {
+        setLoading(button, false);
     }
-    
-    if (result.error) {
-      showError('login-email', result.error);
-      return;
-    }
-    
-    // Store
-    localStorage.setItem('token', result.access);
-    localStorage.setItem('userRole', result.user.role || 'tenant_admin');
-    localStorage.setItem('isPlatformUser', result.user.is_platform_user || false);
-    localStorage.setItem('companyId', result.user.company_id || null);
-    if (remember) localStorage.setItem('rememberMe', 'true');
-    
-    // Success toast + delayed redirect
-    UI.showAlert('Login successful', 'success');
-    closeAuthModal();
-    setTimeout(() => {
-      if (result.user.is_platform_user) {
-        window.location.href = '/platform/dashboard.html';
-      } else {
-        window.location.href = '/app/dashboard.html';
-      }
-    }, 1200);
-    
-  } catch (err) {
-    showError('login-email', 'Network error. Try again.');
-  } finally {
-    setLoading(btn, false);
-  }
 }
 
-async function handleRegister(e) {
-  e.preventDefault();
-  
-  const btn = document.getElementById('register-btn');
-  const company = document.getElementById('reg-company').value.trim();
-  const name = document.getElementById('reg-name').value.trim();
-  const phoneEmail = document.getElementById('reg-phone').value.trim();
-  const password = document.getElementById('reg-password').value;
-  
-  // Validation
-  if (!company || !name || !phoneEmail || !password) return showFieldError('All fields required');
-  if (password.length < 6) return showError('reg-password', 'Password ≥ 6 chars');
-  
-  setLoading(btn, true);
-  
-  try {
-    const response = await fetch('/api/auth/register/', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        company_name: company,
-        full_name: name,
-        phone_or_email: phoneEmail,
-        password
-      })
-    });
-    
-    const data = await response.json();
-    
-    if (!response.ok) {
-      showError('reg-phone', data.error || 'Registration failed');
-      return;
+async function handleRegister(event) {
+    event.preventDefault();
+
+    const companyName = document.getElementById('reg-company')?.value.trim() || '';
+    const fullName = document.getElementById('reg-name')?.value.trim() || '';
+    const email = document.getElementById('reg-email')?.value.trim() || '';
+    const password = document.getElementById('reg-password')?.value || '';
+    const button = document.getElementById('register-btn');
+
+    if (!companyName) return showError('reg-company', 'Company name is required.');
+    if (!fullName) return showError('reg-name', 'Full name is required.');
+    if (!email) return showError('reg-email', 'Email is required.');
+    if (!password || password.length < 8) return showError('reg-password', 'Password must be at least 8 characters.');
+
+    setLoading(button, true);
+
+    try {
+        const payload = await fetchApi('/auth/register/', {
+            company_name: companyName,
+            full_name: fullName,
+            email,
+            password,
+            confirm_password: password
+        });
+
+        if (!payload.ok) {
+            showError('reg-email', payload.message || 'Registration failed.');
+            return;
+        }
+
+        closeAuthModal();
+        window.location.href = '/register.html';
+    } catch (error) {
+        showError('reg-email', 'Unable to connect. Please try again.');
+    } finally {
+        setLoading(button, false);
     }
-    
-    // Success: redirect to login
-    closeAuthModal();
-    UI.showAlert('Account created! Please login.', 'success');
-    setTimeout(() => {
-      openAuthModal('login');
-    }, 1500);
-    
-  } catch (err) {
-    showError('reg-phone', 'Network error.');
-  } finally {
-    setLoading(btn, false);
-  }
+}
+
+async function fetchApi(endpoint, body) {
+    try {
+        const response = await fetch(`${window.location.origin}/api${endpoint}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+            credentials: 'include'
+        });
+
+        const data = await response.json();
+        return {
+            ok: response.ok,
+            data,
+            message: data.detail || data.message || data.error
+        };
+    } catch (error) {
+        return {
+            ok: false,
+            data: null,
+            message: 'Network error.'
+        };
+    }
 }
 
 function showError(fieldId, message) {
-  clearError(fieldId);
-  const errorEl = document.getElementById(fieldId + '-error');
-  errorEl.textContent = message;
-  errorEl.classList.add('show');
+    const element = document.getElementById(`${fieldId}-error`);
+    if (!element) return;
+    element.textContent = message;
+    element.classList.add('show');
 }
 
-function clearError(e) {
-  if (typeof e === 'string') {
-    document.getElementById(e + '-error')?.classList.remove('show');
-  } else {
-    clearError(e.target.id);
-  }
+function clearError(fieldId) {
+    const element = document.getElementById(`${fieldId}-error`);
+    if (!element) return;
+    element.classList.remove('show');
 }
 
-function setLoading(btn, loading) {
-  btn.classList.toggle('loading', loading);
-  btn.disabled = loading;
+function setLoading(button, isLoading) {
+    if (!button) return;
+    button.classList.toggle('loading', isLoading);
+    button.disabled = isLoading;
 }
 
-// Close on overlay/esc
-document.addEventListener('click', (e) => {
-  if (e.target.classList.contains('auth-modal')) closeAuthModal();
-});
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') closeAuthModal();
+document.addEventListener('click', (event) => {
+    if (event.target.classList.contains('auth-modal')) {
+        closeAuthModal();
+    }
 });
 
+document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+        closeAuthModal();
+    }
+});

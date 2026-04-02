@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 def _normalize_ip(ip_address):
     """Return a DB-safe IP string for login attempt records."""
-    return ip_address or "0.0.0.0"
+    return ip_address or ""
 
 
 def get_client_ip(request):

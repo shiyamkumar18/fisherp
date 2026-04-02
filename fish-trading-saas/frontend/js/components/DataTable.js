@@ -70,62 +70,121 @@ class DataTable {
     }
 
     async loadData() {
-        this.renderSkeleton(); // Phase 4: Skeleton not spinner
+        const tbody = this.container.querySelector('tbody');
+        const skeletonRow = document.createElement('tr');
+        skeletonRow.className = 'skeleton-row';
+        this.columns.slice(0, -1).forEach(col => {
+            const td = document.createElement('td');
+            td.style.width = col.width;
+            const skeleton = document.createElement('div');
+            skeleton.className = 'skeleton';
+            skeleton.style.height = '16px';
+            td.appendChild(skeleton);
+            skeletonRow.appendChild(td);
+        });
+        tbody.innerHTML = '';
+        tbody.appendChild(skeletonRow);
+        
         try {
             this.data = await this.dataFn();
             this.renderRows();
         } catch (e) {
-            const tbody = this.container.querySelector('tbody');
-            tbody.innerHTML = '<tr><td colspan="' + this.columns.length + '" class="text-center text-danger p-4">Error: ' + (e.message || 'Failed to load') + '<br><button onclick="this.reload()">Retry</button></td></tr>';
-            window.Toast.error('Load failed');
+            tbody.innerHTML = '';
+            const row = document.createElement('tr');
+            const cell = document.createElement('td');
+            cell.colSpan = this.columns.length;
+            cell.className = 'text-center text-danger p-4';
+            cell.textContent = 'Error: ' + (e.message || 'Failed to load');
+            row.appendChild(cell);
+            tbody.appendChild(row);
+            window.Toast?.error?.('Load failed');
         }
     }
 
     renderRows() {
         const tbody = this.container.querySelector('tbody');
         if (!this.data.length) {
-            tbody.innerHTML = '<tr><td colspan="' + this.columns.length + '" class="text-center p-4 py-8 text-muted">' + (this.options.emptyCTA || 'No data yet') + '</td></tr>';
+            tbody.innerHTML = '';
+            const row = document.createElement('tr');
+            const cell = document.createElement('td');
+            cell.colSpan = this.columns.length;
+            cell.className = 'text-center p-4 py-8 text-muted';
+            cell.textContent = this.options.emptyCTA || 'No data yet';
+            row.appendChild(cell);
+            tbody.appendChild(row);
             return;
         }
-        tbody.innerHTML = this.data.map((row, idx) => {
-            const cells = this.columns.map(col => {
+        
+        tbody.innerHTML = '';
+        this.data.forEach((row, idx) => {
+            const tr = document.createElement('tr');
+            this.columns.forEach(col => {
+                const cell = document.createElement('td');
+                
                 if (col.key === 'actions') {
-                    return `<td class="actions">
-                        <button class="btn-icon" onclick="window.currentTable.editRow(${idx})" title="Edit">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="btn-icon danger" onclick="window.currentTable.deleteRow(${idx})" title="Delete">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </td>`;
+                    const editBtn = document.createElement('button');
+                    editBtn.className = 'btn-icon';
+                    editBtn.title = 'Edit';
+                    editBtn.innerHTML = '<i class="fas fa-edit"></i>';
+                    editBtn.onclick = () => this.editRow(idx);
+                    cell.appendChild(editBtn);
+                    
+                    const delBtn = document.createElement('button');
+                    delBtn.className = 'btn-icon danger';
+                    delBtn.title = 'Delete';
+                    delBtn.innerHTML = '<i class="fas fa-trash"></i>';
+                    delBtn.onclick = () => this.deleteRow(idx);
+                    cell.appendChild(delBtn);
+                    
+                    cell.className = 'actions';
+                } else {
+                    const value = row[col.key] ?? '';
+                    const editable = this.options.editable && col.editable;
+                    cell.className = editable ? 'editable' : '';
+                    cell.dataset.row = idx;
+                    cell.dataset.col = col.key;
+                    cell.textContent = String(value);
+                    
+                    if (editable) {
+                        cell.ondblclick = (e) => this.startEdit(e);
+                    }
                 }
-                const value = row[col.key] ?? '';
-                const editable = this.options.editable && col.editable;
-                return editable 
-                    ? `<td class="editable" data-row="${idx}" data-col="${col.key}" ondblclick="window.currentTable.startEdit(event)">${value}</td>`
-                    : `<td>${value}</td>`;
-            }).join('');
-            return `<tr>${cells.join('')}</tr>`;
-        }).join('');
+                
+                tr.appendChild(cell);
+            });
+            tbody.appendChild(tr);
+        });
         window.currentTable = this;
     }
 
     async startEdit(e) {
         if (this.editingCell) return; // One at a time
         const td = e.target.closest('td');
-        const rowIdx = td.dataset.row;
+        const rowIdx = parseInt(td.dataset.row);
         const colKey = td.dataset.col;
         const oldValue = this.data[rowIdx][colKey];
 
-        td.innerHTML = `<input class="inline-edit-input" value="${oldValue}" onkeydown="if(event.key==='Enter') this.saveEdit(); if(event.key==='Escape') this.cancelEdit();" autofocus>`;
-        this.editingCell = td.querySelector('input');
-        this.editingCell.select();
+        const input = document.createElement('input');
+        input.className = 'inline-edit-input';
+        input.type = 'text';
+        input.value = String(oldValue || '');
+        
+        input.onkeydown = (event) => {
+            if (event.key === 'Enter') this.saveEdit();
+            if (event.key === 'Escape') this.cancelEdit();
+        };
+        
+        td.innerHTML = '';
+        td.appendChild(input);
+        this.editingCell = input;
+        input.select();
+        input.focus();
     }
 
     saveEdit() {
         if (!this.editingCell) return;
         const td = this.editingCell.closest('td');
-        const rowIdx = td.dataset.row;
+        const rowIdx = parseInt(td.dataset.row);
         const colKey = td.dataset.col;
         const newValue = this.editingCell.value;
         this.data[rowIdx][colKey] = newValue;

@@ -114,6 +114,15 @@ function sanitize(value) {
     });
 }
 
+function buildRowActions(primaryLabel, secondaryLabel = 'History') {
+    return `
+        <div class="row-actions" role="group" aria-label="Row actions">
+            <button class="btn btn-secondary btn-sm" type="button">${sanitize(primaryLabel)}</button>
+            <button class="btn btn-ghost btn-sm" type="button">${sanitize(secondaryLabel)}</button>
+        </div>
+    `;
+}
+
 function protectRoute(requiredType) {
     const token = localStorage.getItem('token');
     const platformFlag = localStorage.getItem('isPlatformUser');
@@ -425,18 +434,19 @@ async function loadSuppliersData() {
     if (!tbody) return;
 
     if (!Array.isArray(data) || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center">No suppliers found.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center">No suppliers found. Add your first supplier to start purchase tracking.</td></tr>';
         return;
     }
 
     tbody.innerHTML = data.map((supplier) => `
         <tr>
+            <td><input type="checkbox" aria-label="Select supplier" onchange="window.updateSupplierSelectionCount && window.updateSupplierSelectionCount()"></td>
             <td>${sanitize(supplier.name || '-')}</td>
             <td>${sanitize(supplier.phone || '-')}</td>
             <td>${sanitize(supplier.supplier_type || supplier.type || '-')}</td>
             <td>${formatCurrency(supplier.outstanding_amount || 0)}</td>
             <td><span class="status-badge ${supplier.is_active ? 'active' : 'inactive'}">${supplier.is_active ? 'Active' : 'Inactive'}</span></td>
-            <td><button class="btn btn-secondary btn-sm" type="button">View</button></td>
+            <td>${buildRowActions('Open Profile', 'Quick Pay')}</td>
         </tr>
     `).join('');
 }
@@ -447,18 +457,19 @@ async function loadFishData() {
     if (!tbody) return;
 
     if (!Array.isArray(data) || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center">No fish configured yet.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center">No fish configured yet. Add fish types to unlock purchase and sales entry.</td></tr>';
         return;
     }
 
     tbody.innerHTML = data.map((fish) => `
         <tr>
+            <td><input type="checkbox" aria-label="Select fish" onchange="window.updateFishSelectionCount && window.updateFishSelectionCount()"></td>
             <td>${sanitize(fish.name || '-')}</td>
             <td>${sanitize(fish.category_name || fish.category?.name || '-')}</td>
             <td>${sanitize(fish.unit_type || '-')}</td>
             <td>${formatDate(fish.created_at || fish.created_date)}</td>
             <td><span class="status-badge ${fish.is_active === false ? 'inactive' : 'active'}">${fish.is_active === false ? 'Inactive' : 'Active'}</span></td>
-            <td><button class="btn btn-secondary btn-sm" type="button">View</button></td>
+            <td>${buildRowActions('Edit Fish', 'Deactivate')}</td>
         </tr>
     `).join('');
 }
@@ -469,18 +480,19 @@ async function loadFishCategoriesData() {
     if (!tbody) return;
 
     if (!Array.isArray(data) || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center">No fish categories created yet.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center">No fish categories created yet. Add categories to improve reporting and pricing clarity.</td></tr>';
         return;
     }
 
     tbody.innerHTML = data.map((category) => `
         <tr>
+            <td><input type="checkbox" aria-label="Select category" onchange="window.updateCategorySelectionCount && window.updateCategorySelectionCount()"></td>
             <td>${sanitize(category.name || '-')}</td>
             <td>${sanitize(category.category_type || category.type || '-')}</td>
             <td>${sanitize(String(category.priority ?? '-'))}</td>
             <td>${category.is_featured ? 'Yes' : 'No'}</td>
             <td><span class="status-badge ${category.is_active === false ? 'inactive' : 'active'}">${category.is_active === false ? 'Inactive' : 'Active'}</span></td>
-            <td><button class="btn btn-secondary btn-sm" type="button">View</button></td>
+            <td>${buildRowActions('Edit Category', 'Set Priority')}</td>
         </tr>
     `).join('');
 }
@@ -491,19 +503,20 @@ async function loadBuyersData() {
     if (!tbody) return;
 
     if (!Array.isArray(data) || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center">No buyers found.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center">No buyers found. Add buyer accounts to start invoice tracking.</td></tr>';
         return;
     }
 
     tbody.innerHTML = data.map((buyer) => `
         <tr>
+            <td><input type="checkbox" aria-label="Select buyer" onchange="window.updateBuyerSelectionCount && window.updateBuyerSelectionCount()"></td>
             <td>${sanitize(buyer.name || '-')}</td>
             <td>${sanitize(buyer.phone || '-')}</td>
             <td>${sanitize(buyer.address || buyer.location || '-')}</td>
             <td>${sanitize(String(buyer.total_orders ?? buyer.order_count ?? '-'))}</td>
             <td>${formatCurrency(buyer.current_credit_balance ?? buyer.outstanding_amount ?? 0)}</td>
             <td><span class="status-badge ${buyer.is_active ? 'active' : 'inactive'}">${buyer.is_active ? 'Active' : 'Inactive'}</span></td>
-            <td><button class="btn btn-secondary btn-sm" type="button">View</button></td>
+            <td>${buildRowActions('Open Account', 'Send Reminder')}</td>
         </tr>
     `).join('');
 }
@@ -514,12 +527,13 @@ async function loadPurchasesData() {
     if (!tbody) return;
 
     if (!Array.isArray(data) || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="text-center">No purchases found.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center">No purchases found. Create a purchase batch to begin inventory flow.</td></tr>';
         return;
     }
 
     tbody.innerHTML = data.map((purchase) => `
         <tr>
+            <td><input type="checkbox" aria-label="Select purchase" onchange="window.updatePurchaseSelectionCount && window.updatePurchaseSelectionCount()"></td>
             <td>${sanitize(purchase.batch_number || '-')}</td>
             <td>${sanitize(purchase.fish_name || '-')}</td>
             <td>${sanitize(purchase.supplier_name || '-')}</td>
@@ -527,7 +541,7 @@ async function loadPurchasesData() {
             <td>${formatCurrency(purchase.total_expense ?? purchase.total_cost ?? 0)}</td>
             <td><span class="status-badge ${purchase.status || 'pending'}">${sanitize(purchase.status || 'pending')}</span></td>
             <td>${formatDate(purchase.date)}</td>
-            <td><button class="btn btn-secondary btn-sm" type="button">View</button></td>
+            <td>${buildRowActions('View Batch', 'Mark Received')}</td>
         </tr>
     `).join('');
 }
@@ -538,12 +552,13 @@ async function loadSalesData() {
     if (!tbody) return;
 
     if (!Array.isArray(data) || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="text-center">No sales found.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center">No sales found. Create invoices to track revenue and collections.</td></tr>';
         return;
     }
 
     tbody.innerHTML = data.map((sale) => `
         <tr>
+            <td><input type="checkbox" aria-label="Select sale" onchange="window.updateSalesSelectionCount && window.updateSalesSelectionCount()"></td>
             <td>${sanitize(sale.invoice_number || '-')}</td>
             <td>${sanitize(sale.buyer_name || '-')}</td>
             <td>${sanitize(sale.fish_name || sale.batch_number || '-')}</td>
@@ -551,7 +566,7 @@ async function loadSalesData() {
             <td>${formatCurrency(sale.total_revenue ?? 0)}</td>
             <td>${formatCurrency(sale.profit ?? 0)}</td>
             <td><span class="status-badge ${sale.payment_status || 'pending'}">${sanitize(sale.payment_status || 'pending')}</span></td>
-            <td><button class="btn btn-secondary btn-sm" type="button">View</button></td>
+            <td>${buildRowActions('View Invoice', 'Collect')}</td>
         </tr>
     `).join('');
 }
@@ -562,19 +577,20 @@ async function loadInventoryData() {
     if (!tbody) return;
 
     if (!Array.isArray(data) || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center">No inventory records found.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center">No inventory records found. Add purchase batches to populate stock.</td></tr>';
         return;
     }
 
     tbody.innerHTML = data.map((inventory) => `
         <tr>
+            <td><input type="checkbox" aria-label="Select inventory row" onchange="window.updateInventorySelectionCount && window.updateInventorySelectionCount()"></td>
             <td>${sanitize(inventory.fish_name || '-')}</td>
             <td>${sanitize(String(inventory.remaining_packages ?? inventory.packages ?? 0))}</td>
             <td>${sanitize(String(inventory.remaining_weight_kg ?? inventory.remaining_weight ?? 0))}</td>
             <td><span class="status-badge ${inventory.status || 'in_stock'}">${sanitize(inventory.status || 'in_stock')}</span></td>
             <td>${formatDate(inventory.expiry_date)}</td>
             <td>${formatCurrency(inventory.remaining_stock_value ?? inventory.stock_value ?? 0)}</td>
-            <td><button class="btn btn-secondary btn-sm" type="button">View</button></td>
+            <td>${buildRowActions('Inspect Batch', 'Adjust')}</td>
         </tr>
     `).join('');
 }
@@ -741,16 +757,17 @@ async function loadPaymentsData() {
         singleTable.innerHTML = data.length
             ? data.map((payment) => `
                 <tr>
+                    <td><input type="checkbox" aria-label="Select payment" onchange="window.updatePaymentsSelectionCount && window.updatePaymentsSelectionCount()"></td>
                     <td>${formatDate(payment.date)}</td>
                     <td>${sanitize(payment.payment_type || '-')}</td>
                     <td>${sanitize(payment.party_name || payment.buyer_name || payment.supplier_name || '-')}</td>
                     <td>${formatCurrency(payment.amount)}</td>
                     <td>${sanitize(payment.payment_method || payment.method || '-')}</td>
                     <td><span class="status-badge ${payment.payment_status || payment.approval_status || 'paid'}">${sanitize(payment.payment_status || payment.approval_status || 'paid')}</span></td>
-                    <td><button class="btn btn-secondary btn-sm" type="button">View</button></td>
+                    <td>${buildRowActions('View Entry', 'Reconcile')}</td>
                 </tr>
             `).join('')
-            : '<tr><td colspan="7" class="text-center">No payments found.</td></tr>';
+            : '<tr><td colspan="8" class="text-center">No payments found.</td></tr>';
     }
 }
 
@@ -760,18 +777,19 @@ async function loadUsersData() {
     if (!tbody) return;
 
     if (!Array.isArray(data) || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center">No users found for this workspace.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center">No users found for this workspace. Invite teammates to collaborate securely.</td></tr>';
         return;
     }
 
     tbody.innerHTML = data.map((user) => `
         <tr>
+            <td><input type="checkbox" aria-label="Select user" onchange="window.updateUsersSelectionCount && window.updateUsersSelectionCount()"></td>
             <td>${sanitize(user.full_name || user.username || '-')}</td>
             <td>${sanitize(user.email || user.phone || '-')}</td>
             <td>${sanitize(user.company_name || user.company || '-')}</td>
             <td><span class="role-badge ${sanitize((user.role || '').replace(/_/g, '-'))}">${sanitize(friendlyRole(user.role || 'user'))}</span></td>
             <td><span class="status-badge ${user.is_active === false ? 'inactive' : 'active'}">${user.is_active === false ? 'Inactive' : 'Active'}</span></td>
-            <td><button class="btn btn-secondary btn-sm" type="button">Manage</button></td>
+            <td>${buildRowActions('Manage Access', 'Deactivate')}</td>
         </tr>
     `).join('');
 }

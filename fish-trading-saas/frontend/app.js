@@ -23,6 +23,29 @@ function sanitize(str) {
     });
 }
 
+// Safe table row rendering
+function createTableRow(data, columns) {
+    const row = document.createElement('tr');
+    columns.forEach(col => {
+        const cell = document.createElement('td');
+        let value = data[col.key];
+        if (col.type === 'currency') {
+            cell.textContent = formatCurrency(value);
+        } else if (col.type === 'date') {
+            cell.textContent = formatDate(value);
+        } else if (col.type === 'badge') {
+            const span = document.createElement('span');
+            span.className = `status-badge ${value}`;
+            span.textContent = sanitize(String(value || 'pending').toUpperCase());
+            cell.appendChild(span);
+        } else {
+            cell.textContent = sanitize(String(value || ''));
+        }
+        row.appendChild(cell);
+    });
+    return row;
+}
+
 function formatCurrency(amount) {
     if (!amount) return '₹0';
     return '₹' + parseFloat(amount).toLocaleString('en-IN', {
@@ -41,28 +64,18 @@ function formatDate(dateStr) {
     }
 }
 
+// Use centralized apiCall from window.API instead of local duplicate
 async function apiCall(endpoint, method = 'GET', body = null) {
-    const token = localStorage.getItem('token');
-    const options = {
-        method,
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-        }
-    };
-    if (body) options.body = JSON.stringify(body);
-
+    if (!window.API) {
+        console.error('API module not loaded');
+        return null;
+    }
     try {
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
-        if (response.status === 401) {
-            logout();
-            throw new Error('Session expired');
+        const result = await window.API[method.toLowerCase()](endpoint, body);
+        if (window.API.lastError) {
+            showAlert(window.API.lastError.detail, 'danger');
         }
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.message || `HTTP ${response.status}`);
-        }
-        return await response.json();
+        return result;
     } catch (error) {
         console.error('API Error:', error);
         showAlert(error.message, 'danger');
@@ -73,13 +86,19 @@ async function apiCall(endpoint, method = 'GET', body = null) {
 function showAlert(message, type = 'info') {
     const alertDiv = document.createElement('div');
     alertDiv.className = `alert alert-${type}`;
-    alertDiv.innerHTML = `
-        <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'danger' ? 'exclamation-circle' : 'info-circle'}"></i>
-        ${sanitize(message)}
-    `;
+    
+    const iconEl = document.createElement('i');
+    iconEl.className = `fas fa-${type === 'success' ? 'check-circle' : type === 'danger' ? 'exclamation-circle' : 'info-circle'}`;
+    alertDiv.appendChild(iconEl);
+    
+    const textNode = document.createTextNode(sanitize(message));
+    alertDiv.appendChild(textNode);
+    
     const container = document.getElementById('mainContent') || document.body;
-    container.insertBefore(alertDiv, container.firstChild);
-    setTimeout(() => alertDiv.remove(), 5000);
+    if (container) {
+        container.insertBefore(alertDiv, container.firstChild);
+        setTimeout(() => alertDiv.remove(), 5000);
+    }
 }
 
 // ==================== Modal Functions ====================
@@ -328,37 +347,80 @@ function renderFishTypeChart(data) {
 
 function renderRecentSales(sales) {
     const tbody = document.getElementById('recentSalesTable');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '';
+    
     if (!sales || sales.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center">No recent sales</td></tr>';
+        const row = document.createElement('tr');
+        const cell = document.createElement('td');
+        cell.colSpan = 6;
+        cell.className = 'text-center';
+        cell.textContent = 'No recent sales';
+        row.appendChild(cell);
+        tbody.appendChild(row);
         return;
     }
-    tbody.innerHTML = sales.slice(0, 5).map(sale => `
-        <tr>
-            <td>${sanitize(sale.invoice_number)}</td>
-            <td>${sanitize(sale.buyer_name)}</td>
-            <td>${sanitize(sale.batch_fish_name)}</td>
-            <td>${formatCurrency(sale.total_revenue)}</td>
-            <td>${formatCurrency(sale.profit)}</td>
-            <td><span class="status-badge ${sale.payment_status}">${sanitize(sale.payment_status || 'pending')}</span></td>
-        </tr>
-    `).join('');
+    
+    const columns = [
+        { key: 'invoice_number' },
+        { key: 'buyer_name' },
+        { key: 'batch_fish_name' },
+        { key: 'total_revenue', type: 'currency' },
+        { key: 'profit', type: 'currency' },
+        { key: 'payment_status', type: 'badge' }
+    ];
+    
+    sales.slice(0, 5).forEach(sale => {
+        tbody.appendChild(createTableRow(sale, columns));
+    });
 }
 
 function renderInventoryAlerts(data) {
     const tbody = document.getElementById('inventoryAlertsTable');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '';
+    
     if (!data || !data.expiring_batches || data.expiring_batches.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center">No alerts</td></tr>';
+        const row = document.createElement('tr');
+        const cell = document.createElement('td');
+        cell.colSpan = 5;
+        cell.className = 'text-center';
+        cell.textContent = 'No alerts';
+        row.appendChild(cell);
+        tbody.appendChild(row);
         return;
     }
-    tbody.innerHTML = data.expiring_batches.map(inv => `
-        <tr>
-            <td>${sanitize(inv.fish__name)}</td>
-            <td>${sanitize(inv.purchase_batch__batch_number)}</td>
-            <td>${inv.remaining_packages || 0}</td>
-            <td>${formatDate(inv.expiry_date)}</td>
-            <td><span class="status-badge pending">Expiring Soon</span></td>
-        </tr>
-    `).join('');
+    
+    data.expiring_batches.forEach(inv => {
+        const row = document.createElement('tr');
+        
+        const fishCell = document.createElement('td');
+        fishCell.textContent = sanitize(inv.fish__name);
+        row.appendChild(fishCell);
+        
+        const batchCell = document.createElement('td');
+        batchCell.textContent = sanitize(inv.purchase_batch__batch_number);
+        row.appendChild(batchCell);
+        
+        const pkgCell = document.createElement('td');
+        pkgCell.textContent = String(inv.remaining_packages || 0);
+        row.appendChild(pkgCell);
+        
+        const dateCell = document.createElement('td');
+        dateCell.textContent = formatDate(inv.expiry_date);
+        row.appendChild(dateCell);
+        
+        const statusCell = document.createElement('td');
+        const badge = document.createElement('span');
+        badge.className = 'status-badge pending';
+        badge.textContent = 'Expiring Soon';
+        statusCell.appendChild(badge);
+        row.appendChild(statusCell);
+        
+        tbody.appendChild(row);
+    });
 }
 
 // Other data loading functions (fish, suppliers, buyers, etc.) follow the same pattern.

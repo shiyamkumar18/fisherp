@@ -34,9 +34,31 @@
             <span>Key trading partners, contact details, and payable status</span>
         </div>
     </div>
+    <div class="table-filter-bar">
+        <div class="table-filter-controls">
+            <input class="form-input" type="search" id="suppliersSearch" placeholder="Search supplier" style="min-width: 220px;">
+            <select class="form-select" id="supplierRiskFilter" style="min-width: 180px;">
+                <option value="">All Risk Levels</option>
+                <option value="low">Low Risk</option>
+                <option value="medium">Medium Risk</option>
+                <option value="high">High Risk</option>
+            </select>
+        </div>
+        <div class="bulk-selection" id="suppliersSelectionCount">0 selected</div>
+    </div>
+    <div class="bulk-action-bar">
+        <div class="bulk-action-controls">
+            <button class="btn btn-secondary btn-sm" type="button">Send Reminder</button>
+            <button class="btn btn-ghost btn-sm" type="button">Quick Pay</button>
+            <button class="btn btn-ghost btn-sm" type="button">Export Selected</button>
+        </div>
+    </div>
     <table class="data-table">
         <thead>
             <tr>
+                <th>
+                    <input type="checkbox" id="supplierSelectAll" aria-label="Select all supplier rows" onchange="toggleSupplierSelection(this.checked)">
+                </th>
                 <th>Name</th>
                 <th>Phone</th>
                 <th>Type</th>
@@ -47,23 +69,74 @@
         </thead>
         <tbody id="supplierTable">
             <tr>
-                <td colspan="6" class="text-center">Loading suppliers...</td>
+                <td colspan="7" class="text-center">Loading suppliers...</td>
             </tr>
         </tbody>
     </table>
 </div>
 
+<aside class="insight-card">
+    <div>
+        <div class="section-caption">Supplier Health</div>
+        <h3>Track terms and payment aging</h3>
+    </div>
+    <div class="insight-list">
+        <div class="insight-item">
+            <i class="fas fa-file-contract"></i>
+            <div>
+                <strong>Review credit terms monthly</strong>
+                <p>Flag high-risk suppliers early and schedule outreach before due spikes.</p>
+            </div>
+        </div>
+    </div>
+</aside>
+
 <script>
+function toggleSupplierSelection(checked) {
+    document.querySelectorAll('#supplierTable input[type="checkbox"]').forEach((input) => {
+        input.checked = checked;
+    });
+    updateSupplierSelectionCount();
+}
+
+function updateSupplierSelectionCount() {
+    const selected = document.querySelectorAll('#supplierTable input[type="checkbox"]:checked').length;
+    const el = document.getElementById('suppliersSelectionCount');
+    if (el) el.textContent = `${selected} selected`;
+}
+
+window.updateSupplierSelectionCount = updateSupplierSelectionCount;
+
 function showAddSupplierModal() {
     showModal('Add Supplier', `
         <div class="form-group">
             <label class="form-label">Supplier Name</label>
-            <input type="text" class="form-input" placeholder="Ocean Fresh Fisheries">
+            <input type="text" id="supplier-name" class="form-input" placeholder="Ocean Fresh Fisheries">
         </div>
         <div class="form-group">
             <label class="form-label">Phone</label>
-            <input type="text" class="form-input" placeholder="+91 98765 43210">
+            <input type="text" id="supplier-phone" class="form-input" placeholder="+91 98765 43210">
         </div>
-    `);
+    `, '<button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveSupplierProfile()">Save Supplier</button>');
+}
+
+async function saveSupplierProfile() {
+    const name = document.getElementById('supplier-name')?.value?.trim();
+    const phone = document.getElementById('supplier-phone')?.value?.trim();
+
+    if (!name || !phone) {
+        window.App?.showAlert?.('Supplier name and phone are required.', 'danger');
+        return;
+    }
+
+    const created = await window.App.apiCall('/trading/suppliers/', 'POST', { name, phone });
+    if (!created) {
+        window.App?.showAlert?.('Unable to save supplier.', 'danger');
+        return;
+    }
+
+    closeModal();
+    window.App?.showAlert?.('Supplier saved successfully.', 'success');
+    await window.App.loadPage('suppliers');
 }
 </script>

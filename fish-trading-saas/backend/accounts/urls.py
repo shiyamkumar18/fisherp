@@ -26,6 +26,7 @@ urlpatterns = [
     path("auth/tenant-users/", TenantUserManagementView.as_view(), name="tenant-user-management"),
     path("impersonate/", ImpersonationAPIView.as_view(), name="impersonation"),
     path("platform/login/", PlatformLoginView.as_view(), name="platform-login-api"),
+    path("auth/platform-login/", PlatformLoginView.as_view(), name="platform-login-api-legacy"),
     path("login/<str:tenant_slug>/", TenantLoginView.as_view(), name="tenant-login-api"),
     path("register/<str:tenant_slug>/", TenantRegisterView.as_view(), name="tenant-register-api"),
     path("auth/2fa/setup/", TwoFactorSetupView.as_view(), name="2fa-setup"),

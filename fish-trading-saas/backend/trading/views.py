@@ -6,7 +6,11 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.core.exceptions import ValidationError
 from django_filters.rest_framework import DjangoFilterBackend
+<<<<<<< HEAD
 from django.db.models import Count
+=======
+from django.db.models import Q, Sum, Count, Prefetch
+>>>>>>> 7dbf52df (progress save)
 from django.utils import timezone
 from django.db import transaction
 from decimal import Decimal
@@ -130,13 +134,16 @@ class FishViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.Mode
 
     @action(detail=False, methods=['get'])
     def by_category(self, request):
-        categories = FishCategory.objects.filter(is_active=True)
+        tenant_fish_qs = self.get_queryset().filter(is_active=True)
+        categories = FishCategory.objects.filter(is_active=True).prefetch_related(
+            Prefetch('fish', queryset=tenant_fish_qs, to_attr='tenant_fish')
+        )
         result = []
         for category in categories:
-            fish_list = self.get_queryset().filter(category=category, is_active=True)
+            fish_list = category.tenant_fish
             result.append({
                 'category': FishCategorySerializer(category).data,
-                'fish_count': fish_list.count(),
+                'fish_count': len(fish_list),
                 'fish': FishListSerializer(fish_list, many=True).data
             })
         return Response(result)
@@ -239,22 +246,24 @@ class SupplierViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.
             if amount <= 0:
                 return Response({'error': 'Payment amount must be greater than 0'},
                                 status=status.HTTP_400_BAD_REQUEST)
-            payment = Payment.objects.create(
-                payment_type='purchase',
-                payment_mode=request.data.get('payment_mode', 'bank_transfer'),
-                amount=amount,
-                date=payment_date or timezone.now().date(),
-                supplier=supplier,
-                reference_number=reference,
-                processed_by=request.user,
-                tenant=supplier.tenant,
-                company=supplier.company,
-                notes=f"Payment to supplier {supplier.name}"
-            )
-            supplier.total_paid += amount
-            supplier.outstanding_amount = supplier.total_purchases - supplier.total_paid
-            supplier.last_payment_date = payment.date
-            supplier.save()
+            with transaction.atomic():
+                supplier = Supplier.objects.select_for_update().get(pk=supplier.pk)
+                payment = Payment.objects.create(
+                    payment_type='purchase',
+                    payment_mode=request.data.get('payment_mode', 'bank_transfer'),
+                    amount=amount,
+                    date=payment_date or timezone.now().date(),
+                    supplier=supplier,
+                    reference_number=reference,
+                    processed_by=request.user,
+                    tenant=supplier.tenant,
+                    company=supplier.company,
+                    notes=f"Payment to supplier {supplier.name}"
+                )
+                supplier.total_paid += amount
+                supplier.outstanding_amount = supplier.total_purchases - supplier.total_paid
+                supplier.last_payment_date = payment.date
+                supplier.save()
             return Response({
                 'status': 'success',
                 'payment_id': payment.id,
@@ -272,7 +281,7 @@ class SupplierViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.
         recent_payments = Payment.objects.filter(
             supplier=supplier,
             payment_type='purchase'
-        ).order_by('-date')[:10]
+        ).select_related('processed_by').order_by('-date')[:10]
         payment_data = [{
             'id': p.id,
             'receipt_number': p.receipt_number,

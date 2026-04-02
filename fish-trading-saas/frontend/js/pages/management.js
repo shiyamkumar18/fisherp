@@ -93,7 +93,8 @@ const ManagementPages = {
     loadSubscriptionTiers: async () => {
         const data = await window.API.get('/subscriptions/tiers/');
 
-        const tbody = document.getElementById('plansTable');
+        const plansTable = document.getElementById('plansTable');
+        const tbody = plansTable ? plansTable.querySelector('tbody') : null;
         if (!tbody) return;
 
         if (!data || data.length === 0) {
@@ -110,9 +111,13 @@ const ManagementPages = {
                         <td>${tier.max_users || 'Unlimited'}</td>
                         <td>
                             ${tier.allow_advanced_reporting ? '<span class="feature-tag">Advanced Reports</span>' : ''}
-                            ${tier.allow_multi_user ? '<span class="feature-tag">Multi-User</span>' : ''}
+                            ${tier.allow_staff_users ? '<span class="feature-tag">Multi-User</span>' : ''}
                             ${tier.allow_inventory ? '<span class="feature-tag">Inventory Mgmt</span>' : ''}
-                            ${tier.features ? tier.features.split(',').map(f => `<span class="feature-tag">${f.trim()}</span>`).join('') : ''}
+                            ${Array.isArray(tier.features)
+                                ? tier.features.map((feature) => `<span class="feature-tag">${String(feature).trim()}</span>`).join('')
+                                : (typeof tier.features === 'string'
+                                    ? tier.features.split(',').map((feature) => `<span class="feature-tag">${feature.trim()}</span>`).join('')
+                                    : '')}
                         </td>
                         <td><span class="status-badge ${tier.is_active ? 'active' : 'inactive'}">${tier.is_active ? 'Available' : 'Disabled'}</span></td>
                         <td>

@@ -37,9 +37,30 @@
             <button class="btn btn-ghost btn-sm" onclick="App.loadPage('fishCategories')">Open Categories</button>
         </div>
     </div>
+    <div class="table-filter-bar">
+        <div class="table-filter-controls">
+            <input class="form-input" type="search" id="fishSearch" placeholder="Search fish" style="min-width: 220px;">
+            <select class="form-select" id="fishStatusFilter" style="min-width: 180px;">
+                <option value="">All Status</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+            </select>
+        </div>
+        <div class="bulk-selection" id="fishSelectionCount">0 selected</div>
+    </div>
+    <div class="bulk-action-bar">
+        <div class="bulk-action-controls">
+            <button class="btn btn-secondary btn-sm" type="button">Activate</button>
+            <button class="btn btn-ghost btn-sm" type="button">Deactivate</button>
+            <button class="btn btn-ghost btn-sm" type="button">Export Selected</button>
+        </div>
+    </div>
     <table class="data-table">
         <thead>
             <tr>
+                <th>
+                    <input type="checkbox" id="fishSelectAll" aria-label="Select all fish rows" onchange="toggleFishSelection(this.checked)">
+                </th>
                 <th>Fish Name</th>
                 <th>Category</th>
                 <th>Unit Type</th>
@@ -50,13 +71,28 @@
         </thead>
         <tbody id="fishTable">
             <tr>
-                <td colspan="6" class="text-center">Loading fish catalog...</td>
+                <td colspan="7" class="text-center">Loading fish catalog...</td>
             </tr>
         </tbody>
     </table>
 </div>
 
 <script>
+function toggleFishSelection(checked) {
+    document.querySelectorAll('#fishTable input[type="checkbox"]').forEach((input) => {
+        input.checked = checked;
+    });
+    updateFishSelectionCount();
+}
+
+function updateFishSelectionCount() {
+    const selected = document.querySelectorAll('#fishTable input[type="checkbox"]:checked').length;
+    const el = document.getElementById('fishSelectionCount');
+    if (el) el.textContent = `${selected} selected`;
+}
+
+window.updateFishSelectionCount = updateFishSelectionCount;
+
 function showAddFishModal() {
     showModal('Add New Fish', `
         <div class="form-group">

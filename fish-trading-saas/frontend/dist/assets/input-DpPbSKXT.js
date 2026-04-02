@@ -1,0 +1,1 @@
+import{n as e,t}from"./jsx-runtime-5TQiwEcx.js";var n=t();function r({className:t,...r}){return(0,n.jsx)(`input`,{className:e(`h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none ring-primary/30 transition focus:ring-4`,t),...r})}export{r as t};

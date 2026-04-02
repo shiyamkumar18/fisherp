@@ -47,12 +47,33 @@
         </div>
         <div class="form-group">
             <label class="form-label">Report Type</label>
-            <select class="form-select">
+            <select class="form-select" id="reportType">
                 <option>Sales Summary</option>
                 <option>Profit Analysis</option>
                 <option>Inventory Report</option>
             </select>
         </div>
+        <div class="form-group">
+            <label class="form-label">Preset</label>
+            <select class="form-select" id="reportPreset" onchange="applyReportPreset(this.value)">
+                <option value="">Custom</option>
+                <option value="today">Today Snapshot</option>
+                <option value="week">Last 7 Days</option>
+                <option value="month">Current Month</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Comparison Mode</label>
+            <select class="form-select" id="reportCompareMode">
+                <option value="none">No Comparison</option>
+                <option value="prev_period">Compare with Previous Period</option>
+                <option value="prev_year">Compare with Last Year</option>
+            </select>
+        </div>
+    </div>
+    <div class="hero-actions">
+        <button class="btn btn-primary" type="button" onclick="generateReport()">Run Builder</button>
+        <button class="btn btn-secondary" type="button" onclick="exportReport('excel')">Export Excel</button>
     </div>
 </div>
 
@@ -81,8 +102,35 @@
     </div>
 </div>
 
+<div class="state-panel" id="reportNoDataState" hidden>
+    <i class="fas fa-chart-line"></i>
+    <strong>No report data yet</strong>
+    <p>Select a preset or date range and run the builder to view charts and export files.</p>
+</div>
+
 <script>
+function applyReportPreset(preset) {
+    const fromInput = document.getElementById('report-date-from');
+    const toInput = document.getElementById('report-date-to');
+    if (!fromInput || !toInput || !preset) return;
+
+    const today = new Date();
+    const toISO = (date) => date.toISOString().slice(0, 10);
+    let fromDate = new Date(today);
+
+    if (preset === 'week') {
+        fromDate.setDate(today.getDate() - 6);
+    } else if (preset === 'month') {
+        fromDate = new Date(today.getFullYear(), today.getMonth(), 1);
+    }
+
+    fromInput.value = toISO(fromDate);
+    toInput.value = toISO(today);
+}
+
 function generateReport() {
+    const noData = document.getElementById('reportNoDataState');
+    if (noData) noData.hidden = true;
     initReportCharts();
 }
 
@@ -114,6 +162,8 @@ function initReportCharts() {
 }
 
 function exportReport(format) {
-    alert(`Report exported as ${format.toUpperCase()}`);
+    if (window.App?.showAlert) {
+        window.App.showAlert(`Exporting ${format.toUpperCase()} report...`, 'success');
+    }
 }
 </script>

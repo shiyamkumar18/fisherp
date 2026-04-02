@@ -1,13 +1,72 @@
-<!-- Buyers Page - Spec 9 -->
 <div class="page-header">
-    <h1 class="page-title">Buyers</h1>
-    <button class="btn-primary" onclick="showAddBuyerModal()">+ Add Buyer</button>
+    <div>
+        <h1 class="page-title">Buyer Accounts</h1>
+        <p class="page-subtitle">Manage buyer relationships, credit exposure, and order momentum from one unified ledger.</p>
+    </div>
+    <button class="btn btn-primary" onclick="showAddBuyerModal()">
+        <i class="fas fa-user-plus"></i>
+        Add Buyer
+    </button>
 </div>
 
+<section class="kpi-row">
+    <article class="kpi-card">
+        <div class="metric-eyebrow">Active Buyers</div>
+        <div class="kpi-value">42</div>
+        <div class="kpi-label">Accounts currently transacting this period.</div>
+    </article>
+    <article class="kpi-card">
+        <div class="metric-eyebrow">Outstanding</div>
+        <div class="kpi-value">₹2.8L</div>
+        <div class="kpi-label">Receivables pending collection from buyer side.</div>
+    </article>
+    <article class="kpi-card">
+        <div class="metric-eyebrow">Repeat Rate</div>
+        <div class="kpi-value">68%</div>
+        <div class="kpi-label">Buyers returning within current trading cycle.</div>
+    </article>
+</section>
+
 <div class="table-container">
+    <div class="table-header">
+        <div>
+            <h3>Buyer Directory</h3>
+            <span>Contact profile, order count, outstanding balance, and status</span>
+        </div>
+        <div class="table-actions">
+            <input class="form-input" type="text" id="buyersSearch" placeholder="Search buyer" style="min-width: 220px;">
+        </div>
+    </div>
+    <div class="table-filter-bar">
+        <div class="table-filter-controls">
+            <select class="form-select" id="buyersAgingFilter" style="min-width: 180px;">
+                <option value="">All Aging Buckets</option>
+                <option value="0-15">0-15 days</option>
+                <option value="16-30">16-30 days</option>
+                <option value="30+">30+ days</option>
+            </select>
+            <select class="form-select" id="buyersRepeatFilter" style="min-width: 180px;">
+                <option value="">All Buyer Types</option>
+                <option value="repeat">Repeat Buyers</option>
+                <option value="new">New Buyers</option>
+                <option value="credit">Credit Heavy</option>
+            </select>
+        </div>
+        <div class="bulk-selection" id="buyersSelectionCount">0 selected</div>
+    </div>
+    <div class="bulk-action-bar">
+        <div class="bulk-action-controls">
+            <button class="btn btn-secondary btn-sm" type="button">Send Statement</button>
+            <button class="btn btn-ghost btn-sm" type="button">Schedule Call</button>
+            <button class="btn btn-ghost btn-sm" type="button">Export Selected</button>
+        </div>
+    </div>
     <table class="data-table">
         <thead>
             <tr>
+                <th>
+                    <input type="checkbox" id="buyersSelectAll" aria-label="Select all buyer rows" onchange="toggleBuyerSelection(this.checked)">
+                </th>
                 <th>Name</th>
                 <th>Phone</th>
                 <th>Address</th>
@@ -19,67 +78,88 @@
         </thead>
         <tbody id="buyerTable">
             <tr>
-                <td>ABC Retail</td>
-                <td>+1-234-567-8900</td>
-                <td>123 Main St</td>
-                <td>15</td>
-                <td>$2,300</td>
-                <td class="status-good">Active</td>
-                <td>
-                    <button class="btn btn-secondary btn-sm" onclick="editBuyer(1)">Edit</button>
-                    <button class="btn btn-danger btn-sm" onclick="deleteBuyer(1)">Delete</button>
-                </td>
-            </tr>
-            <tr>
-                <td>XYZ Mart</td>
-                <td>+1-234-567-8901</td>
-                <td>456 Oak Ave</td>
-                <td>8</td>
-                <td>$1,200</td>
-                <td class="status-good">Active</td>
-                <td>
-                    <button class="btn btn-secondary btn-sm" onclick="editBuyer(2)">Edit</button>
-                    <button class="btn btn-danger btn-sm" onclick="deleteBuyer(2)">Delete</button>
-                </td>
+                <td colspan="8" class="text-center">Loading buyers...</td>
             </tr>
         </tbody>
     </table>
 </div>
 
+<aside class="insight-card">
+    <div>
+        <div class="section-caption">Receivable Insights</div>
+        <h3>Focus collection by aging and repeat potential</h3>
+    </div>
+    <div class="insight-list">
+        <div class="insight-item">
+            <i class="fas fa-hand-holding-dollar"></i>
+            <div>
+                <strong>Balance repeat growth with credit control</strong>
+                <p>Prioritize repeat accounts with growing exposure for proactive collection.</p>
+            </div>
+        </div>
+    </div>
+</aside>
+
 <script>
+function toggleBuyerSelection(checked) {
+    document.querySelectorAll('#buyerTable input[type="checkbox"]').forEach((input) => {
+        input.checked = checked;
+    });
+    updateBuyerSelectionCount();
+}
+
+function updateBuyerSelectionCount() {
+    const selected = document.querySelectorAll('#buyerTable input[type="checkbox"]:checked').length;
+    const el = document.getElementById('buyersSelectionCount');
+    if (el) el.textContent = `${selected} selected`;
+}
+
+window.updateBuyerSelectionCount = updateBuyerSelectionCount;
+
 function showAddBuyerModal() {
-    showModal('Add New Buyer', `
+    showModal(
+        'Add Buyer Account',
+        `
         <div class="form-group">
-            <label class="form-label">Name</label>
-            <input type="text" id="buyer-name" class="form-input">
+            <label class="form-label">Buyer Name</label>
+            <input type="text" id="buyer-name" class="form-input" placeholder="Buyer company or contact name">
         </div>
         <div class="form-group">
             <label class="form-label">Phone</label>
-            <input type="tel" id="buyer-phone" class="form-input">
+            <input type="tel" id="buyer-phone" class="form-input" placeholder="+91 98765 43210">
         </div>
         <div class="form-group">
             <label class="form-label">Address</label>
-            <textarea id="buyer-address" class="form-input" rows="3"></textarea>
+            <textarea id="buyer-address" class="form-input" rows="3" placeholder="Buyer location or billing address"></textarea>
         </div>
-    `, () => {
-        const data = {
-            name: document.getElementById('buyer-name').value,
-            phone: document.getElementById('buyer-phone').value,
-            address: document.getElementById('buyer-address').value
-        };
-        console.log('Save buyer:', data);
-        loadPage('buyers');
-    });
+        `,
+        '<button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveBuyerAccount()">Save Buyer</button>'
+    );
 }
 
-function editBuyer(id) {
-    showModal('Edit Buyer', '<p>Edit buyer form</p>');
-}
+async function saveBuyerAccount() {
+    const name = document.getElementById('buyer-name')?.value?.trim();
+    const phone = document.getElementById('buyer-phone')?.value?.trim();
+    const address = document.getElementById('buyer-address')?.value?.trim();
 
-function deleteBuyer(id) {
-    if (confirm('Delete this buyer?')) {
-        console.log('Delete buyer', id);
-        loadPage('buyers');
+    if (!name || !phone) {
+        window.App?.showAlert?.('Buyer name and phone are required.', 'danger');
+        return;
     }
+
+    const created = await window.App.apiCall('/trading/buyers/', 'POST', {
+        name,
+        phone,
+        address,
+    });
+
+    if (!created) {
+        window.App?.showAlert?.('Unable to save buyer.', 'danger');
+        return;
+    }
+
+    closeModal();
+    window.App?.showAlert?.('Buyer saved successfully.', 'success');
+    await window.App.loadPage('buyers');
 }
 </script>
