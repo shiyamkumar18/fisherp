@@ -3,6 +3,7 @@ from datetime import date, datetime
 from django.db import models
 from django.utils import timezone
 from django.core.exceptions import ValidationError
+from django.core.validators import FileExtensionValidator
 
 from .purchase_batch import PurchaseBatch
 from .sale import Sale
@@ -43,7 +44,10 @@ class Payment(models.Model):
     cleared_date = models.DateField(null=True, blank=True)
     notes = models.TextField(blank=True, null=True)
     receipt_number = models.CharField(max_length=50, unique=True, blank=True, null=True)
-    receipt_image = models.ImageField(upload_to='payment_receipts/%Y/%m/', blank=True, null=True)
+    receipt_image = models.FileField(
+        upload_to='payment_receipts/%Y/%m/', blank=True, null=True,
+        validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'webp', 'pdf'])]
+    )
     approval_status = models.CharField(max_length=15, choices=[
         ('pending', 'Pending Approval'),
         ('approved', 'Approved'),

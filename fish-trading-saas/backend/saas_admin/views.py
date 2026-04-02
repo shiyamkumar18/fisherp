@@ -17,6 +17,7 @@ from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.db.models import Count, Sum, Q
+from django.db.models.functions import ExtractHour, ExtractWeekDay
 from django.utils import timezone
 from django.contrib.auth import get_user_model
 from django.core.paginator import Paginator
@@ -1519,17 +1520,20 @@ class TenantActivityHeatmapView(APIView):
         # Get audit logs for tenant activities
         logs = AuditLog.objects.filter(
             timestamp__gte=thirty_days_ago
-        ).extra(
-            select={'hour': 'EXTRACT(HOUR FROM timestamp)', 'day': 'EXTRACT(DOW FROM timestamp)'}
+        ).annotate(
+            hour=ExtractHour('timestamp'),
+            day=ExtractWeekDay('timestamp')
         ).values('hour', 'day').annotate(
             count=Count('id')
         )
         
         # Build heatmap data
+        # ExtractWeekDay returns 1 (Sunday) – 7 (Saturday); normalize to 0–6
+        # to match the original PostgreSQL EXTRACT(DOW ...) convention (0=Sunday).
         heatmap = {}
         for log in logs:
             hour = int(log['hour'])
-            day = int(log['day'])
+            day = int(log['day']) - 1  # convert 1-7 → 0-6
             if hour not in heatmap:
                 heatmap[hour] = {}
             heatmap[hour][day] = log['count']

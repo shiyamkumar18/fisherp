@@ -3,6 +3,7 @@ import uuid
 from django.db import models
 from django.utils import timezone
 from django.core.exceptions import ValidationError
+from django.core.validators import FileExtensionValidator, MinValueValidator
 
 from .fish import Fish
 from .fish_category import FishCategory
@@ -33,19 +34,27 @@ class PurchaseBatch(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     number_of_packages = models.PositiveIntegerField(help_text="Number of boxes/buckets/packages")
     package_weight = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal("37.00"),
-                                         help_text="Weight per package in kg")
+                                         help_text="Weight per package in kg",
+                                         validators=[MinValueValidator(Decimal("0.01"))])
     total_weight = models.DecimalField(max_digits=10, decimal_places=2, editable=False)
-    price_per_kg = models.DecimalField(max_digits=10, decimal_places=2, help_text="Buying price per kg")
+    price_per_kg = models.DecimalField(max_digits=10, decimal_places=2, help_text="Buying price per kg",
+                                       validators=[MinValueValidator(Decimal("0.01"))])
     fish_cost = models.DecimalField(max_digits=10, decimal_places=2, editable=False)
-    labour_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0, help_text="Loading/unloading labor")
-    ice_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0, help_text="Ice for preservation")
-    transport_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0, help_text="Transportation charges")
-    commission_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0, help_text="Agent/broker commission")
-    other_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0, help_text="Miscellaneous expenses")
+    labour_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0, help_text="Loading/unloading labor",
+                                      validators=[MinValueValidator(Decimal("0.00"))])
+    ice_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0, help_text="Ice for preservation",
+                                   validators=[MinValueValidator(Decimal("0.00"))])
+    transport_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0, help_text="Transportation charges",
+                                         validators=[MinValueValidator(Decimal("0.00"))])
+    commission_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0, help_text="Agent/broker commission",
+                                          validators=[MinValueValidator(Decimal("0.00"))])
+    other_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0, help_text="Miscellaneous expenses",
+                                     validators=[MinValueValidator(Decimal("0.00"))])
     total_expense = models.DecimalField(max_digits=10, decimal_places=2, editable=False)
     actual_cost_per_kg = models.DecimalField(max_digits=10, decimal_places=2, editable=False)
     cost_per_package = models.DecimalField(max_digits=10, decimal_places=2, editable=False)
-    amount_paid = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    amount_paid = models.DecimalField(max_digits=10, decimal_places=2, default=0,
+                                      validators=[MinValueValidator(Decimal("0.00"))])
     pending_amount = models.DecimalField(max_digits=10, decimal_places=2, editable=False)
     status = models.CharField(max_length=15, choices=[
         ('pending', 'Pending'),
@@ -62,9 +71,18 @@ class PurchaseBatch(models.Model):
                                         help_text="Quality score out of 10.00")
     freshness_score = models.DecimalField(max_digits=4, decimal_places=2, null=True, blank=True,
                                           help_text="Freshness score out of 10.00")
-    fish_photo = models.ImageField(upload_to='purchase_photos/%Y/%m/', blank=True, null=True)
-    quality_certificate = models.FileField(upload_to='purchase_documents/%Y/%m/', blank=True, null=True)
-    invoice_document = models.FileField(upload_to='purchase_documents/%Y/%m/', blank=True, null=True)
+    fish_photo = models.ImageField(
+        upload_to='purchase_photos/%Y/%m/', blank=True, null=True,
+        validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'webp'])]
+    )
+    quality_certificate = models.FileField(
+        upload_to='purchase_documents/%Y/%m/', blank=True, null=True,
+        validators=[FileExtensionValidator(allowed_extensions=['pdf', 'jpg', 'jpeg', 'png'])]
+    )
+    invoice_document = models.FileField(
+        upload_to='purchase_documents/%Y/%m/', blank=True, null=True,
+        validators=[FileExtensionValidator(allowed_extensions=['pdf', 'jpg', 'jpeg', 'png'])]
+    )
     transport_vehicle_number = models.CharField(max_length=50, blank=True, null=True)
     transport_driver_name = models.CharField(max_length=150, blank=True, null=True)
     transport_driver_phone = models.CharField(max_length=15, blank=True, null=True)

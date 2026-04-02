@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.utils import timezone
 from django.db.models import Sum, Count
+from django.db.models.functions import TruncDate
 from decimal import Decimal
 from datetime import timedelta
 
@@ -40,8 +41,8 @@ class TenantActivityHeatmapView(APIView):
         daily_activity = AuditLog.objects.filter(
             timestamp__gte=thirty_days_ago,
             tenant__isnull=False
-        ).extra(
-            select={'day': 'DATE(timestamp)'}
+        ).annotate(
+            day=TruncDate('timestamp')
         ).values('day').annotate(
             action_count=Count('id'),
             tenant_count=Count('tenant', distinct=True)

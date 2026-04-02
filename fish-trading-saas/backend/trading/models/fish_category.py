@@ -1,4 +1,5 @@
 from django.db import models
+from django.core.validators import FileExtensionValidator
 
 
 class FishCategory(models.Model):
@@ -11,8 +12,11 @@ class FishCategory(models.Model):
     category_type = models.CharField(max_length=20, choices=CATEGORY_TYPE_CHOICES, default='saltwater',
                                      help_text="Whether this is freshwater or saltwater fish")
     description = models.TextField(blank=True, null=True)
-    icon = models.ImageField(upload_to='fish_category_icons/', blank=True, null=True,
-                             help_text="Icon image for the category")
+    icon = models.ImageField(
+        upload_to='fish_category_icons/', blank=True, null=True,
+        help_text="Icon image for the category",
+        validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'webp'])]
+    )
     color_code = models.CharField(max_length=7, blank=True, null=True,
                                   help_text="Hex color code for UI (e.g., #FF5733)")
     priority = models.PositiveIntegerField(default=0,

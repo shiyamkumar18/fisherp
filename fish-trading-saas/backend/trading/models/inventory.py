@@ -1,5 +1,4 @@
 import time
-import threading
 from decimal import Decimal
 from django.db import models
 from django.core.exceptions import ValidationError
@@ -10,39 +9,7 @@ from .fish import Fish
 from .purchase_batch import PurchaseBatch
 from services.base import CompanyManager
 
-# CONCURRENCY NOTE: Process-local locking mechanism
-# This lock prevents race conditions within a single worker process.
-# However, it does NOT protect against concurrent access from multiple processes/workers.
-# 
-# Current Implementation:
-# - threading.Lock() provides in-process mutual exclusion
-# - select_for_update() provides database row-level locking
-# - Combined approach works for single-worker deployments (development, small Gunicorn setup)
-#
-# PRODUCTION LIMITATION:
-# In multi-worker deployments (Gunicorn with multiple workers, Celery workers, containers),
-# each worker has its own process-local lock. This means:
-# - Worker A and Worker B both acquire their locks simultaneously
-# - Both proceed to select_for_update() on the same row
-# - Database lock serializes updates, and one succeeds; the other gets OperationalError
-# - The failed worker retries (up to 10 times with 0.01s backoff)
-#
-# This creates potential for:
-# - Stock count inconsistencies if retry logic fails
-# - Performance degradation under high concurrency
-# - Lost updates if both retries exhaust for reasons other than lock contention
-#
-# RECOMMENDED FIX FOR PRODUCTION:
-# Migrate to one of these solutions:
-# 1. Use PostgreSQL advisory locks (postgresql-specific)
-# 2. Implement Redis-based distributed locking (requires Redis; already in stack for Celery)
-# 3. Use database-level constraints (e.g., CHECK inventory.remaining_packages >= 0)
-# 4. Implement optimistic locking with version field
-#
-# For now, this implementation is acceptable for development and single-worker deployments.
-# Plan migration to distributed locking before scaling to multi-worker production.
-
-_inventory_update_lock = threading.Lock()
+MAX_STOCK_UPDATE_RETRIES = 10
 
 
 class Inventory(models.Model):
@@ -136,16 +103,15 @@ class Inventory(models.Model):
         return inventory
 
     def update_stock(self, packages_sold):
-        with _inventory_update_lock:
-            for attempt in range(10):
-                try:
-                    with transaction.atomic():
-                        inventory = self._apply_stock_delta(packages_sold)
-                    break
-                except OperationalError:
-                    if attempt == 9:
-                        raise
-                    time.sleep(0.01)
+        for attempt in range(MAX_STOCK_UPDATE_RETRIES):
+            try:
+                with transaction.atomic():
+                    inventory = self._apply_stock_delta(packages_sold)
+                break
+            except OperationalError:
+                if attempt == MAX_STOCK_UPDATE_RETRIES - 1:
+                    raise
+                time.sleep(0.01)
 
         self.sold_packages = inventory.sold_packages
         self.remaining_packages = inventory.remaining_packages
