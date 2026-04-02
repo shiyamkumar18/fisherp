@@ -1,17 +1,14 @@
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
-import {
-  Toast,
-  ToastClose,
-  ToastDescription,
-  ToastProviderRoot,
-  ToastTitle,
-  ToastViewport,
-} from "@/components/ui/toast";
+import { X } from "lucide-react";
 
 const ToastContext = createContext(null);
 
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
+
+  const dismiss = useCallback((id) => {
+    setToasts((prev) => prev.filter((item) => item.id !== id));
+  }, []);
 
   const push = useCallback((toast) => {
     const id = Date.now();
@@ -24,30 +21,36 @@ export function ToastProvider({ children }) {
   const value = useMemo(() => ({ push }), [push]);
 
   return (
-    <ToastProviderRoot duration={3000} swipeDirection="right">
-      <ToastContext.Provider value={value}>
-        {children}
+    <ToastContext.Provider value={value}>
+      {children}
+      <div
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        className="fixed right-4 top-4 z-50 space-y-2"
+      >
         {toasts.map((toast) => (
-          <Toast
+          <div
             key={toast.id}
-            open
-            variant={toast.variant}
-            onOpenChange={(isOpen) => {
-              if (!isOpen) {
-                setToasts((prev) => prev.filter((item) => item.id !== toast.id));
-              }
-            }}
+            className={`flex items-start gap-2 rounded-xl border px-4 py-3 shadow-md ${
+              toast.variant === "error"
+                ? "border-red-200 bg-red-50 text-red-700"
+                : "border-slate-200 bg-white text-slate-800"
+            }`}
           >
-            <div className="grid gap-1">
-              {toast.title ? <ToastTitle>{toast.title}</ToastTitle> : null}
-              <ToastDescription>{toast.message}</ToastDescription>
-            </div>
-            <ToastClose />
-          </Toast>
+            <span className="flex-1">{toast.message}</span>
+            <button
+              type="button"
+              aria-label="Dismiss notification"
+              onClick={() => dismiss(toast.id)}
+              className="ml-2 shrink-0 text-current opacity-60 hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-current"
+            >
+              <X size={14} aria-hidden="true" />
+            </button>
+          </div>
         ))}
-        <ToastViewport className="fixed right-4 top-4 z-50 flex w-[360px] max-w-[calc(100vw-2rem)] flex-col gap-2 outline-none" />
-      </ToastContext.Provider>
-    </ToastProviderRoot>
+      </div>
+    </ToastContext.Provider>
   );
 }
 
