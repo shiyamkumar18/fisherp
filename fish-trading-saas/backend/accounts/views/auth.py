@@ -2,9 +2,12 @@ from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.contrib.auth import get_user_model, authenticate
-from django.shortcuts import render
+from django.shortcuts import redirect
 from rest_framework_simplejwt.tokens import RefreshToken
 from datetime import timedelta
+from django.db import transaction
+from django.db.models import F
+from urllib.parse import urlencode
 
 from ..throttles import LoginThrottle
 from ..models import ROLE_CHOICES
@@ -25,6 +28,13 @@ from ..utils import (
 User = get_user_model()
 
 
+def _frontend_auth_redirect(path, **params):
+    filtered = {k: v for k, v in params.items() if v not in (None, "")}
+    if filtered:
+        return redirect(f"{path}?{urlencode(filtered)}")
+    return redirect(path)
+
+
 class UserLoginView(APIView):
     """
     Secure Multi-Tenant Login
@@ -39,7 +49,7 @@ class UserLoginView(APIView):
 
     def get(self, request):
         """Show login form for browser access"""
-        return render(request, 'login.html')
+        return _frontend_auth_redirect('/login.html')
 
     def post(self, request):
         from django.utils import timezone
@@ -92,12 +102,16 @@ class UserLoginView(APIView):
         user_auth = authenticate(username=user.username, password=password)
 
         if user_auth is None:
-            record_failed_login(email)
+            record_failed_login(email, client_ip, request.META.get('HTTP_USER_AGENT', '')[:500])
 
-            user.failed_login_attempts += 1
-            if user.failed_login_attempts >= 5:
-                user.locked_until = timezone.now() + timedelta(minutes=15)
-            user.save()
+            with transaction.atomic():
+                User.objects.filter(pk=user.pk).update(
+                    failed_login_attempts=F('failed_login_attempts') + 1
+                )
+                user.refresh_from_db()
+                if user.failed_login_attempts >= 5 and not user.locked_until:
+                    user.locked_until = timezone.now() + timedelta(minutes=15)
+                    user.save(update_fields=['locked_until'])
 
             return Response(
                 {'error': 'Invalid credentials'},
@@ -177,19 +191,21 @@ class TenantLoginView(APIView):
             company = Company.objects.get(slug=tenant_slug)
 
             if not company.is_active:
-                return render(request, 'login.html', {
-                    'error': 'This company account is not active.',
-                    'company_name': company.name,
-                })
+                return _frontend_auth_redirect(
+                    '/login.html',
+                    error='This company account is not active.',
+                    company_name=company.name,
+                    tenant_slug=tenant_slug,
+                )
 
-            context = company.get_login_context()
-            context['tenant_slug'] = tenant_slug
-            return render(request, 'login.html', context)
+            return _frontend_auth_redirect(
+                '/login.html',
+                tenant_slug=tenant_slug,
+                company_name=company.name,
+            )
 
         except Company.DoesNotExist:
-            return render(request, 'login.html', {
-                'error': 'Company not found.',
-            })
+            return _frontend_auth_redirect('/login.html', error='Company not found.')
 
     def post(self, request, tenant_slug):  # noqa: C901
         """Handle tenant-specific login."""
@@ -264,12 +280,16 @@ class TenantLoginView(APIView):
         user_auth = authenticate(username=user.username, password=password)
 
         if user_auth is None:
-            record_failed_login(email)
+            record_failed_login(email, client_ip, request.META.get('HTTP_USER_AGENT', '')[:500])
 
-            user.failed_login_attempts += 1
-            if user.failed_login_attempts >= 5:
-                user.locked_until = timezone.now() + timedelta(minutes=15)
-            user.save()
+            with transaction.atomic():
+                User.objects.filter(pk=user.pk).update(
+                    failed_login_attempts=F('failed_login_attempts') + 1
+                )
+                user.refresh_from_db()
+                if user.failed_login_attempts >= 5 and not user.locked_until:
+                    user.locked_until = timezone.now() + timedelta(minutes=15)
+                    user.save(update_fields=['locked_until'])
 
             return Response(
                 {'error': 'Invalid credentials'},
@@ -349,17 +369,17 @@ class UnifiedLoginView(APIView):
 
     def get(self, request, tenant_slug=None):
         """Show unified login page"""
-        context = {}
+        params = {}
         if tenant_slug:
             try:
                 from companies.models import Company
                 company = Company.objects.get(slug=tenant_slug)
-                context['company_name'] = company.name
-                context['tenant_slug'] = tenant_slug
+                params['company_name'] = company.name
+                params['tenant_slug'] = tenant_slug
             except Company.DoesNotExist:
-                pass
+                params['error'] = 'Company not found.'
 
-        return render(request, 'login.html', context)
+        return _frontend_auth_redirect('/login.html', **params)
 
     def post(self, request, tenant_slug=None):  # noqa: C901
         """Handle unified login for all company users."""
@@ -525,7 +545,7 @@ class PlatformLoginView(APIView):
 
     def get(self, request):
         """Show platform login page"""
-        return render(request, 'login_admin.html', {'is_platform_login': True})
+        return _frontend_auth_redirect('/login_admin.html', mode='platform')
 
     def post(self, request):
         """Handle platform operator login"""
@@ -655,26 +675,29 @@ class TenantRegisterView(APIView):
 
             allow_registration = company.settings.get('allow_registration', False)
             if not allow_registration:
-                return render(request, 'login.html', {
-                    'error': 'Registration is not allowed for this company.',
-                    'company_name': company.name,
-                })
+                return _frontend_auth_redirect(
+                    '/register.html',
+                    error='Registration is not allowed for this company.',
+                    company_name=company.name,
+                    tenant_slug=tenant_slug,
+                )
 
             if not company.is_active:
-                return render(request, 'login.html', {
-                    'error': 'This company account is not active.',
-                    'company_name': company.name,
-                })
+                return _frontend_auth_redirect(
+                    '/register.html',
+                    error='This company account is not active.',
+                    company_name=company.name,
+                    tenant_slug=tenant_slug,
+                )
 
-            context = company.get_login_context()
-            context['tenant_slug'] = tenant_slug
-            context['show_register'] = True
-            return render(request, 'login.html', context)
+            return _frontend_auth_redirect(
+                '/register.html',
+                tenant_slug=tenant_slug,
+                company_name=company.name,
+            )
 
         except Company.DoesNotExist:
-            return render(request, 'login.html', {
-                'error': 'Company not found.',
-            })
+            return _frontend_auth_redirect('/register.html', error='Company not found.')
 
     def post(self, request, tenant_slug):
         """Register a new user within the tenant"""

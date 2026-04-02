@@ -6,7 +6,7 @@ from django.utils import timezone
 from .models import Inventory, Supplier
 from companies.models import Company
 
-logger = logging.getLogger('trading.tasks')
+logger = logging.getLogger(__name__)
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)

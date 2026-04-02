@@ -40,6 +40,11 @@
             <button class="btn btn-primary" type="button">Send Invite</button>
             <button class="btn btn-secondary" type="button">Save Draft</button>
         </div>
+        <div class="state-panel" style="margin: 1rem 0 0; min-height: 120px;">
+            <i class="fas fa-user-shield"></i>
+            <strong>Role-aware access lifecycle</strong>
+            <p>Invite, activate, suspend, and revoke with clear audit-friendly actions.</p>
+        </div>
     </div>
 
     <aside class="insight-card">
@@ -73,9 +78,37 @@
             <span>Who has access, what they can do, and whether they are active</span>
         </div>
     </div>
+    <div class="table-filter-bar">
+        <div class="table-filter-controls">
+            <input class="form-input" type="search" id="usersSearch" placeholder="Search user" style="min-width: 220px;">
+            <select class="form-select" id="usersRoleFilter" style="min-width: 180px;">
+                <option value="">All Roles</option>
+                <option value="tenant_admin">Tenant Admin</option>
+                <option value="accountant">Accountant</option>
+                <option value="trader">Trader</option>
+                <option value="store">Store</option>
+            </select>
+            <select class="form-select" id="usersStatusFilter" style="min-width: 180px;">
+                <option value="">All Status</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+            </select>
+        </div>
+        <div class="bulk-selection" id="usersSelectionCount">0 selected</div>
+    </div>
+    <div class="bulk-action-bar">
+        <div class="bulk-action-controls">
+            <button class="btn btn-secondary btn-sm" type="button">Resend Invite</button>
+            <button class="btn btn-ghost btn-sm" type="button">Suspend Access</button>
+            <button class="btn btn-ghost btn-sm" type="button">Export Audit View</button>
+        </div>
+    </div>
     <table class="data-table">
         <thead>
             <tr>
+                <th>
+                    <input type="checkbox" id="usersSelectAll" aria-label="Select all user rows" onchange="toggleUsersSelection(this.checked)">
+                </th>
                 <th>Name</th>
                 <th>Contact</th>
                 <th>Company</th>
@@ -86,13 +119,28 @@
         </thead>
         <tbody id="userTable">
             <tr>
-                <td colspan="6" class="text-center">Loading workspace users...</td>
+                <td colspan="7" class="text-center">Loading workspace users...</td>
             </tr>
         </tbody>
     </table>
 </div>
 
 <script>
+function toggleUsersSelection(checked) {
+    document.querySelectorAll('#userTable input[type="checkbox"]').forEach((input) => {
+        input.checked = checked;
+    });
+    updateUsersSelectionCount();
+}
+
+function updateUsersSelectionCount() {
+    const selected = document.querySelectorAll('#userTable input[type="checkbox"]:checked').length;
+    const el = document.getElementById('usersSelectionCount');
+    if (el) el.textContent = `${selected} selected`;
+}
+
+window.updateUsersSelectionCount = updateUsersSelectionCount;
+
 function showInviteUserModal() {
     showModal('Invite User', `
         <div class="form-group">

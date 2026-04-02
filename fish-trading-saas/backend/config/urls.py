@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.urls import path, include
-from django.views.generic import TemplateView
+from django.views.generic import RedirectView
 from accounts.views import CustomProfileRedirectView, UnifiedLoginView, TenantRegisterView, PlatformLoginView
 from dashboard.admin import dashboard_site
 from accounts.admin_sites import platform_admin_site
@@ -28,7 +28,7 @@ urlpatterns = [
     path("platform/login/", PlatformLoginView.as_view(), name="platform-login"),
     
     # Register new company
-    path("register.html", TemplateView.as_view(template_name="register.html"), name="register-html"),
+    path("register.html", RedirectView.as_view(url='/register.html', permanent=False), name="register-html"),
     path("register/", TenantRegisterView.as_view(), name="register"),
     
     # Dashboard admin (analytics)
@@ -62,7 +62,7 @@ urlpatterns = [
     path("<str:tenant_slug>/register/", TenantRegisterView.as_view(), name="tenant-register"),
     
     # Frontend login page (default) - redirect to /web/login/
-    path("", TemplateView.as_view(template_name="login.html"), name="index"),
+    path("", RedirectView.as_view(url='/login.html', permanent=False), name="index"),
     
     # Redirect /accounts/profile/ to the API profile or login
     path("accounts/profile/", CustomProfileRedirectView.as_view(), name="profile-redirect"),

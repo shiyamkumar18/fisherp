@@ -34,9 +34,31 @@
             <span>Organize fish lines by type, priority, and visibility</span>
         </div>
     </div>
+    <div class="table-filter-bar">
+        <div class="table-filter-controls">
+            <input class="form-input" type="search" id="categorySearch" placeholder="Search category" style="min-width: 220px;">
+            <select class="form-select" id="categoryTypeFilter" style="min-width: 180px;">
+                <option value="">All Types</option>
+                <option value="premium">Premium</option>
+                <option value="standard">Standard</option>
+                <option value="seasonal">Seasonal</option>
+            </select>
+        </div>
+        <div class="bulk-selection" id="categorySelectionCount">0 selected</div>
+    </div>
+    <div class="bulk-action-bar">
+        <div class="bulk-action-controls">
+            <button class="btn btn-secondary btn-sm" type="button">Mark Featured</button>
+            <button class="btn btn-ghost btn-sm" type="button">Set Priority</button>
+            <button class="btn btn-ghost btn-sm" type="button">Export Selected</button>
+        </div>
+    </div>
     <table class="data-table">
         <thead>
             <tr>
+                <th>
+                    <input type="checkbox" id="categoriesSelectAll" aria-label="Select all category rows" onchange="toggleCategorySelection(this.checked)">
+                </th>
                 <th>Name</th>
                 <th>Type</th>
                 <th>Priority</th>
@@ -47,13 +69,28 @@
         </thead>
         <tbody id="fishCategoryTable">
             <tr>
-                <td colspan="6" class="text-center">Loading fish categories...</td>
+                <td colspan="7" class="text-center">Loading fish categories...</td>
             </tr>
         </tbody>
     </table>
 </div>
 
 <script>
+function toggleCategorySelection(checked) {
+    document.querySelectorAll('#fishCategoryTable input[type="checkbox"]').forEach((input) => {
+        input.checked = checked;
+    });
+    updateCategorySelectionCount();
+}
+
+function updateCategorySelectionCount() {
+    const selected = document.querySelectorAll('#fishCategoryTable input[type="checkbox"]:checked').length;
+    const el = document.getElementById('categorySelectionCount');
+    if (el) el.textContent = `${selected} selected`;
+}
+
+window.updateCategorySelectionCount = updateCategorySelectionCount;
+
 function showAddCategoryModal() {
     showModal('Add Fish Category', `
         <div class="form-group">

@@ -2,6 +2,8 @@
 
 const UI = {
     charts: {},
+    modalLastFocused: null,
+    modalKeyHandler: null,
 
     init: () => {
         UI.setupMenuToggle();
@@ -50,6 +52,15 @@ const UI = {
                     UI.closeModal();
                 }
             });
+        }
+
+        if (!document.getElementById('appLiveRegion')) {
+            const liveRegion = document.createElement('div');
+            liveRegion.id = 'appLiveRegion';
+            liveRegion.className = 'visually-hidden';
+            liveRegion.setAttribute('aria-live', 'polite');
+            liveRegion.setAttribute('aria-atomic', 'true');
+            document.body.appendChild(liveRegion);
         }
     },
 
@@ -246,16 +257,69 @@ const UI = {
         const modalBody = document.getElementById('modalBody');
         const modalFooter = document.getElementById('modalFooter');
         const modalOverlay = document.getElementById('modalOverlay');
+        const modal = modalOverlay?.querySelector('.modal');
 
         if (modalTitle) modalTitle.textContent = title;
         if (modalBody) modalBody.innerHTML = content;
         if (modalFooter) modalFooter.innerHTML = footer || '<button class="btn btn-secondary" onclick="UI.closeModal()">Cancel</button>';
-        if (modalOverlay) modalOverlay.classList.add('show');
+
+        UI.modalLastFocused = document.activeElement;
+
+        if (modalOverlay) {
+            modalOverlay.classList.add('show');
+            modalOverlay.setAttribute('aria-hidden', 'false');
+        }
+
+        if (modal) {
+            modal.setAttribute('tabindex', '-1');
+            modal.focus();
+        }
+
+        UI.modalKeyHandler = (event) => {
+            if (!modalOverlay?.classList.contains('show')) return;
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                UI.closeModal();
+                return;
+            }
+
+            if (event.key !== 'Tab' || !modal) return;
+
+            const focusable = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+            if (!focusable.length) return;
+
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+
+            if (event.shiftKey && document.activeElement === first) {
+                event.preventDefault();
+                last.focus();
+            } else if (!event.shiftKey && document.activeElement === last) {
+                event.preventDefault();
+                first.focus();
+            }
+        };
+
+        document.addEventListener('keydown', UI.modalKeyHandler);
+        UI.announce(`${title} dialog opened.`, 'polite');
     },
 
     closeModal: () => {
         const modalOverlay = document.getElementById('modalOverlay');
-        if (modalOverlay) modalOverlay.classList.remove('show');
+        if (modalOverlay) {
+            modalOverlay.classList.remove('show');
+            modalOverlay.setAttribute('aria-hidden', 'true');
+        }
+
+        if (UI.modalKeyHandler) {
+            document.removeEventListener('keydown', UI.modalKeyHandler);
+            UI.modalKeyHandler = null;
+        }
+
+        if (UI.modalLastFocused && typeof UI.modalLastFocused.focus === 'function') {
+            UI.modalLastFocused.focus();
+        }
+        UI.modalLastFocused = null;
     },
 
     showAlert: (message, type = 'info') => {
@@ -271,6 +335,17 @@ const UI = {
             content.insertBefore(alertDiv, content.firstChild);
             setTimeout(() => alertDiv.remove(), 3000);
         }
+        UI.announce(message, type === 'danger' ? 'assertive' : 'polite');
+    },
+
+    announce: (message, politeness = 'polite') => {
+        const liveRegion = document.getElementById('appLiveRegion');
+        if (!liveRegion) return;
+        liveRegion.setAttribute('aria-live', politeness);
+        liveRegion.textContent = '';
+        window.setTimeout(() => {
+            liveRegion.textContent = String(message || '');
+        }, 30);
     },
 
     setPageTitle: (title) => {

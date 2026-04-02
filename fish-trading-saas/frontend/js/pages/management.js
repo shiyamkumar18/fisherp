@@ -93,7 +93,8 @@ const ManagementPages = {
     loadSubscriptionTiers: async () => {
         const data = await window.API.get('/subscriptions/tiers/');
 
-        const tbody = document.getElementById('plansTable');
+        const plansTable = document.getElementById('plansTable');
+        const tbody = plansTable ? plansTable.querySelector('tbody') : null;
         if (!tbody) return;
 
         if (!data || data.length === 0) {
@@ -101,31 +102,67 @@ const ManagementPages = {
             return;
         }
 
-        tbody.innerHTML = data
-            .map(
-                (tier) => `
-                    <tr>
-                        <td><strong>${tier.name}</strong></td>
-                        <td>${window.Utils.formatCurrency(tier.price_monthly)}/mo</td>
-                        <td>${tier.max_users || 'Unlimited'}</td>
-                        <td>
-                            ${tier.allow_advanced_reporting ? '<span class="feature-tag">Advanced Reports</span>' : ''}
-                            ${tier.allow_multi_user ? '<span class="feature-tag">Multi-User</span>' : ''}
-                            ${tier.allow_inventory ? '<span class="feature-tag">Inventory Mgmt</span>' : ''}
-                            ${tier.features ? tier.features.split(',').map(f => `<span class="feature-tag">${f.trim()}</span>`).join('') : ''}
-                        </td>
-                        <td><span class="status-badge ${tier.is_active ? 'active' : 'inactive'}">${tier.is_active ? 'Available' : 'Disabled'}</span></td>
-                        <td>
-                            <button class="btn btn-sm ${tier.is_current ? 'btn-secondary' : 'btn-primary'}" 
-                                onclick="ManagementPages.upgradeToTier('${tier.id}')" 
-                                ${tier.is_current ? 'disabled' : ''}>
-                                ${tier.is_current ? 'Current' : 'Upgrade'}
-                            </button>
-                        </td>
-                    </tr>
-                `
-            )
-            .join('');
+        tbody.innerHTML = '';
+        data.forEach((tier) => {
+            const tr = document.createElement('tr');
+
+            // Name cell
+            const tdName = document.createElement('td');
+            const strong = document.createElement('strong');
+            strong.textContent = tier.name;
+            tdName.appendChild(strong);
+            tr.appendChild(tdName);
+
+            // Price cell
+            const tdPrice = document.createElement('td');
+            tdPrice.textContent = `${window.Utils.formatCurrency(tier.price_monthly)}/mo`;
+            tr.appendChild(tdPrice);
+
+            // Max users cell
+            const tdUsers = document.createElement('td');
+            tdUsers.textContent = tier.max_users || 'Unlimited';
+            tr.appendChild(tdUsers);
+
+            // Features cell
+            const tdFeatures = document.createElement('td');
+            const addFeatureTag = (label) => {
+                const span = document.createElement('span');
+                span.className = 'feature-tag';
+                span.textContent = label;
+                tdFeatures.appendChild(span);
+            };
+            if (tier.allow_advanced_reporting) addFeatureTag('Advanced Reports');
+            if (tier.allow_staff_users) addFeatureTag('Multi-User');
+            if (tier.allow_inventory) addFeatureTag('Inventory Mgmt');
+            if (Array.isArray(tier.features)) {
+                tier.features.forEach((f) => addFeatureTag(String(f).trim()));
+            } else if (typeof tier.features === 'string') {
+                tier.features.split(',').forEach((f) => addFeatureTag(f.trim()));
+            }
+            tr.appendChild(tdFeatures);
+
+            // Status cell
+            const tdStatus = document.createElement('td');
+            const statusSpan = document.createElement('span');
+            statusSpan.className = `status-badge ${tier.is_active ? 'active' : 'inactive'}`;
+            statusSpan.textContent = tier.is_active ? 'Available' : 'Disabled';
+            tdStatus.appendChild(statusSpan);
+            tr.appendChild(tdStatus);
+
+            // Action cell
+            const tdAction = document.createElement('td');
+            const btn = document.createElement('button');
+            btn.className = `btn btn-sm ${tier.is_current ? 'btn-secondary' : 'btn-primary'}`;
+            btn.disabled = !!tier.is_current;
+            btn.textContent = tier.is_current ? 'Current' : 'Upgrade';
+            if (!tier.is_current) {
+                btn.addEventListener('click', () => ManagementPages.upgradeToTier(tier.id));
+            }
+            tdAction.appendChild(btn);
+            tr.appendChild(tdAction);
+
+            tbody.appendChild(tr);
+        });
     },
 
     loadSubscriptionAddons: async () => {

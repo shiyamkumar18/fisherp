@@ -309,6 +309,10 @@ class UpdateSubscriptionView(APIView):
     - TenantAdmin: Can update their tenant's subscription
     """
     permission_classes = [permissions.IsAuthenticated, IsTenantAdmin]
+
+    def post(self, request):
+        """Backward-compatible alias for upgrade endpoint."""
+        return self.put(request)
     
     def put(self, request):
         tier_id = request.data.get('tier_id')

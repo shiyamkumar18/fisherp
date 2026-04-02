@@ -29,6 +29,14 @@
     transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease, color 160ms ease;
 }
 
+.btn:focus-visible,
+.btn-primary:focus-visible,
+.btn-secondary:focus-visible,
+.btn-save:focus-visible,
+.btn-ghost:focus-visible {
+    box-shadow: 0 0 0 4px var(--focus-ring-color);
+}
+
 .btn:hover,
 .btn-primary:hover,
 .btn-secondary:hover,
@@ -149,6 +157,45 @@ select.form-control,
     overflow: hidden;
 }
 
+.table-filter-bar,
+.bulk-action-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    padding: 0.9rem 1.45rem;
+    border-top: 1px solid rgba(15, 23, 42, 0.06);
+    border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+    background: rgba(244, 250, 251, 0.82);
+}
+
+.table-filter-controls,
+.bulk-action-controls,
+.row-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+}
+
+.bulk-action-bar {
+    border-top: 0;
+}
+
+.bulk-selection {
+    font-size: 0.84rem;
+    color: #486170;
+    font-weight: 700;
+}
+
+.row-actions .btn {
+    min-height: 34px;
+    border-radius: 12px;
+    padding: 0.48rem 0.7rem;
+    font-size: 0.78rem;
+}
+
 .data-table {
     width: 100%;
     border-collapse: collapse;
@@ -204,30 +251,90 @@ select.form-control,
 .status-badge.delivered,
 .role-badge.admin,
 .status-active {
-    background: rgba(22, 163, 74, 0.12);
-    color: #166534;
+    background: var(--status-success-bg);
+    color: var(--status-success-fg);
 }
 
 .status-badge.pending,
 .status-badge.partial,
 .status-badge.low_stock,
 .role-badge.sales {
-    background: rgba(245, 158, 11, 0.15);
-    color: #b45309;
+    background: var(--status-warning-bg);
+    color: var(--status-warning-fg);
 }
 
 .status-badge.inactive,
 .status-badge.cancelled,
 .status-badge.expired,
 .status-inactive {
-    background: rgba(220, 38, 38, 0.12);
-    color: #b91c1c;
+    background: var(--status-danger-bg);
+    color: var(--status-danger-fg);
 }
 
 .status-badge.in_stock,
 .role-badge.store {
-    background: rgba(14, 165, 233, 0.12);
-    color: #0369a1;
+    background: var(--status-info-bg);
+    color: var(--status-info-fg);
+}
+
+.state-panel {
+    display: grid;
+    place-items: center;
+    text-align: center;
+    gap: 0.35rem;
+    min-height: 180px;
+    margin: 1rem 1.45rem 1.3rem;
+    padding: 1.3rem;
+    border: 1px dashed rgba(15, 118, 110, 0.24);
+    border-radius: 20px;
+    color: #4d6675;
+    background: rgba(240, 250, 248, 0.72);
+}
+
+.state-panel i {
+    font-size: 1.25rem;
+    color: #0f766e;
+}
+
+.state-panel strong {
+    color: #163246;
+    font-size: 0.98rem;
+}
+
+.state-panel p {
+    margin: 0;
+    font-size: 0.86rem;
+}
+
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+@media (max-width: 768px) {
+    .table-filter-bar,
+    .bulk-action-bar {
+        padding: 0.8rem 1rem;
+    }
+
+    .table-filter-controls,
+    .bulk-action-controls,
+    .row-actions {
+        width: 100%;
+    }
+
+    .table-filter-controls .form-input,
+    .table-filter-controls .form-select {
+        min-width: 0 !important;
+        width: 100%;
+    }
 }
 
 .alert {

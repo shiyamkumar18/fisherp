@@ -11,6 +11,7 @@ env/
 *.sqlite3
 logs/*.log
 *.log
+backend/celerybeat-schedule
 
 # Environment files
 .env

@@ -6,10 +6,14 @@ const ReportsPage = {
     },
     
     loadData: async () => {
-        await Promise.all([
+        const results = await Promise.allSettled([
             ReportsPage.loadKPIs(),
             ReportsPage.loadTopBuyers()
         ]);
+
+        if (results.some((result) => result.status === 'rejected')) {
+            window.UI?.showAlert?.('Some report data failed to load. Please retry.', 'warning');
+        }
     },
     
     loadKPIs: async () => {
@@ -39,14 +43,25 @@ const ReportsPage = {
             tbody.innerHTML = '<tr><td colspan="3" class="text-center">No data</td></tr>';
             return;
         }
-        
-        tbody.innerHTML = topBuyers.map(buyer => `
-            <tr>
-                <td>${buyer.buyer__name || '-'}</td>
-                <td>${buyer.order_count || 0}</td>
-                <td>${window.Utils.formatCurrency(buyer.total_revenue)}</td>
-            </tr>
-        `).join('');
+
+        tbody.innerHTML = '';
+        topBuyers.forEach((buyer) => {
+            const row = document.createElement('tr');
+
+            const nameCell = document.createElement('td');
+            nameCell.textContent = String(buyer.buyer__name || '-');
+            row.appendChild(nameCell);
+
+            const countCell = document.createElement('td');
+            countCell.textContent = String(buyer.order_count || 0);
+            row.appendChild(countCell);
+
+            const revenueCell = document.createElement('td');
+            revenueCell.textContent = window.Utils.formatCurrency(buyer.total_revenue);
+            row.appendChild(revenueCell);
+
+            tbody.appendChild(row);
+        });
     }
 };
 

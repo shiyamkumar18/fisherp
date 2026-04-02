@@ -147,7 +147,7 @@ class DashboardManager:
         
         # Inventory Value (remaining packages * cost per package)
         inventory_value = Decimal('0.00')
-        inventories = Inventory.objects.filter(tenant_filter)
+        inventories = Inventory.objects.filter(tenant_filter).select_related('purchase_batch')
         for inv in inventories:
             if inv.purchase_batch:
                 cost = inv.purchase_batch.cost_per_package or Decimal('0.00')

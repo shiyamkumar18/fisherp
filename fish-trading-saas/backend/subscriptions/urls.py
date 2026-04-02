@@ -30,6 +30,7 @@ urlpatterns = [
     path("subscriptions/current/", CurrentSubscriptionView.as_view(), name="current-subscription"),
     path("subscriptions/create/", CreateSubscriptionView.as_view(), name="create-subscription"),
     path("subscriptions/update/", UpdateSubscriptionView.as_view(), name="update-subscription"),
+    path("subscriptions/upgrade/", UpdateSubscriptionView.as_view(), name="upgrade-subscription"),
     
     # Feature access
     path("subscriptions/check-feature/", CheckFeatureAccessView.as_view(), name="check-feature"),

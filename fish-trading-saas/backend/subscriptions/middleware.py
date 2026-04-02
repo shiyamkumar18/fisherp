@@ -62,6 +62,13 @@ class SubscriptionEnforcementMiddleware:
         '/api/subscriptions/',  # Subscription management
         '/admin/',             # Django admin
         '/api/tiers/',         # Subscription tiers (public)
+        '/api-auth/',          # DRF session auth endpoints
+        '/health/',            # Liveness/readiness probes
+        '/api/schema/',        # OpenAPI schema
+        '/api/docs/',          # Swagger docs
+        '/api/redoc/',         # Redoc docs
+        '/platform/',          # Platform login and admin routes
+        '/register/',          # Public tenant registration
     ]
     
     def __init__(self, get_response):

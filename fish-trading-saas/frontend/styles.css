@@ -134,6 +134,25 @@ input {
     gap: 1rem;
 }
 
+.nav-toggle {
+    display: none;
+    width: 44px;
+    height: 44px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.9);
+    color: #163246;
+    cursor: pointer;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+    outline: 3px solid rgba(20, 184, 166, 0.38);
+    outline-offset: 2px;
+}
+
 .nav a {
     font-weight: 700;
     color: #30485b;
@@ -313,9 +332,79 @@ input {
 
 .platform-section,
 .features-section,
+.workflow-section,
 .pricing-section,
 .cta-section {
     padding: 2rem 0 4rem;
+}
+
+.workflow-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.workflow-card {
+    border: 1px solid var(--line);
+    border-radius: 24px;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 1.25rem;
+    box-shadow: var(--shadow);
+}
+
+.workflow-card span {
+    display: inline-flex;
+    width: 34px;
+    height: 34px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--teal), var(--sky));
+    color: #fff;
+    font-weight: 800;
+}
+
+.workflow-card h3 {
+    margin: 0.9rem 0 0.5rem;
+    font-size: 1.08rem;
+    letter-spacing: -0.02em;
+}
+
+.workflow-card p {
+    margin: 0;
+    color: var(--muted);
+    line-height: 1.6;
+}
+
+.trust-band {
+    margin-top: 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.86);
+    padding: 0.95rem 1rem;
+    color: #1f384a;
+    font-weight: 700;
+}
+
+.trust-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+}
+
+.trust-tags span {
+    border-radius: 999px;
+    padding: 0.35rem 0.75rem;
+    background: #eaf7f5;
+    color: #0f766e;
+    font-size: 0.75rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-weight: 800;
 }
 
 .platform-board {
@@ -590,6 +679,7 @@ input {
     .platform-grid,
     .footer-grid,
     .features-grid,
+    .workflow-grid,
     .pricing-grid,
     .proof-strip {
         grid-template-columns: 1fr;
@@ -610,6 +700,38 @@ input {
         width: 100%;
         justify-content: space-between;
         flex-wrap: wrap;
+    }
+
+    .nav-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        align-self: flex-end;
+    }
+
+    .nav {
+        display: none;
+        flex-direction: column;
+        align-items: flex-start;
+        width: 100%;
+        padding-top: 0.6rem;
+    }
+
+    .nav.open {
+        display: flex;
+    }
+
+    .nav-actions {
+        display: none;
+    }
+
+    .nav-shell:has(.nav.open) .nav-actions {
+        display: flex;
+    }
+
+    .trust-band {
+        flex-direction: column;
+        align-items: flex-start;
     }
 }
 
@@ -636,5 +758,38 @@ input {
     .btn,
     .auth-btn {
         width: 100%;
+    }
+}
+
+@media (max-width: 390px) {
+    .container {
+        width: min(1180px, calc(100% - 1.1rem));
+    }
+
+    .hero-title {
+        font-size: 2.1rem;
+    }
+}
+
+@media (max-width: 360px) {
+    .brand-mark {
+        width: 40px;
+        height: 40px;
+        border-radius: 13px;
+    }
+
+    .btn {
+        min-height: 44px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
     }
 }

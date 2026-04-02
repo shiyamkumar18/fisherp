@@ -37,9 +37,35 @@
             <input type="text" id="paymentsSearch" placeholder="Search payments..." class="form-input" style="min-width: 240px;">
         </div>
     </div>
+    <div class="table-filter-bar">
+        <div class="table-filter-controls">
+            <select class="form-select" id="paymentsTypeFilter" style="min-width: 180px;">
+                <option value="">All Types</option>
+                <option value="collection">Collections</option>
+                <option value="supplier">Supplier Payments</option>
+            </select>
+            <select class="form-select" id="paymentsStatusFilter" style="min-width: 180px;">
+                <option value="">All Status</option>
+                <option value="paid">Settled</option>
+                <option value="pending">Pending</option>
+                <option value="approval">Needs Approval</option>
+            </select>
+        </div>
+        <div class="bulk-selection" id="paymentsSelectionCount">0 selected</div>
+    </div>
+    <div class="bulk-action-bar">
+        <div class="bulk-action-controls">
+            <button class="btn btn-secondary btn-sm" type="button">Approve Selected</button>
+            <button class="btn btn-ghost btn-sm" type="button">Reconcile</button>
+            <button class="btn btn-ghost btn-sm" type="button">Export Ledger</button>
+        </div>
+    </div>
     <table class="data-table">
         <thead>
             <tr>
+                <th>
+                    <input type="checkbox" id="paymentsSelectAll" aria-label="Select all payment rows" onchange="togglePaymentsSelection(this.checked)">
+                </th>
                 <th>Date</th>
                 <th>Type</th>
                 <th>Party</th>
@@ -51,13 +77,44 @@
         </thead>
         <tbody id="paymentsTable">
             <tr>
-                <td colspan="7" class="text-center">Loading payments...</td>
+                <td colspan="8" class="text-center">Loading payments...</td>
             </tr>
         </tbody>
     </table>
 </div>
 
+<aside class="insight-card">
+    <div>
+        <div class="section-caption">Reconciliation Focus</div>
+        <h3>Close inflow and outflow loops daily</h3>
+    </div>
+    <div class="insight-list">
+        <div class="insight-item">
+            <i class="fas fa-scale-balanced"></i>
+            <div>
+                <strong>Queue approvals before day close</strong>
+                <p>Use bulk approve and reconcile actions to reduce carry-over risk.</p>
+            </div>
+        </div>
+    </div>
+</aside>
+
 <script>
+function togglePaymentsSelection(checked) {
+    document.querySelectorAll('#paymentsTable input[type="checkbox"]').forEach((input) => {
+        input.checked = checked;
+    });
+    updatePaymentsSelectionCount();
+}
+
+function updatePaymentsSelectionCount() {
+    const selected = document.querySelectorAll('#paymentsTable input[type="checkbox"]:checked').length;
+    const el = document.getElementById('paymentsSelectionCount');
+    if (el) el.textContent = `${selected} selected`;
+}
+
+window.updatePaymentsSelectionCount = updatePaymentsSelectionCount;
+
 function showPaymentModal() {
     showModal('Record Payment', `
         <div class="form-group">
