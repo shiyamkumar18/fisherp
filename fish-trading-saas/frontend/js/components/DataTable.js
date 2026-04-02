@@ -49,20 +49,14 @@ class DataTable {
         console.log('Column toggle ready');
     }
 
-    async loadData() {
-        this.container.querySelector('tbody').innerHTML = '<tr><td colspan="' + this.columns.length + '">Loading...</td></tr>';
-        try {
-            this.data = await this.dataFn();
-            this.renderRows();
-        } catch (e) {
-            this.container.querySelector('tbody').innerHTML = '<tr><td colspan="' + this.columns.length + '" class="text-danger text-center">Error loading data</td></tr>';
-        }
+    _getActionsColIndex() {
+        return this.columns.findIndex(col => col.key === 'actions' || col.type === 'actions');
     }
 
     renderSkeleton() {
         const tbody = this.container.querySelector('tbody');
         if (!tbody) return;
-        const actionsColIndex = this.columns.findIndex(col => col.key === 'actions' || col.type === 'actions');
+        const actionsColIndex = this._getActionsColIndex();
         const skeletonColumns = actionsColIndex !== -1 ? this.columns.slice(0, actionsColIndex) : this.columns;
         tbody.innerHTML = Array(5).fill().map(() => `
             <tr class="skeleton-row">
@@ -75,7 +69,7 @@ class DataTable {
     async loadData() {
         const tbody = this.container.querySelector('tbody');
         if (!tbody) return;
-        const actionsColIndex = this.columns.findIndex(col => col.key === 'actions' || col.type === 'actions');
+        const actionsColIndex = this._getActionsColIndex();
         const skeletonColumns = actionsColIndex !== -1 ? this.columns.slice(0, actionsColIndex) : this.columns;
         const skeletonRow = document.createElement('tr');
         skeletonRow.className = 'skeleton-row';

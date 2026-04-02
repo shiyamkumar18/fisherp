@@ -36,7 +36,7 @@ function createTableCell(content, type = 'text', attributes = {}) {
     } else if (type === 'html') {
         cell.innerHTML = content; // Only use when you're sure content is safe
     } else {
-        cell.textContent = String(content ?? '');
+        cell.textContent = String(content || '');
     }
     
     Object.entries(attributes).forEach(([key, value]) => {
