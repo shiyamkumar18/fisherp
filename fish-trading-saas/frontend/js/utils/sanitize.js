@@ -34,7 +34,11 @@ function createTableCell(content, type = 'text', attributes = {}) {
         cell.appendChild(span);
         return cell;
     } else if (type === 'html') {
-        cell.innerHTML = content; // Only use when you're sure content is safe
+        const rawHtml = String(content || '');
+        const safeContent = (window && window.DOMPurify && typeof window.DOMPurify.sanitize === 'function')
+            ? window.DOMPurify.sanitize(rawHtml)
+            : sanitizeHTML(rawHtml);
+        cell.innerHTML = safeContent;
     } else {
         cell.textContent = String(content || '');
     }

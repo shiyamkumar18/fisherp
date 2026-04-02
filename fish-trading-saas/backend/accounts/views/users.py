@@ -8,7 +8,6 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.validators import EmailValidator, validate_email
 from django.core.exceptions import ValidationError as DjangoValidationError
-from django.shortcuts import redirect
 from django.views.generic import RedirectView
 from rest_framework_simplejwt.tokens import RefreshToken
 from datetime import timedelta
