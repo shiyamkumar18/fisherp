@@ -48,6 +48,12 @@ class Command(BaseCommand):
         )
         return company
 
+    def _assign_group(self, user):
+        """Assign user to their role-based group and log it."""
+        if assign_user_to_group(user):
+            group_name = ROLE_GROUP_MAP.get(user.role, user.role)
+            self.stdout.write(self.style.SUCCESS(f'   -> Assigned to {group_name} group'))
+
     def handle(self, *args, **options):
         # =================================================================
         # PRODUCTION GUARD – this command must never run against a live DB.
@@ -100,9 +106,7 @@ class Command(BaseCommand):
                 is_staff=True,  # Can access admin for tenant management
                 is_superuser=False  # NOT a superuser for security!
             )
-            # Assign to group
-            if assign_user_to_group(platform_operator):
-                self.stdout.write(self.style.SUCCESS('   -> Assigned to platform_operator group'))
+            self._assign_group(platform_operator)
             self.stdout.write(self.style.SUCCESS('Platform Operator created: platform_operator / platform123'))
             self.stdout.write(self.style.WARNING('  ⚠️ NOT a superuser - must use impersonation to access tenant data'))
         else:
@@ -119,8 +123,7 @@ class Command(BaseCommand):
                 role='platform_support',
                 is_superuser=False
             )
-            if assign_user_to_group(platform_support):
-                self.stdout.write(self.style.SUCCESS('   -> Assigned to platform_support group'))
+            self._assign_group(platform_support)
             self.stdout.write(self.style.SUCCESS('Platform Support created: platform_support / support123'))
         else:
             self.stdout.write(self.style.WARNING('Platform Support user already exists'))
@@ -145,9 +148,7 @@ class Command(BaseCommand):
                 start_date=timezone.now(),
                 expiry_date=timezone.now() + timedelta(days=30)
             )
-            # Assign to group
-            if assign_user_to_group(admin_user):
-                self.stdout.write(self.style.SUCCESS('   -> Assigned to tenant_admin group'))
+            self._assign_group(admin_user)
             self.stdout.write(self.style.SUCCESS('Tenant Admin created: admin / admin123'))
         else:
             self.stdout.write(self.style.WARNING('Admin user already exists'))
@@ -170,9 +171,7 @@ class Command(BaseCommand):
                 start_date=timezone.now(),
                 expiry_date=timezone.now() + timedelta(days=30)
             )
-            # Assign to group
-            if assign_user_to_group(accountant_user):
-                self.stdout.write(self.style.SUCCESS('   -> Assigned to accountant group'))
+            self._assign_group(accountant_user)
             self.stdout.write(self.style.SUCCESS('Accountant created: accountant / accountant123'))
         else:
             self.stdout.write(self.style.WARNING('Accountant user already exists'))
@@ -195,9 +194,7 @@ class Command(BaseCommand):
                 start_date=timezone.now(),
                 expiry_date=timezone.now() + timedelta(days=30)
             )
-            # Assign to group
-            if assign_user_to_group(trader_user):
-                self.stdout.write(self.style.SUCCESS('   -> Assigned to trader group'))
+            self._assign_group(trader_user)
             self.stdout.write(self.style.SUCCESS('Trader created: trader / trader123'))
         else:
             self.stdout.write(self.style.WARNING('Trader user already exists'))
@@ -220,9 +217,7 @@ class Command(BaseCommand):
                 start_date=timezone.now(),
                 expiry_date=timezone.now() + timedelta(days=30)
             )
-            # Assign to group
-            if assign_user_to_group(store_user):
-                self.stdout.write(self.style.SUCCESS('   -> Assigned to store group'))
+            self._assign_group(store_user)
             self.stdout.write(self.style.SUCCESS('Store created: store / store123'))
         else:
             self.stdout.write(self.style.WARNING('Store user already exists'))
@@ -247,9 +242,7 @@ class Command(BaseCommand):
                 start_date=timezone.now(),
                 expiry_date=timezone.now() + timedelta(days=30)
             )
-            # Assign to group
-            if assign_user_to_group(tenant2_admin):
-                self.stdout.write(self.style.SUCCESS('   -> Assigned to tenant_admin group'))
+            self._assign_group(tenant2_admin)
             self.stdout.write(self.style.SUCCESS('Tenant 2 Admin created: tenant2_admin / tenant2123'))
 
         self.stdout.write(self.style.SUCCESS('\n' + '=' * 60))
