@@ -61,7 +61,6 @@ export function Modal({ open, title, description, onClose, onConfirm, confirmLab
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"
       onClick={onClose}
-      aria-hidden="true"
     >
       <div
         ref={panelRef}
