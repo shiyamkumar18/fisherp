@@ -1,0 +1,1 @@
+import{t as e}from"./jsx-runtime-CaxnvTZg.js";import{n as t}from"./card-Cqctgh14.js";var n=e();function r({className:e,...r}){return(0,n.jsx)(`input`,{className:t(`h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none ring-primary/30 transition focus:ring-4`,e),...r})}export{r as t};

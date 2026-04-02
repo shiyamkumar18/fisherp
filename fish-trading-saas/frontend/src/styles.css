@@ -1,34 +1,19 @@
 @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&display=swap');
+@import "tailwindcss";
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@theme {
+  --color-primary: #2563eb;
+  --color-secondary: #06b6d4;
+  --color-background: #f8fafc;
+  --color-surface: #ffffff;
+  --color-text: #0f172a;
+  --color-muted: #64748b;
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+}
 
 @layer base {
-  * {
-    @apply box-border;
-  }
-
-  html,
-  body,
-  #root {
-    @apply min-h-screen;
-  }
-
   body {
-    @apply m-0 bg-background text-text font-sans antialiased;
-  }
-
-  h1 {
-    @apply text-3xl font-extrabold tracking-tight md:text-4xl;
-  }
-
-  h2 {
-    @apply text-2xl font-extrabold tracking-tight;
-  }
-
-  h3 {
-    @apply text-xl font-bold tracking-tight;
+    @apply bg-background text-text font-sans antialiased;
   }
 
   h1, h2, h3, h4 {
@@ -37,13 +22,6 @@
 
   p, span, label, input, button {
     @apply font-medium;
-  }
-
-  button,
-  input,
-  textarea,
-  select {
-    @apply text-sm;
   }
 }
 
