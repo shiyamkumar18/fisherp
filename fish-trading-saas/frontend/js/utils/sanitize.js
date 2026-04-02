@@ -34,8 +34,9 @@ function createTableCell(content, type = 'text', attributes = {}) {
         cell.appendChild(span);
         return cell;
     } else if (type === 'html') {
+        // Use DOMPurify if available (optional dependency); fall back to HTML-escaping for safety
         const rawHtml = String(content || '');
-        const safeContent = (window && window.DOMPurify && typeof window.DOMPurify.sanitize === 'function')
+        const safeContent = window?.DOMPurify?.sanitize
             ? window.DOMPurify.sanitize(rawHtml)
             : sanitizeHTML(rawHtml);
         cell.innerHTML = safeContent;
