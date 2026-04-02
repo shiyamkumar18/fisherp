@@ -61,19 +61,25 @@ class DataTable {
 
     renderSkeleton() {
         const tbody = this.container.querySelector('tbody');
+        if (!tbody) return;
+        const actionsColIndex = this.columns.findIndex(col => col.key === 'actions' || col.type === 'actions');
+        const skeletonColumns = actionsColIndex !== -1 ? this.columns.slice(0, actionsColIndex) : this.columns;
         tbody.innerHTML = Array(5).fill().map(() => `
             <tr class="skeleton-row">
-                ${this.columns.slice(0,-1).map(col => `<td style="width:${col.width}"><div class="skeleton" style="height:16px"></div></td>`).join('')}
-                <td></td>
+                ${skeletonColumns.map(col => `<td style="width:${col.width}"><div class="skeleton" style="height:16px"></div></td>`).join('')}
+                ${actionsColIndex !== -1 ? '<td></td>' : ''}
             </tr>
         `).join('');
     }
 
     async loadData() {
         const tbody = this.container.querySelector('tbody');
+        if (!tbody) return;
+        const actionsColIndex = this.columns.findIndex(col => col.key === 'actions' || col.type === 'actions');
+        const skeletonColumns = actionsColIndex !== -1 ? this.columns.slice(0, actionsColIndex) : this.columns;
         const skeletonRow = document.createElement('tr');
         skeletonRow.className = 'skeleton-row';
-        this.columns.slice(0, -1).forEach(col => {
+        skeletonColumns.forEach(col => {
             const td = document.createElement('td');
             td.style.width = col.width;
             const skeleton = document.createElement('div');
@@ -82,6 +88,9 @@ class DataTable {
             td.appendChild(skeleton);
             skeletonRow.appendChild(td);
         });
+        if (actionsColIndex !== -1) {
+            skeletonRow.appendChild(document.createElement('td'));
+        }
         tbody.innerHTML = '';
         tbody.appendChild(skeletonRow);
         

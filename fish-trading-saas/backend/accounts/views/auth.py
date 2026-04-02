@@ -28,8 +28,6 @@ from ..utils import (
 User = get_user_model()
 
 
-<<<<<<< HEAD
-=======
 def _frontend_auth_redirect(path, **params):
     filtered = {k: v for k, v in params.items() if v not in (None, "")}
     if filtered:
@@ -37,7 +35,6 @@ def _frontend_auth_redirect(path, **params):
     return redirect(path)
 
 
->>>>>>> 7dbf52df (progress save)
 class UserLoginView(APIView):
     """
     Secure Multi-Tenant Login

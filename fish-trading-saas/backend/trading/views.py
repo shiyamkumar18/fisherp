@@ -6,11 +6,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.core.exceptions import ValidationError
 from django_filters.rest_framework import DjangoFilterBackend
-<<<<<<< HEAD
-from django.db.models import Count
-=======
 from django.db.models import Q, Sum, Count, Prefetch
->>>>>>> 7dbf52df (progress save)
 from django.utils import timezone
 from django.db import transaction
 from decimal import Decimal

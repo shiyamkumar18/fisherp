@@ -36,7 +36,7 @@ function createTableCell(content, type = 'text', attributes = {}) {
     } else if (type === 'html') {
         cell.innerHTML = content; // Only use when you're sure content is safe
     } else {
-        cell.textContent = sanitizeHTML(String(content || ''));
+        cell.textContent = String(content ?? '');
     }
     
     Object.entries(attributes).forEach(([key, value]) => {
@@ -99,7 +99,7 @@ function setTableError(tableElement, colCount = 7, error = 'Error loading data')
     const cell = document.createElement('td');
     cell.colSpan = colCount;
     cell.className = 'text-center text-danger p-4';
-    cell.textContent = sanitizeHTML(error);
+    cell.textContent = String(error || 'Error loading data');
     row.appendChild(cell);
     
     tableElement.innerHTML = '';
@@ -109,7 +109,10 @@ function setTableError(tableElement, colCount = 7, error = 'Error loading data')
 // Create action button
 function createActionButton(icon, onClick, title = '', isDisabled = false) {
     const button = document.createElement('button');
-    button.className = `btn-icon ${onClick.includes('delete') ? 'danger' : ''}`;
+    const isDanger = typeof onClick === 'function'
+        ? title.toLowerCase().includes('delete')
+        : false;
+    button.className = `btn-icon ${isDanger ? 'danger' : ''}`;
     button.title = title;
     button.disabled = isDisabled;
     
@@ -117,12 +120,10 @@ function createActionButton(icon, onClick, title = '', isDisabled = false) {
     i.className = `fas fa-${icon}`;
     button.appendChild(i);
     
-    // Don't use onclick attribute - use addEventListener
-    if (onClick && !onClick.includes('delete')) {
+    if (typeof onClick === 'function') {
         button.addEventListener('click', (e) => {
             e.preventDefault();
-            // Parse and execute - be careful here
-            eval(onClick);
+            onClick(e);
         });
     }
     

@@ -6,12 +6,9 @@ from django.utils import timezone
 from .models import Inventory, Supplier
 from companies.models import Company
 
-logger = logging.getLogger('trading.tasks')
-
 logger = logging.getLogger(__name__)
 
 
-<<<<<<< HEAD
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
 def send_low_stock_alert(self, inventory_id):
     try:
@@ -34,21 +31,6 @@ def send_low_stock_alert(self, inventory_id):
     except Exception as exc:
         logger.exception('Low stock alert task failed for inventory %s', inventory_id)
         raise self.retry(exc=exc)
-=======
-@shared_task
-def send_low_stock_alert(inventory_id):
-    inventory = Inventory.objects.get(id=inventory_id)
-    if inventory.company and inventory.company.is_active:
-        logger.info(
-            'Low stock alert [%s]: %s: %d remaining',
-            inventory.company.name,
-            inventory.fish.name,
-            inventory.remaining_packages,
-        )
-    else:
-        logger.warning('Skipped inactive company inventory: %s', inventory.id)
-    return 'Alert processed'
->>>>>>> 7dbf52df (progress save)
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=120)
@@ -93,36 +75,7 @@ def subscription_expiry_reminder(self, subscription_id, company_id=None):
             'Subscription expiry reminder [%s]: subscription_id=%s',
             company_id or 'ALL', subscription_id,
         )
-<<<<<<< HEAD
         return 'Reminder sent'
     except Exception as exc:
         logger.exception('subscription_expiry_reminder failed')
         raise self.retry(exc=exc)
-=======
-        count = overdue.count()
-        for supplier in overdue:
-            logger.warning(
-                'Overdue [%s]: %s - %s',
-                company_id,
-                supplier.name,
-                supplier.outstanding_amount,
-            )
-        return count
-    else:
-        companies = Company.objects.filter(is_active=True)
-        total = 0
-        for company in companies:
-            company_count = check_overdue_suppliers(company.id)
-            total += company_count
-        return total
-
-
-@shared_task
-def subscription_expiry_reminder(subscription_id, company_id=None):
-    logger.info(
-        'Subscription expiry reminder [%s]: %s',
-        company_id or 'ALL',
-        subscription_id,
-    )
-    return 'Reminder sent'
->>>>>>> 7dbf52df (progress save)

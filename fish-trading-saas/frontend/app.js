@@ -36,10 +36,10 @@ function createTableRow(data, columns) {
         } else if (col.type === 'badge') {
             const span = document.createElement('span');
             span.className = `status-badge ${value}`;
-            span.textContent = sanitize(String(value || 'pending').toUpperCase());
+            span.textContent = String(value || 'pending').toUpperCase();
             cell.appendChild(span);
         } else {
-            cell.textContent = sanitize(String(value || ''));
+            cell.textContent = String(value || '');
         }
         row.appendChild(cell);
     });
@@ -91,7 +91,7 @@ function showAlert(message, type = 'info') {
     iconEl.className = `fas fa-${type === 'success' ? 'check-circle' : type === 'danger' ? 'exclamation-circle' : 'info-circle'}`;
     alertDiv.appendChild(iconEl);
     
-    const textNode = document.createTextNode(sanitize(message));
+    const textNode = document.createTextNode(String(message || ''));
     alertDiv.appendChild(textNode);
     
     const container = document.getElementById('mainContent') || document.body;

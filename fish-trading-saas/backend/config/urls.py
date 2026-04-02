@@ -1,10 +1,6 @@
 from django.contrib import admin
 from django.urls import path, include
-<<<<<<< HEAD
-from django.views.generic import TemplateView
-=======
 from django.views.generic import RedirectView
->>>>>>> 7dbf52df (progress save)
 from accounts.views import CustomProfileRedirectView, UnifiedLoginView, TenantRegisterView, PlatformLoginView
 from dashboard.admin import dashboard_site
 from accounts.admin_sites import platform_admin_site

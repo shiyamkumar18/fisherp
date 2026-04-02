@@ -1,21 +1,14 @@
 import logging
 import re
 
-import re
-
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.contrib.auth import get_user_model
-<<<<<<< HEAD
-=======
-from django.core.exceptions import ValidationError as DjangoValidationError
-from django.core.validators import EmailValidator
-from django.shortcuts import redirect
->>>>>>> 7dbf52df (progress save)
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.core.validators import validate_email
+from django.core.validators import EmailValidator, validate_email
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.shortcuts import redirect
 from django.views.generic import RedirectView
 from rest_framework_simplejwt.tokens import RefreshToken
 from datetime import timedelta
