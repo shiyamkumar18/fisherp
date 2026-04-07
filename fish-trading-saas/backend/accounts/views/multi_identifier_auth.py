@@ -6,14 +6,11 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
-from django.contrib.auth import get_user_model, authenticate
+from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django.db.models import Q
 from companies.models import Company
 from ..utils import get_client_ip, check_failed_login_attempts, record_failed_login
-import jwt
-import json
-from datetime import timedelta
 
 User = get_user_model()
 

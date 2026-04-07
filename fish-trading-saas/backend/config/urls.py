@@ -98,7 +98,7 @@ urlpatterns = [
 ]
 
 # Serve frontend static assets (css/, js/, icons/, app/, etc.) at root path during development
-from django.conf import settings
+from django.conf import settings  # noqa: E402
 if settings.DEBUG:
     from django.conf.urls.static import static
     # Determine the correct frontend path (Docker vs local)

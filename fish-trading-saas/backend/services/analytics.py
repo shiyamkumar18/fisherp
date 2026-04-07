@@ -9,12 +9,11 @@ Provides deep business analytics for:
 - Price trends
 """
 
-from decimal import Decimal
-from django.db.models import Sum, Count, Q, F, DecimalField, Value, Case, When
-from django.db.models.functions import TruncDate, Coalesce, Cast
+from django.db.models import Sum, Count, F, DecimalField, Value, Case, When
+from django.db.models.functions import TruncDate, Coalesce
 from django.utils import timezone
-from datetime import datetime, timedelta
-from trading.models import PurchaseBatch, Sale, Supplier, Payment
+from datetime import timedelta
+from trading.models import PurchaseBatch, Sale
 from trading.models.inventory import Inventory
 
 

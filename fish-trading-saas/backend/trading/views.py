@@ -623,7 +623,6 @@ class InventoryViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def expiring_soon(self, request):
-        from datetime import datetime, timedelta
         soon = datetime.now().date() + timedelta(days=3)
         expiring = self.get_queryset().filter(
             expiry_date__lte=soon,

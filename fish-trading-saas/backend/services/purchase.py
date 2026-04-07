@@ -6,8 +6,6 @@ from django.utils import timezone
 from django.db import transaction
 from trading.models import PurchaseBatch, Supplier, Fish, Inventory
 from accounts.models_audit import AuditLog
-import re
-from datetime import datetime
 
 
 class PurchaseService:
@@ -87,8 +85,8 @@ class PurchaseService:
 
     @staticmethod
     @transaction.atomic
-    def create_purchase(user, company, supplier_id=None, supplier_name=None, 
-                       items=None, payment_method='cash', amount_paid=0, notes=None):
+    def create_purchase(user, company, supplier_id=None, supplier_name=None,
+                        items=None, payment_method='cash', amount_paid=0, notes=None):
         """
         Create purchase with batches for each item
         
@@ -204,7 +202,7 @@ class PurchaseService:
                 batch.save()
                 
                 # Create inventory record for batch
-                inventory = Inventory.objects.create(
+                Inventory.objects.create(
                     fish=fish,
                     purchase_batch=batch,
                     initial_packages=1,
@@ -237,7 +235,7 @@ class PurchaseService:
                 )
                 
             except Fish.DoesNotExist:
-                errors.append(f"Fish product not found")
+                errors.append("Fish product not found")
             except Exception as e:
                 errors.append(f"Error creating batch: {str(e)}")
 

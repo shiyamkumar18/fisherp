@@ -8,6 +8,7 @@ WARNING: Never use these settings in production.
 """
 
 from datetime import timedelta  # noqa: E402
+import os
 
 from .settings import *  # noqa: F401, F403
 

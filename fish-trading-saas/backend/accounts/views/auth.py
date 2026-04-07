@@ -10,7 +10,6 @@ from django.db.models import F
 from urllib.parse import urlencode
 from django.db.models import Q
 from django.utils import timezone
-from django.utils.text import slugify
 from django.conf import settings
 import random
 
