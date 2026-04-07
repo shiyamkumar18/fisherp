@@ -32,8 +32,6 @@ class TestConcurrentRecordCreation:
                 )
                 results.append(b.id)
             except Exception as exc:
-                # SQLite may lock under true concurrent writes; that's a SQLite
-                # limitation, not a data-integrity failure.
                 errors.append(str(exc))
 
         t1 = threading.Thread(target=create_buyer, args=("Buyer Alpha",))
@@ -82,7 +80,7 @@ class TestBatchNumberUniqueness:
     def test_concurrent_batch_creation_produces_unique_batch_numbers(self):
         """
         Each PurchaseBatch gets a unique auto-generated batch_number.
-        SQLite serializes writes so we verify uniqueness from whichever succeed.
+        Verify uniqueness under concurrent writes.
         """
         tenant = UserFactory(role="tenant_admin")
         fish = FishFactory(tenant=tenant)
@@ -107,8 +105,6 @@ class TestBatchNumberUniqueness:
                 )
                 batches.append(b)
             except Exception as exc:
-                # SQLite may report "database table is locked" under concurrent writes;
-                # this is a known SQLite limitation, not a data-integrity failure.
                 errors.append(str(exc))
 
         threads = [threading.Thread(target=create_batch) for _ in range(3)]

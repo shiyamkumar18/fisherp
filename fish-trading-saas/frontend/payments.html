@@ -3,7 +3,7 @@
         <h1 class="page-title">Payments</h1>
         <p class="page-subtitle">Keep collections and outgoing payments visible so cash movement stays predictable through the day.</p>
     </div>
-    <button class="btn btn-primary" onclick="showPaymentModal()">
+    <button class="btn btn-primary" onclick="window.showPaymentModal?.()">
         <i class="fas fa-money-check-dollar"></i>
         Record Payment
     </button>
@@ -11,19 +11,22 @@
 
 <section class="kpi-row">
     <article class="kpi-card">
-        <div class="metric-eyebrow">Collections Today</div>
-        <div class="kpi-value">₹84K</div>
-        <div class="kpi-label">Payments received against recent sales.</div>
+        <div class="kpi-card-icon"><i class="fas fa-arrow-down"></i></div>
+        <div class="metric-eyebrow">Collections</div>
+        <div class="kpi-value" id="kpiCollections">—</div>
+        <div class="kpi-label">Payments received against sales</div>
     </article>
     <article class="kpi-card">
-        <div class="metric-eyebrow">Outgoing Today</div>
-        <div class="kpi-value">₹51K</div>
-        <div class="kpi-label">Supplier payments cleared this shift.</div>
+        <div class="kpi-card-icon kpi-icon-blue"><i class="fas fa-arrow-up"></i></div>
+        <div class="metric-eyebrow">Outgoing</div>
+        <div class="kpi-value" id="kpiOutgoing">—</div>
+        <div class="kpi-label">Supplier payments cleared</div>
     </article>
     <article class="kpi-card">
+        <div class="kpi-card-icon kpi-icon-amber"><i class="fas fa-hourglass-half"></i></div>
         <div class="metric-eyebrow">Pending Follow-up</div>
-        <div class="kpi-value">11</div>
-        <div class="kpi-label">Transactions still waiting for settlement or approval.</div>
+        <div class="kpi-value" id="kpiPending">—</div>
+        <div class="kpi-label">Transactions waiting for settlement</div>
     </article>
 </section>
 

@@ -15,10 +15,12 @@ const AppState = {
 // ==================== Utility Functions ====================
 function sanitize(str) {
     if (!str) return '';
-    return String(str).replace(/[&<>]/g, function(m) {
+    return String(str).replace(/[&<>"']/g, function(m) {
         if (m === '&') return '&amp;';
         if (m === '<') return '&lt;';
         if (m === '>') return '&gt;';
+        if (m === '"') return '&quot;';
+        if (m === "'") return '&#39;';
         return m;
     });
 }
@@ -594,7 +596,16 @@ async function submitFishForm() {
 // ==================== Initialization ====================
 document.addEventListener('DOMContentLoaded', function() {
     // Check authentication
-    const token = localStorage.getItem('token');
+    let token = localStorage.getItem('token');
+    
+    // Development mode: create a mock token if none exists
+    if (!token && window.location.hostname === 'localhost') {
+        token = 'dev-token-' + Date.now();
+        localStorage.setItem('token', token);
+        localStorage.setItem('username', localStorage.getItem('username') || 'admin');
+        localStorage.setItem('userRole', localStorage.getItem('userRole') || 'tenant_admin');
+    }
+    
     if (!token) {
         window.location.href = '/login.html';
         return;

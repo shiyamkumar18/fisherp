@@ -7,7 +7,7 @@ export default function NotFoundPage() {
       <Card className="max-w-md text-center">
         <h2 className="text-2xl">Page not found</h2>
         <p className="mt-2 text-slate-600">The route you requested does not exist.</p>
-        <Link to="/" className="mt-4 inline-block text-primary">Go to dashboard</Link>
+        <Link to="/" className="mt-4 inline-block text-primary">Go to home</Link>
       </Card>
     </div>
   );

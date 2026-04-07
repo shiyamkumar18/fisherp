@@ -2,7 +2,7 @@ from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.utils import timezone
-from django.db.models import Sum
+from django.db.models import Sum, F
 from decimal import Decimal
 from datetime import timedelta
 
@@ -126,7 +126,7 @@ class ProfitMarginTrendView(APIView):
     permission_classes = [permissions.IsAuthenticated, CanViewFinancials]
     
     def get(self, request):
-        days = int(request.query_params.get('days', 30))
+        days = min(int(request.query_params.get('days', 30)), 365)
         data = DashboardManager.get_profit_margin_trend(request.user, days)
         return Response(data)
 
@@ -136,7 +136,7 @@ class TopBuyersView(RoleRestrictedAPIView):
     role_flags = ('is_tenant_admin', 'is_accountant', 'is_sales_staff')
     
     def get(self, request):
-        limit = int(request.query_params.get('limit', 5))
+        limit = min(int(request.query_params.get('limit', 5)), 100)
         data = DashboardManager.get_top_buyers(request.user, limit)
         return Response(data)
 
@@ -146,7 +146,7 @@ class TopFishView(RoleRestrictedAPIView):
     role_flags = ('is_tenant_admin', 'is_accountant', 'is_sales_staff')
     
     def get(self, request):
-        limit = int(request.query_params.get('limit', 5))
+        limit = min(int(request.query_params.get('limit', 5)), 100)
         data = DashboardManager.get_top_fish_by_sales(request.user, limit)
         return Response(data)
 
@@ -157,6 +157,43 @@ class SalesByPaymentMethodView(APIView):
     
     def get(self, request):
         data = DashboardManager.get_sales_by_payment_method(request.user)
+        return Response(data)
+
+
+# ============================================================
+# CHART SYSTEM — NEW MVP VIEWS
+# ============================================================
+
+class ProfitLossReceivableView(APIView):
+    """Profit / Loss / Receivable per time bucket (day/week/month)"""
+    permission_classes = [permissions.IsAuthenticated, CanViewFinancials]
+
+    def get(self, request):
+        days = min(int(request.query_params.get('days', 30)), 365)
+        period = request.query_params.get('period', 'day')
+        if period not in ('day', 'week', 'month'):
+            period = 'day'
+        data = DashboardManager.get_profit_loss_receivable(request.user, days, period)
+        return Response(data)
+
+
+class SoldVsRemainingView(APIView):
+    """Per-fish sold vs remaining packages"""
+    permission_classes = [permissions.IsAuthenticated, CanViewFinancials]
+
+    def get(self, request):
+        data = DashboardManager.get_sold_vs_remaining(request.user)
+        return Response(data)
+
+
+class FishDemandTrendView(APIView):
+    """Per-fish daily sales trend over the last N days"""
+    permission_classes = [permissions.IsAuthenticated, CanViewFinancials]
+
+    def get(self, request):
+        days = min(int(request.query_params.get('days', 14)), 90)
+        limit = min(int(request.query_params.get('limit', 5)), 10)
+        data = DashboardManager.get_fish_demand_trend(request.user, days, limit)
         return Response(data)
 
 
@@ -192,7 +229,7 @@ class PaymentCashflowView(APIView):
     permission_classes = [permissions.IsAuthenticated, CanViewFinancials]
     
     def get(self, request):
-        days = int(request.query_params.get('days', 30))
+        days = min(int(request.query_params.get('days', 30)), 365)
         data = DashboardManager.get_payment_cashflow(request.user, days)
         return Response(data)
 
@@ -211,7 +248,7 @@ class CreditCustomersView(APIView):
     permission_classes = [permissions.IsAuthenticated, CanViewFinancials]
     
     def get(self, request):
-        limit = int(request.query_params.get('limit', 10))
+        limit = min(int(request.query_params.get('limit', 10)), 100)
         data = DashboardManager.get_credit_customers(request.user, limit)
         return Response(data)
 
@@ -434,13 +471,14 @@ class TenantAdminDashboardView(APIView):
             pending_amount__gt=0
         ).aggregate(total=Sum('pending_amount'))['total'] or Decimal('0.00')
         
-        # Inventory Value
-        inventory_value = Decimal('0.00')
-        inventories = Inventory.objects.filter(remaining_packages__gt=0, **scope)
-        for inv in inventories:
-            if inv.purchase_batch:
-                cost = inv.purchase_batch.cost_per_package or Decimal('0.00')
-                inventory_value += inv.remaining_packages * cost
+        # Inventory Value — single DB aggregation
+        inventory_value = Inventory.objects.filter(
+            remaining_packages__gt=0,
+            purchase_batch__isnull=False,
+            **scope,
+        ).aggregate(
+            total=Sum(F('remaining_packages') * F('purchase_batch__cost_per_package'))
+        )['total'] or Decimal('0.00')
         
         # Pie Chart: Sales by Fish Type
         top_fish = DashboardManager.get_top_fish_by_sales(user, 10)
