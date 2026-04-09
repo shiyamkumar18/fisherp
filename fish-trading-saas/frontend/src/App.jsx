@@ -7,9 +7,18 @@ import { useAuthStore } from "@/store/authStore";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const LoginPage = lazy(() => import("@/pages/login-page"));
+const RegisterPage = lazy(() => import("@/pages/register-page"));
+const LandingPage = lazy(() => import("@/pages/landing-page"));
 const DashboardPage = lazy(() => import("@/pages/dashboard-page"));
 const OrdersPage = lazy(() => import("@/pages/orders-page"));
 const ProductsPage = lazy(() => import("@/pages/products-page"));
+const SalesPage = lazy(() => import("@/pages/sales-page"));
+const PurchasesPage = lazy(() => import("@/pages/purchases-page"));
+const InventoryPage = lazy(() => import("@/pages/inventory-page"));
+const SuppliersPage = lazy(() => import("@/pages/suppliers-page"));
+const CustomersPage = lazy(() => import("@/pages/customers-page"));
+const PaymentsPage = lazy(() => import("@/pages/payments-page"));
+const ReportsPage = lazy(() => import("@/pages/reports-page"));
 const ProfilePage = lazy(() => import("@/pages/profile-page"));
 const SettingsPage = lazy(() => import("@/pages/settings-page"));
 const NotFoundPage = lazy(() => import("@/pages/not-found-page"));
@@ -36,9 +45,11 @@ export default function App() {
     <ToastProvider>
       <Suspense fallback={<Fallback />}>
         <Routes>
+          <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
           <Route
-            path="/"
+            path="/dashboard"
             element={
               <ProtectedRoute>
                 <AppLayout />
@@ -47,7 +58,14 @@ export default function App() {
           >
             <Route index element={<DashboardPage />} />
             <Route path="orders" element={<OrdersPage />} />
+            <Route path="sales" element={<SalesPage />} />
+            <Route path="purchases" element={<PurchasesPage />} />
             <Route path="products" element={<ProductsPage />} />
+            <Route path="inventory" element={<InventoryPage />} />
+            <Route path="suppliers" element={<SuppliersPage />} />
+            <Route path="customers" element={<CustomersPage />} />
+            <Route path="payments" element={<PaymentsPage />} />
+            <Route path="reports" element={<ReportsPage />} />
             <Route path="profile" element={<ProfilePage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>

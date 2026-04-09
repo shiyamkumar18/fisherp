@@ -1,6 +1,9 @@
 import { memo } from "react";
 import {
   Bell,
+  ClipboardList,
+  CreditCard,
+  FileBarChart,
   Fish,
   LayoutDashboard,
   LogOut,
@@ -9,7 +12,11 @@ import {
   Search,
   Settings,
   ShoppingCart,
+  TrendingUp,
+  Truck,
   User,
+  Users,
+  Warehouse,
   X,
 } from "lucide-react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
@@ -19,11 +26,18 @@ import { logoutUser } from "@/services/authService";
 import { canAccessRoute } from "@/utils/permissions";
 
 const NAV_ITEMS = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
-  { to: "/orders", label: "Orders", icon: ShoppingCart },
-  { to: "/products", label: "Products", icon: Package },
-  { to: "/profile", label: "Profile", icon: User },
-  { to: "/settings", label: "Settings", icon: Settings },
+  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, end: true },
+  { to: "/dashboard/orders", label: "Orders", icon: ShoppingCart },
+  { to: "/dashboard/sales", label: "Sales", icon: TrendingUp },
+  { to: "/dashboard/purchases", label: "Purchases", icon: ClipboardList },
+  { to: "/dashboard/products", label: "Products", icon: Package },
+  { to: "/dashboard/inventory", label: "Inventory", icon: Warehouse },
+  { to: "/dashboard/suppliers", label: "Suppliers", icon: Truck },
+  { to: "/dashboard/customers", label: "Customers", icon: Users },
+  { to: "/dashboard/payments", label: "Payments", icon: CreditCard },
+  { to: "/dashboard/reports", label: "Reports", icon: FileBarChart },
+  { to: "/dashboard/profile", label: "Profile", icon: User },
+  { to: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 
 const ROLE_BADGE = {

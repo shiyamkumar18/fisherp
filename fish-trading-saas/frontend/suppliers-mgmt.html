@@ -1,0 +1,344 @@
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Supplier Management</h1>
+        <p class="page-subtitle">Manage suppliers, purchase history, and pending payments</p>
+    </div>
+</div>
+
+<div style="display: flex; gap: 1rem; margin-bottom: 2rem; align-items: center;">
+    <button class="btn btn-primary" onclick="showAddSupplierModal()"><i class="fas fa-plus"></i> Add Supplier</button>
+    <div style="flex: 1;">
+        <input type="text" class="form-input" id="supplierSearch" placeholder="Search suppliers..." 
+               style="margin: 0;" onkeyup="filterSupplierTable()">
+    </div>
+</div>
+
+<div class="data-grid">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Supplier Name</th>
+                <th>Phone</th>
+                <th>City</th>
+                <th>Total Purchases</th>
+                <th>Pending Payment</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="suppliersTableBody">
+            <tr>
+                <td colspan="7" style="text-align: center; padding: 2rem; color: #999;">
+                    <i class="fas fa-spinner fa-spin"></i> Loading suppliers...
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- Add/Edit Supplier Modal -->
+<div id="supplierModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; overflow-y: auto;">
+    <div style="background: white; border-radius: 8px; padding: 2rem; width: 90%; max-width: 500px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin: 2rem auto;">
+        <h2>Add New Supplier</h2>
+        <form id="supplierForm">
+            <div class="form-group">
+                <label class="form-label" for="supplierName">Supplier Name</label>
+                <input class="form-input" type="text" id="supplierName" placeholder="e.g., Fisheries Co." required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="contactPerson">Contact Person</label>
+                <input class="form-input" type="text" id="contactPerson" placeholder="Name of contact person">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="supplierPhone">Phone</label>
+                <input class="form-input" type="tel" id="supplierPhone" placeholder="+91 98765 43210" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="supplierEmail">Email</label>
+                <input class="form-input" type="email" id="supplierEmail" placeholder="supplier@example.com">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="supplierCity">City</label>
+                <input class="form-input" type="text" id="supplierCity" placeholder="City name">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="supplierAddress">Address</label>
+                <textarea class="form-input" id="supplierAddress" placeholder="Full address" rows="2"></textarea>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="paymentTerms">Payment Terms (days)</label>
+                <input class="form-input" type="number" id="paymentTerms" placeholder="e.g., 0 for cash, 30 for credit" value="0" min="0">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="supplierStatus">Status</label>
+                <select class="form-input" id="supplierStatus">
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                </select>
+            </div>
+
+            <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
+                <button class="btn btn-ghost" type="button" onclick="closeSupplierModal()">Cancel</button>
+                <button class="btn btn-primary" type="submit">Save Supplier</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Supplier Details Modal -->
+<div id="supplierDetailsModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; overflow-y: auto;">
+    <div style="background: white; border-radius: 8px; padding: 2rem; width: 90%; max-width: 600px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin: 2rem auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <h2 id="detailsTitle">Supplier Details</h2>
+            <button type="button" onclick="closeSupplierDetailsModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
+        </div>
+
+        <div id="supplierDetailsContent">
+            <i class="fas fa-spinner fa-spin"></i> Loading...
+        </div>
+
+        <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
+            <button class="btn btn-ghost" type="button" onclick="closeSupplierDetailsModal()">Close</button>
+        </div>
+    </div>
+</div>
+
+<script>
+let allSuppliers = [];
+let editingSupplierId = null;
+
+async function loadSuppliers() {
+    const suppliers = await apiCall('/trading/suppliers/', 'GET');
+    if (suppliers) {
+        allSuppliers = Array.isArray(suppliers) ? suppliers : (suppliers.results || []);
+        renderSuppliersTable();
+    }
+}
+
+function renderSuppliersTable() {
+    const tbody = document.getElementById('suppliersTableBody');
+    if (!allSuppliers.length) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem; color: #999;">No suppliers found. Add one to get started.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = allSuppliers.map(supplier => `
+        <tr>
+            <td><strong>${sanitize(supplier.name)}</strong></td>
+            <td>${sanitize(supplier.phone || '-')}</td>
+            <td>${sanitize(supplier.city || '-')}</td>
+            <td>${supplier.total_purchases || 0}</td>
+            <td style="${Number(supplier.pending_payment || 0) > 0 ? 'color: #d32f2f; font-weight: bold;' : ''}">
+                ₹${Number(supplier.pending_payment || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}
+            </td>
+            <td>
+                <span style="padding: 0.25rem 0.75rem; border-radius: 4px; font-size: 0.85rem; 
+                    ${supplier.status === 'active' ? 'background: #d4edda; color: #155724;' : 'background: #f8d7da; color: #721c24;'}">
+                    ${supplier.status === 'active' ? 'Active' : 'Inactive'}
+                </span>
+            </td>
+            <td>
+                <div class="row-actions">
+                    <button class="btn btn-secondary btn-sm" onclick="viewSupplierDetails(${supplier.id})">View</button>
+                    <button class="btn btn-primary btn-sm" onclick="editSupplier(${supplier.id})">Edit</button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteSupplier(${supplier.id})">Delete</button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function filterSupplierTable() {
+    const searchTerm = document.getElementById('supplierSearch').value.toLowerCase();
+    const filtered = allSuppliers.filter(s => 
+        s.name.toLowerCase().includes(searchTerm) || 
+        (s.phone && s.phone.includes(searchTerm)) ||
+        (s.city && s.city.toLowerCase().includes(searchTerm))
+    );
+    
+    const tbody = document.getElementById('suppliersTableBody');
+    if (!filtered.length) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem; color: #999;">No suppliers match your search.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = filtered.map(supplier => `
+        <tr>
+            <td><strong>${sanitize(supplier.name)}</strong></td>
+            <td>${sanitize(supplier.phone || '-')}</td>
+            <td>${sanitize(supplier.city || '-')}</td>
+            <td>${supplier.total_purchases || 0}</td>
+            <td style="${Number(supplier.pending_payment || 0) > 0 ? 'color: #d32f2f; font-weight: bold;' : ''}">
+                ₹${Number(supplier.pending_payment || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}
+            </td>
+            <td>
+                <span style="padding: 0.25rem 0.75rem; border-radius: 4px; font-size: 0.85rem; 
+                    ${supplier.status === 'active' ? 'background: #d4edda; color: #155724;' : 'background: #f8d7da; color: #721c24;'}">
+                    ${supplier.status === 'active' ? 'Active' : 'Inactive'}
+                </span>
+            </td>
+            <td>
+                <div class="row-actions">
+                    <button class="btn btn-secondary btn-sm" onclick="viewSupplierDetails(${supplier.id})">View</button>
+                    <button class="btn btn-primary btn-sm" onclick="editSupplier(${supplier.id})">Edit</button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteSupplier(${supplier.id})">Delete</button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function showAddSupplierModal() {
+    editingSupplierId = null;
+    document.getElementById('supplierForm').reset();
+    document.querySelector('#supplierModal h2').textContent = 'Add New Supplier';
+    document.getElementById('supplierModal').style.display = 'flex';
+}
+
+function closeSupplierModal() {
+    document.getElementById('supplierModal').style.display = 'none';
+    editingSupplierId = null;
+}
+
+async function editSupplier(supplierId) {
+    const supplier = allSuppliers.find(s => s.id === supplierId);
+    if (!supplier) return;
+
+    editingSupplierId = supplierId;
+    document.getElementById('supplierName').value = supplier.name;
+    document.getElementById('contactPerson').value = supplier.contact_person || '';
+    document.getElementById('supplierPhone').value = supplier.phone || '';
+    document.getElementById('supplierEmail').value = supplier.email || '';
+    document.getElementById('supplierCity').value = supplier.city || '';
+    document.getElementById('supplierAddress').value = supplier.address || '';
+    document.getElementById('paymentTerms').value = supplier.payment_terms || 0;
+    document.getElementById('supplierStatus').value = supplier.status || 'active';
+    document.querySelector('#supplierModal h2').textContent = 'Edit Supplier';
+    document.getElementById('supplierModal').style.display = 'flex';
+}
+
+async function viewSupplierDetails(supplierId) {
+    const supplier = allSuppliers.find(s => s.id === supplierId);
+    if (!supplier) return;
+
+    const contentDiv = document.getElementById('supplierDetailsContent');
+    contentDiv.innerHTML = `
+        <div style="margin-bottom: 1.5rem;">
+            <h3>${sanitize(supplier.name)}</h3>
+            <div style="display: grid; gap: 1rem; grid-template-columns: 1fr 1fr;">
+                <div>
+                    <strong>Contact Person:</strong> ${sanitize(supplier.contact_person || '-')}
+                </div>
+                <div>
+                    <strong>Phone:</strong> ${sanitize(supplier.phone || '-')}
+                </div>
+                <div>
+                    <strong>Email:</strong> ${sanitize(supplier.email || '-')}
+                </div>
+                <div>
+                    <strong>City:</strong> ${sanitize(supplier.city || '-')}
+                </div>
+                <div>
+                    <strong>Address:</strong> ${sanitize(supplier.address || '-')}
+                </div>
+                <div>
+                    <strong>Payment Terms:</strong> ${supplier.payment_terms || 0} days
+                </div>
+                <div>
+                    <strong>Total Purchases:</strong> ${supplier.total_purchases || 0}
+                </div>
+                <div>
+                    <strong>Pending Payment:</strong> <span style="${Number(supplier.pending_payment || 0) > 0 ? 'color: #d32f2f; font-weight: bold;' : ''}">₹${Number(supplier.pending_payment || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>
+                </div>
+            </div>
+        </div>
+        <div>
+            <strong>Recent Purchases:</strong>
+            <div id="recentPurchases" style="margin-top: 1rem;">
+                <i class="fas fa-spinner fa-spin"></i> Loading purchases...
+            </div>
+        </div>
+    `;
+
+    document.getElementById('detailsTitle').textContent = supplier.name;
+    document.getElementById('supplierDetailsModal').style.display = 'flex';
+
+    // Load recent purchases
+    const purchases = await apiCall(`/trading/suppliers/${supplierId}/purchases/`, 'GET');
+    if (purchases && purchases.length) {
+        const purchasesHtml = purchases.slice(0, 5).map(purchase => `
+            <div style="padding: 0.5rem 0; border-bottom: 1px solid #eee; font-size: 0.9rem;">
+                <div><strong>${new Date(purchase.date).toLocaleDateString('en-IN')}</strong> - ${sanitize(purchase.batch_id)}</div>
+                <small style="color: #666;">Amount: ₹${Number(purchase.amount || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</small>
+            </div>
+        `).join('');
+        document.getElementById('recentPurchases').innerHTML = purchasesHtml;
+    } else {
+        document.getElementById('recentPurchases').innerHTML = '<p style="color: #999;">No purchases yet</p>';
+    }
+}
+
+function closeSupplierDetailsModal() {
+    document.getElementById('supplierDetailsModal').style.display = 'none';
+}
+
+async function deleteSupplier(supplierId) {
+    if (!confirm('Are you sure you want to delete this supplier?')) return;
+
+    const result = await apiCall(`/trading/suppliers/${supplierId}/`, 'DELETE');
+    if (result !== null) {
+        showAlert('Supplier deleted successfully', 'success');
+        loadSuppliers();
+    } else {
+        showAlert('Failed to delete supplier', 'danger');
+    }
+}
+
+document.getElementById('supplierForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const data = {
+        name: document.getElementById('supplierName').value,
+        contact_person: document.getElementById('contactPerson').value,
+        phone: document.getElementById('supplierPhone').value,
+        email: document.getElementById('supplierEmail').value,
+        city: document.getElementById('supplierCity').value,
+        address: document.getElementById('supplierAddress').value,
+        payment_terms: parseInt(document.getElementById('paymentTerms').value) || 0,
+        status: document.getElementById('supplierStatus').value
+    };
+
+    let result;
+    if (editingSupplierId) {
+        result = await apiCall(`/trading/suppliers/${editingSupplierId}/`, 'PUT', data);
+    } else {
+        result = await apiCall('/trading/suppliers/', 'POST', data);
+    }
+
+    if (result) {
+        showAlert(editingSupplierId ? 'Supplier updated successfully' : 'Supplier created successfully', 'success');
+        closeSupplierModal();
+        loadSuppliers();
+    } else {
+        showAlert('Failed to save supplier', 'danger');
+    }
+});
+
+// Close modals on outside click
+document.getElementById('supplierModal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'supplierModal') closeSupplierModal();
+});
+
+document.getElementById('supplierDetailsModal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'supplierDetailsModal') closeSupplierDetailsModal();
+});
+
+loadSuppliers();
+</script>

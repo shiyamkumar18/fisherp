@@ -82,17 +82,23 @@ class PlatformDashboardView(APIView):
         
         # ===== REVENUE STATS =====
         # MRR - Monthly Recurring Revenue (from active subscriptions)
-        mrr = 0
-        for sub in active_subscriptions.filter(billing_cycle='monthly'):
-            mrr += float(sub.tier.price_monthly)
-        
+        # Single query with select_related instead of N+1 loop
+        monthly_subs = active_subscriptions.filter(
+            billing_cycle='monthly'
+        ).select_related('tier')
+        mrr = sum(float(sub.tier.price_monthly) for sub in monthly_subs)
+
         # Yearly revenue projection
         yearly_projection = mrr * 12
-        
+
         # Also add yearly subscriptions
-        for sub in active_subscriptions.filter(billing_cycle='yearly'):
-            yearly_projection += float(sub.tier.price_yearly)
-            mrr += float(sub.tier.price_yearly) / 12
+        yearly_subs = active_subscriptions.filter(
+            billing_cycle='yearly'
+        ).select_related('tier')
+        for sub in yearly_subs:
+            price_yearly = float(sub.tier.price_yearly)
+            yearly_projection += price_yearly
+            mrr += price_yearly / 12
         
         # ===== GROWTH STATS =====
         # New signups this month
@@ -136,27 +142,32 @@ class PlatformDashboardView(APIView):
         )['total'] or 0
         
         # ===== SUBSCRIPTION TIERS BREAKDOWN =====
-        tier_breakdown = []
-        for tier in SubscriptionTier.objects.filter(is_active=True):
-            count = Subscription.objects.filter(
-                tier=tier,
+        # Single annotated query instead of N+1 COUNT per tier
+        tier_breakdown = list(
+            Subscription.objects.filter(
                 status='active',
-                expiry_date__gte=now.date()
-            ).count()
-            tier_breakdown.append({
-                'tier': tier.name,
-                'count': count,
-                'price_monthly': str(tier.price_monthly),
-            })
+                expiry_date__gte=now.date(),
+                tier__is_active=True,
+            )
+            .values('tier__name', 'tier__price_monthly')
+            .annotate(count=Count('id'))
+            .order_by('tier__name')
+        )
+        tier_breakdown = [
+            {
+                'tier': row['tier__name'],
+                'count': row['count'],
+                'price_monthly': str(row['tier__price_monthly']),
+            }
+            for row in tier_breakdown
+        ]
         
         # ===== ACTIVITY RECENT =====
-        recent_signups = Company.objects.order_by('-created_at')[:5]
+        recent_signups = Company.objects.prefetch_related('subscriptions').order_by('-created_at')[:5]
         recent_signup_list = []
         for company in recent_signups:
             subscription = (
-                Subscription.objects.filter(company=company)
-                .order_by('-created_at')
-                .first()
+                company.subscriptions.order_by('-created_at').first()
             )
             sub_status = subscription.status if subscription else 'none'
             expiry = subscription.expiry_date if subscription else None
@@ -230,8 +241,13 @@ class TenantListView(APIView):
         status_filter = request.query_params.get('status', 'all')
         search = request.query_params.get('search', '')
         
-        # Base queryset - all companies
-        companies = Company.objects.select_related('admin').order_by('-created_at')
+        # Base queryset - all companies with prefetched relations to avoid N+1
+        companies = (
+            Company.objects.select_related('admin')
+            .prefetch_related('subscriptions__tier')
+            .annotate(user_count=Count('users'))
+            .order_by('-created_at')
+        )
         
         # Apply filters
         if status_filter != 'all':
@@ -261,21 +277,16 @@ class TenantListView(APIView):
         
         tenant_list = []
         for company in page_obj:
-            # Get subscription info
-            try:
-                subscription = Subscription.objects.get(company=company)
+            # Get subscription info from prefetched data (no extra query)
+            subscription = company.subscriptions.order_by('-created_at').first()
+            if subscription:
                 tier_name = subscription.tier.name
                 sub_status = subscription.status
                 expiry_date = subscription.expiry_date
                 storage_used = float(subscription.storage_used_mb or 0)
                 is_active = subscription.is_active()
-                
-                # Calculate days remaining
-                if expiry_date:
-                    days_remaining = (expiry_date - timezone.now().date()).days
-                else:
-                    days_remaining = None
-            except Subscription.DoesNotExist:
+                days_remaining = (expiry_date - timezone.now().date()).days if expiry_date else None
+            else:
                 tier_name = 'None'
                 sub_status = 'no_subscription'
                 expiry_date = None
@@ -283,13 +294,12 @@ class TenantListView(APIView):
                 is_active = False
                 days_remaining = None
             
-            # Get user count
-            user_count = User.objects.filter(company=company).count()
+            # user_count is already annotated on queryset
             
             # Get last activity (from audit logs)
             last_activity = AuditLog.objects.filter(
                 tenant=company
-            ).order_by('-timestamp').first()
+            ).order_by('-timestamp').values_list('timestamp', flat=True).first()
             
             tenant_list.append({
                 'id': company.id,
@@ -309,11 +319,11 @@ class TenantListView(APIView):
                 'is_subscription_active': is_active,
                 
                 # Usage
-                'user_count': user_count,
+                'user_count': company.user_count,
                 'storage_used_mb': storage_used,
                 
                 # Activity
-                'last_activity': last_activity.timestamp.isoformat() if last_activity else None,
+                'last_activity': last_activity.isoformat() if last_activity else None,
             })
         
         return Response({

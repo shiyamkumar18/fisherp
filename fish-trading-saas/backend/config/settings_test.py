@@ -18,6 +18,11 @@ os.environ.setdefault(
     "django-insecure-test-only-not-for-production-change-this-before-deploying",
 )
 os.environ.setdefault("DEBUG", "True")
+os.environ.setdefault("DB_NAME", "fisherp_test")
+os.environ.setdefault("DB_USER", "fisherp_user")
+os.environ.setdefault("DB_PASSWORD", "fisherp_pass")
+os.environ.setdefault("DB_HOST", "localhost")
+os.environ.setdefault("DB_PORT", "5432")
 
 from config.settings import *  # noqa: E402, F401, F403  # keep after env defaults
 

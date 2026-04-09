@@ -4,9 +4,9 @@
         <p class="page-subtitle">Track supplier buying, incoming batches, and payout commitments with full day-level visibility.</p>
     </div>
     <div class="hero-actions">
-        <button class="btn btn-primary" onclick="showAddPurchaseModal()">
+        <button class="btn btn-primary" onclick="App.loadPage('purchase_create')">
             <i class="fas fa-plus"></i>
-            Add Purchase Batch
+            New Purchase
         </button>
         <button class="btn btn-secondary" onclick="App.loadPage('inventory')">
             <i class="fas fa-boxes-stacked"></i>
@@ -17,19 +17,22 @@
 
 <section class="kpi-row">
     <article class="kpi-card">
-        <div class="metric-eyebrow">Purchases Today</div>
-        <div class="kpi-value">₹89K</div>
-        <div class="kpi-label">Fresh buying value entered this shift.</div>
+        <div class="kpi-card-icon"><i class="fas fa-cart-flatbed"></i></div>
+        <div class="metric-eyebrow">Total Spend</div>
+        <div class="kpi-value">—</div>
+        <div class="kpi-label">Total buying value across batches</div>
     </article>
     <article class="kpi-card">
-        <div class="metric-eyebrow">Open Batches</div>
-        <div class="kpi-value">14</div>
-        <div class="kpi-label">Batches currently active in storage.</div>
+        <div class="kpi-card-icon kpi-icon-blue"><i class="fas fa-cubes"></i></div>
+        <div class="metric-eyebrow">Active Batches</div>
+        <div class="kpi-value">—</div>
+        <div class="kpi-label">Batches currently in storage</div>
     </article>
     <article class="kpi-card">
-        <div class="metric-eyebrow">Supplier Dues</div>
-        <div class="kpi-value">₹2.1L</div>
-        <div class="kpi-label">Outstanding payouts needing schedule control.</div>
+        <div class="kpi-card-icon kpi-icon-violet"><i class="fas fa-truck"></i></div>
+        <div class="metric-eyebrow">Unique Suppliers</div>
+        <div class="kpi-value">—</div>
+        <div class="kpi-label">Distinct suppliers in purchase log</div>
     </article>
 </section>
 
@@ -108,11 +111,13 @@
 </aside>
 
 <script>
+// ===== PURCHASES PAGE FUNCTIONS =====
+
 function togglePurchaseSelection(checked) {
     document.querySelectorAll('#purchaseTable input[type="checkbox"]').forEach((input) => {
         input.checked = checked;
     });
-    updatePurchaseSelectionCount();
+    if (window.updatePurchaseSelectionCount) window.updatePurchaseSelectionCount();
 }
 
 function updatePurchaseSelectionCount() {
@@ -121,60 +126,73 @@ function updatePurchaseSelectionCount() {
     if (el) el.textContent = `${selected} selected`;
 }
 
+window.togglePurchaseSelection = togglePurchaseSelection;
 window.updatePurchaseSelectionCount = updatePurchaseSelectionCount;
 
 function showAddPurchaseModal() {
-    showModal(
-        'Add Purchase Batch',
-        `
-        <div class="form-group">
-            <label class="form-label">Fish Type</label>
-            <input type="text" id="purchaseFishName" class="form-input" placeholder="Fish type or code">
-        </div>
-        <div class="form-group">
-            <label class="form-label">Supplier</label>
-            <input type="text" id="purchaseSupplierName" class="form-input" placeholder="Supplier name">
-        </div>
-        <div class="form-group">
-            <label class="form-label">Packages</label>
-            <input type="number" id="purchasePackages" class="form-input" min="1" placeholder="0">
-        </div>
-        <div class="form-group">
-            <label class="form-label">Weight Per Package (kg)</label>
-            <input type="number" id="purchasePackageWeight" class="form-input" min="0.01" step="0.01" placeholder="0.00">
-        </div>
-        <div class="form-group">
-            <label class="form-label">Price Per Kg</label>
-            <input type="number" id="purchasePricePerKg" class="form-input" min="0.01" step="0.01" placeholder="0.00">
-        </div>
-        `,
-        '<button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="savePurchaseBatch()">Save Batch</button>'
-    );
+    try {
+        if (window.showModal) {
+            window.showModal(
+                'Add Purchase Batch',
+                `
+                <div class="form-group">
+                    <label class="form-label">Fish Type</label>
+                    <input type="text" id="purchaseFishName" class="form-input" placeholder="Fish type or code">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Supplier</label>
+                    <input type="text" id="purchaseSupplierName" class="form-input" placeholder="Supplier name">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Packages</label>
+                    <input type="number" id="purchasePackages" class="form-input" min="1" placeholder="0">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Weight Per Package (kg)</label>
+                    <input type="number" id="purchasePackageWeight" class="form-input" min="0.01" step="0.01" placeholder="0.00">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Price Per Kg</label>
+                    <input type="number" id="purchasePricePerKg" class="form-input" min="0.01" step="0.01" placeholder="0.00">
+                </div>
+                `,
+                '<button class="btn btn-secondary" onclick="window.closeModal?.()">Cancel</button><button class="btn btn-primary" onclick="window.savePurchaseBatch?.()">Save Batch</button>'
+            );
+        } else {
+            console.warn('showModal not available');
+        }
+    } catch (error) {
+        console.error('Failed to open purchase modal:', error);
+    }
 }
 
 async function savePurchaseBatch() {
-    const fishName = document.getElementById('purchaseFishName')?.value?.trim();
-    const supplierName = document.getElementById('purchaseSupplierName')?.value?.trim();
-    const packages = Number(document.getElementById('purchasePackages')?.value || 0);
-    const packageWeight = Number(document.getElementById('purchasePackageWeight')?.value || 0);
-    const pricePerKg = Number(document.getElementById('purchasePricePerKg')?.value || 0);
-
-    if (!fishName || !supplierName || packages <= 0 || packageWeight <= 0 || pricePerKg <= 0) {
-        window.App?.showAlert?.('Fill all purchase fields with valid values.', 'danger');
-        return;
-    }
-
     try {
+        const fishName = document.getElementById('purchaseFishName')?.value?.trim();
+        const supplierName = document.getElementById('purchaseSupplierName')?.value?.trim();
+        const packages = Number(document.getElementById('purchasePackages')?.value || 0);
+        const packageWeight = Number(document.getElementById('purchasePackageWeight')?.value || 0);
+        const pricePerKg = Number(document.getElementById('purchasePricePerKg')?.value || 0);
+
+        if (!fishName || !supplierName || packages <= 0 || packageWeight <= 0 || pricePerKg <= 0) {
+            if (window.App?.showAlert) {
+                window.App.showAlert('Fill all purchase fields with valid values.', 'danger');
+            }
+            return;
+        }
+
         const [fishList, suppliers] = await Promise.all([
-            window.App.apiCall('/trading/fish/'),
-            window.App.apiCall('/trading/suppliers/')
+            window.App?.apiCall?.('/trading/fish/') || [],
+            window.App?.apiCall?.('/trading/suppliers/') || []
         ]);
 
         const fish = (fishList || []).find((row) => String(row.name || '').toLowerCase() === fishName.toLowerCase());
         const supplier = (suppliers || []).find((row) => String(row.name || '').toLowerCase() === supplierName.toLowerCase());
 
         if (!fish || !supplier) {
-            window.App?.showAlert?.('Fish or supplier not found. Please use exact names from master data.', 'warning');
+            if (window.App?.showAlert) {
+                window.App.showAlert('Fish or supplier not found. Please use exact names from master data.', 'warning');
+            }
             return;
         }
 
@@ -187,17 +205,28 @@ async function savePurchaseBatch() {
             price_per_kg: pricePerKg,
         };
 
-        const created = await window.App.apiCall('/trading/purchase-batches/', 'POST', payload);
+        const created = await window.App?.apiCall?.('/trading/purchase-batches/', 'POST', payload);
         if (!created) {
-            window.App?.showAlert?.('Unable to save purchase batch.', 'danger');
+            if (window.App?.showAlert) {
+                window.App.showAlert('Unable to save purchase batch.', 'danger');
+            }
             return;
         }
 
-        closeModal();
-        window.App?.showAlert?.('Purchase batch saved successfully.', 'success');
-        await window.App.loadPage('purchases');
+        if (window.closeModal) window.closeModal();
+        if (window.App?.showAlert) {
+            window.App.showAlert('Purchase batch saved successfully.', 'success');
+        }
+        await window.App?.loadPage?.('purchases');
     } catch (error) {
-        window.App?.showAlert?.(error?.message || 'Failed to save purchase batch.', 'danger');
+        console.error('Error saving purchase batch:', error);
+        if (window.App?.showAlert) {
+            window.App.showAlert(error?.message || 'Failed to save purchase batch.', 'danger');
+        }
     }
 }
+
+// Export to global scope
+window.showAddPurchaseModal = showAddPurchaseModal;
+window.savePurchaseBatch = savePurchaseBatch;
 </script>

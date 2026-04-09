@@ -3,7 +3,7 @@
         <h1 class="page-title">Buyer Accounts</h1>
         <p class="page-subtitle">Manage buyer relationships, credit exposure, and order momentum from one unified ledger.</p>
     </div>
-    <button class="btn btn-primary" onclick="showAddBuyerModal()">
+    <button class="btn btn-primary" onclick="window.Forms.showAddBuyerModal()">
         <i class="fas fa-user-plus"></i>
         Add Buyer
     </button>
@@ -11,19 +11,22 @@
 
 <section class="kpi-row">
     <article class="kpi-card">
+        <div class="kpi-card-icon"><i class="fas fa-handshake"></i></div>
         <div class="metric-eyebrow">Active Buyers</div>
-        <div class="kpi-value">42</div>
-        <div class="kpi-label">Accounts currently transacting this period.</div>
+        <div class="kpi-value">—</div>
+        <div class="kpi-label">Accounts currently transacting this period</div>
     </article>
     <article class="kpi-card">
+        <div class="kpi-card-icon kpi-icon-amber"><i class="fas fa-credit-card"></i></div>
         <div class="metric-eyebrow">Outstanding</div>
-        <div class="kpi-value">₹2.8L</div>
-        <div class="kpi-label">Receivables pending collection from buyer side.</div>
+        <div class="kpi-value">—</div>
+        <div class="kpi-label">Receivables pending collection from buyers</div>
     </article>
     <article class="kpi-card">
+        <div class="kpi-card-icon kpi-icon-blue"><i class="fas fa-repeat"></i></div>
         <div class="metric-eyebrow">Repeat Rate</div>
-        <div class="kpi-value">68%</div>
-        <div class="kpi-label">Buyers returning within current trading cycle.</div>
+        <div class="kpi-value">—</div>
+        <div class="kpi-label">Buyers returning within current cycle</div>
     </article>
 </section>
 

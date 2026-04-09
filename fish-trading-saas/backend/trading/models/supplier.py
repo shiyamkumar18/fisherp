@@ -122,7 +122,7 @@ class Supplier(models.Model):
     def get_on_time_percentage(self):
         if self.total_deliveries > 0:
             return (self.on_time_deliveries / self.total_deliveries) * 100
-        return 0
+        return 0.0
 
     def is_payment_overdue(self):
         if self.payment_due_date and self.outstanding_amount > 0:

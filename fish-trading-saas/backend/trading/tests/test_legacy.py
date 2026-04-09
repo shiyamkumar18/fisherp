@@ -1609,10 +1609,8 @@ class InventoryConcurrencyTest(TestCase):
     def test_concurrent_stock_updates(self):
         """Test multiple concurrent stock updates don't cause race conditions.
 
-        Note: select_for_update() row-level locking requires PostgreSQL; SQLite
-        does not support it.  Under SQLite, Django processes the lock as a no-op
-        and threads serialise via the GIL / SQLite's own mutex, so the final
-        counts should still be consistent even if not perfectly concurrent.
+        Uses PostgreSQL's select_for_update() row-level locking to ensure
+        consistent concurrent access.
         """
         num_threads = 10
         packages_per_thread = 5
@@ -1639,8 +1637,7 @@ class InventoryConcurrencyTest(TestCase):
         total_sold = self.inventory.sold_packages
         expected_remaining = 100 - total_sold
 
-        # Under SQLite some threads may have raised OperationalError ("database is
-        # locked"); we only validate internal consistency, not a specific count.
+        # Validate internal consistency of the final state.
         self.assertEqual(self.inventory.remaining_packages, expected_remaining)
         self.assertGreaterEqual(total_sold, 0)
         self.assertLessEqual(total_sold, num_threads * packages_per_thread)

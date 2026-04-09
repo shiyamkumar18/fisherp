@@ -14,4 +14,20 @@ router.register(r'inventory', views.InventoryViewSet, basename='inventory')
 
 urlpatterns = [
     path('', include(router.urls)),
+    # Purchase creation endpoints
+    path('purchase/', views.CreatePurchaseView.as_view(), name='create-purchase'),
+    path('price-history/<int:fish_id>/', views.get_price_history, name='price-history'),
+    path('check-duplicate/<int:fish_id>/', views.check_duplicate_purchase, name='check-duplicate'),
+    path('suppliers-recent/', views.get_supplier_suggestions, name='suppliers-recent'),
+    # Analytics/Reports endpoints
+    path('analytics/profit-loss/', views.get_profit_loss_chart, name='profit-loss'),
+    path('analytics/sold-vs-remaining/', views.get_sold_vs_remaining_chart, name='sold-vs-remaining'),
+    path('analytics/demand-trend/', views.get_demand_trend_chart, name='demand-trend'),
+    path('analytics/batch-performance/', views.get_batch_performance_chart, name='batch-performance'),
+    path('analytics/loss-analysis/', views.get_loss_analysis_chart, name='loss-analysis'),
+    path('analytics/payment-analysis/', views.get_payment_analysis_chart, name='payment-analysis'),
+    path('analytics/price-trend/', views.get_price_trend_chart, name='price-trend'),
+    path('analytics/profit-trend/', views.get_profit_trend_chart, name='profit-trend'),
+    path('analytics/smart-insights/', views.get_smart_insights, name='smart-insights'),
+    path('analytics/dashboard-summary/', views.get_dashboard_summary, name='dashboard-summary'),
 ]

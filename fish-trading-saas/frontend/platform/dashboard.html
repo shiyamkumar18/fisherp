@@ -7,7 +7,10 @@
     <link rel="stylesheet" href="../css/base.css">
     <link rel="stylesheet" href="../css/layout.css">
     <link rel="stylesheet" href="../css/components.css">
+    <link rel="stylesheet" href="../css/additional.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    <script src="../js/api.js" defer></script>
     <script src="../js/app.js" defer></script>
     <script src="../js/ui.js" defer></script>
 </head>
@@ -17,24 +20,21 @@
             <button class="mobile-menu-toggle" id="menuToggle" type="button" aria-label="Toggle navigation">
                 <i class="fas fa-bars"></i>
             </button>
-            <div class="brand-mark">PO</div>
+            <div class="brand-mark"><i class="fas fa-satellite-dish"></i></div>
             <div class="brand-copy">
-                <span class="brand-kicker">Platform Operations</span>
-                <strong class="brand-name">Multi-tenant command center</strong>
-                <span class="brand-subcopy">Monitor growth, subscriptions, and support risk from one workspace.</span>
+                <span class="brand-kicker" id="workspaceLabel">Platform Operations</span>
+                <strong class="brand-name">FisherP Platform</strong>
             </div>
         </div>
 
         <div class="top-bar__right">
-            <div class="workspace-pill">
-                <i class="fas fa-building-circle-check"></i>
-                <span id="workspaceLabel">Platform Workspace</span>
-            </div>
-            <div class="user-pill">
+            <div class="user-pill" title="Current user">
                 <i class="fas fa-shield-halved"></i>
                 <span id="user-role">Platform operator</span>
             </div>
-            <button class="btn btn-ghost btn-sm" type="button" onclick="App.logout()">Logout</button>
+            <button class="btn btn-ghost btn-sm" type="button" onclick="App.logout()">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </button>
         </div>
     </div>
 

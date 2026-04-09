@@ -375,6 +375,10 @@ class PaymentSerializer(serializers.ModelSerializer):
     payment_type_display = serializers.CharField(source='get_payment_type_display', read_only=True)
     payment_mode_display = serializers.CharField(source='get_payment_mode_display', read_only=True)
     approval_status_display = serializers.CharField(source='get_approval_status_display', read_only=True)
+    buyer_name = serializers.CharField(source='buyer.name', read_only=True)
+    supplier_name = serializers.CharField(source='supplier.name', read_only=True)
+    sale_invoice_number = serializers.CharField(source='sale.invoice_number', read_only=True)
+    purchase_batch_number = serializers.CharField(source='purchase_batch.batch_number', read_only=True)
     tenant_name = serializers.CharField(source='tenant.username', read_only=True)
     company_name = serializers.CharField(source='company.name', read_only=True)
 
@@ -384,6 +388,8 @@ class PaymentSerializer(serializers.ModelSerializer):
             'id', 'payment_type', 'payment_type_display',
             'payment_mode', 'payment_mode_display',
             'purchase_batch', 'sale', 'supplier', 'buyer',
+            'purchase_batch_number', 'sale_invoice_number',
+            'supplier_name', 'buyer_name',
             'amount', 'date', 'reference_number',
             'bank_name', 'account_number',
             'is_cleared', 'cleared_date',

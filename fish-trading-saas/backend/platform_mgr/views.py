@@ -2,6 +2,7 @@ from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.utils import timezone
+from django.core.paginator import Paginator
 from django.db.models import Sum, Count
 from django.db.models.functions import TruncDate
 from decimal import Decimal
@@ -409,13 +410,19 @@ class SubscriptionManagementView(APIView):
     permission_classes = [permissions.IsAuthenticated, IsPlatformOperator]
     
     def get(self, request):
-        """List all subscriptions"""
+        """List all subscriptions (paginated)"""
+        page = int(request.query_params.get('page', 1))
+        page_size = min(int(request.query_params.get('page_size', 50)), 200)
+
         subscriptions = Subscription.objects.select_related(
             'tenant', 'tier'
         ).order_by('-expiry_date')
-        
+
+        paginator = Paginator(subscriptions, page_size)
+        page_obj = paginator.get_page(page)
+
         sub_data = []
-        for sub in subscriptions:
+        for sub in page_obj:
             sub_data.append({
                 'id': sub.id,
                 'tenant_name': sub.tenant.name if sub.tenant else 'Unknown',
@@ -426,7 +433,15 @@ class SubscriptionManagementView(APIView):
                 'auto_renewal': sub.auto_renewal,
             })
         
-        return Response({'subscriptions': sub_data})
+        return Response({
+            'subscriptions': sub_data,
+            'pagination': {
+                'page': page,
+                'page_size': page_size,
+                'total_pages': paginator.num_pages,
+                'total_count': paginator.count,
+            },
+        })
     
     def post(self, request):
         """Update subscription"""
