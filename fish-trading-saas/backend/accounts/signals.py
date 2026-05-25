@@ -3,6 +3,13 @@ from django.dispatch import receiver
 from .models_audit import AuditLog
 
 
+def _resolve_audit_tenant(instance):
+    tenant = getattr(instance, 'company', None) or getattr(instance, 'tenant', None)
+    if tenant is not None and hasattr(tenant, 'company'):
+        return getattr(tenant, 'company')
+    return tenant
+
+
 @receiver(post_save, sender='trading.Sale')
 @receiver(post_save, sender='trading.PurchaseBatch')
 @receiver(post_save, sender='trading.Payment')
@@ -11,7 +18,7 @@ from .models_audit import AuditLog
 @receiver(post_save, sender='trading.Supplier')
 def audit_trading_create_update(sender, instance, created, **kwargs):
     user = getattr(instance, 'processed_by', None) or getattr(instance, 'created_by', None)
-    tenant = getattr(instance, 'company', None) or getattr(instance, 'tenant', None)
+    tenant = _resolve_audit_tenant(instance)
     model_name = sender._meta.model_name.replace('_', ' ').title()
     
     AuditLog.log_create(

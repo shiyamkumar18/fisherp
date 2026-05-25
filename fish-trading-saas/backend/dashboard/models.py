@@ -1,7 +1,7 @@
 from django.db.models import Sum, Count, F, Q, Min, Case, When, Value, DecimalField
 from django.db.models.functions import TruncDay, TruncWeek, TruncMonth
 from django.utils import timezone
-from datetime import timedelta
+from datetime import date, timedelta
 from decimal import Decimal
 
 from trading.models.purchase_batch import PurchaseBatch
@@ -207,7 +207,7 @@ class DashboardManager:
         )
 
         # Build a dict for O(1) lookup, then fill gaps with zeros
-        row_map = {r['day'].date() if r['day'] else None: r for r in rows}
+        row_map = {r['day'] if isinstance(r['day'], date) else r['day'].date(): r for r in rows}
         daily_sales = []
         current_date = start_date
         while current_date <= end_date:

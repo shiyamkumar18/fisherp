@@ -146,23 +146,26 @@ class PurchaseService:
         created_batches = []
         total_amount = Decimal('0')
         
+
+        from services.trading.inventory_service import InventoryService
+        inventory_service = InventoryService(user)
+
         for item in items:
             try:
                 fish = Fish.objects.get(id=item['product_id'], company=company)
-                
                 qty = Decimal(str(item['qty']))
                 cost_price = Decimal(str(item['cost_price']))
-                
+
                 # Generate batch ID
                 batch_id = PurchaseService.generate_batch_id(company)
-                
+
                 # Calculate totals
                 total_cost = qty * cost_price
                 total_amount += total_cost
-                
+
                 # Get price trend
                 trend = PurchaseService.get_price_trend_indicator(fish, cost_price)
-                
+
                 # Create batch
                 batch = PurchaseBatch.objects.create(
                     batch_number=batch_id,
@@ -192,17 +195,17 @@ class PurchaseService:
                     estimated_expiry_date=None,  # Can be set later
                     arrival_time=timezone.now()
                 )
-                
+
                 # Calculate pending amount
                 if payment_method == 'cash':
                     batch.pending_amount = Decimal('0')
                 else:
                     batch.pending_amount = total_cost - Decimal(str(amount_paid))
-                
+
                 batch.save()
-                
+
                 # Create inventory record for batch
-                Inventory.objects.create(
+                inventory = Inventory.objects.create(
                     fish=fish,
                     purchase_batch=batch,
                     initial_packages=1,
@@ -213,7 +216,10 @@ class PurchaseService:
                     tenant=user,
                     company=company
                 )
-                
+
+                # BUSINESS INTEGRATION: update stock (increment)
+                inventory_service.update_stock(inventory, +qty)
+
                 created_batches.append({
                     'batch_id': batch_id,
                     'batch_number': batch.batch_number,
@@ -223,7 +229,7 @@ class PurchaseService:
                     'total': total_cost,
                     'trend': trend
                 })
-                
+
                 # Log audit
                 AuditLog.log_create(
                     user=user,
@@ -233,7 +239,7 @@ class PurchaseService:
                     tenant=user,
                     ip_address=None
                 )
-                
+
             except Fish.DoesNotExist:
                 errors.append("Fish product not found")
             except Exception as e:

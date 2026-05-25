@@ -33,7 +33,7 @@ from accounts.permissions import (
     QuerysetProtectionMixin, TenantObjectPermission, is_impersonating, get_impersonated_tenant
 )
 from .helpers import _user_company   # <-- new import
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 
 def _get_create_scope(request):
@@ -623,10 +623,11 @@ class InventoryViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def expiring_soon(self, request):
-        soon = datetime.now().date() + timedelta(days=3)
+        today = timezone.localdate()
+        soon = today + timedelta(days=3)
         expiring = self.get_queryset().filter(
             expiry_date__lte=soon,
-            expiry_date__gte=datetime.now().date()
+            expiry_date__gte=today
         )
         serializer = self.get_serializer(expiring, many=True)
         return Response(serializer.data)

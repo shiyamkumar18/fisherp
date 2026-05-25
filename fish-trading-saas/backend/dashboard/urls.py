@@ -17,12 +17,10 @@ from .views import (
     OperationalDashboardView,
     RiskAlertsView,
     AdminDashboardView,
-    
     # Chart System MVP
     ProfitLossReceivableView,
     SoldVsRemainingView,
     FishDemandTrendView,
-    
     # Legacy Views (for backward compatibility)
     TodaySummaryView,
     MonthlySummaryView,
@@ -33,12 +31,13 @@ from .views import (
     ProfitByFishTypeView,
     PendingPaymentsView,
     DashboardOverviewView,
-    
     # New Role-based Visual Dashboard APIs
     TenantAdminDashboardView,
     BatchSpecificDashboardView,
     FilterOptionsView,
 )
+
+from .views import DashboardView
 
 urlpatterns = [
     # ============================================================
@@ -121,4 +120,7 @@ urlpatterns = [
     
     # Filter Options (for dropdowns)
     path("dashboard/filters/", FilterOptionsView.as_view(), name="dashboard-filter-options"),
+
+    # Simple SaaS Dashboard API (for frontend quick stats)
+    path("dashboard/", DashboardView.as_view(), name="dashboard-simple"),
 ]

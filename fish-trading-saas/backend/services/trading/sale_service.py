@@ -12,12 +12,27 @@ class SaleService(BaseService):
     
     @transaction.atomic
     def create_sale(self, data):
-        """Create sale with scoping."""
+        """Create sale with scoping and update inventory."""
         data.update({
             'tenant': self.user,
             'company': _user_company(self.user),
         })
-        return Sale.objects.create(**data)
+        sale = Sale.objects.create(**data)
+
+        # BUSINESS INTEGRATION: update inventory stock (decrement)
+        from services.trading.inventory_service import InventoryService
+        inventory_service = InventoryService(self.user)
+        # Assumes 'inventory_id' and 'qty' are in data
+        inventory_id = data.get('inventory_id')
+        qty = data.get('qty')
+        if inventory_id and qty:
+            try:
+                inventory = Inventory.objects.get(id=inventory_id)
+                inventory_service.update_stock(inventory, -Decimal(str(qty)))
+            except Inventory.DoesNotExist:
+                pass  # Optionally log error
+
+        return sale
     
     @transaction.atomic
     def update_sale(self, instance, data):

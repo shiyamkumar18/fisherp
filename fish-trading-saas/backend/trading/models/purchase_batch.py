@@ -11,7 +11,24 @@ from .supplier import Supplier
 from services.base import CompanyManager
 
 
+
+from django.utils.timezone import now
+from django.db import transaction
+
+@transaction.atomic
+def generate_purchase_number():
+    today = now().strftime("%Y%m%d")
+    prefix = f"PO-{today}"
+    # Lock rows for update to prevent race conditions
+    count = PurchaseBatch.objects.select_for_update().filter(
+        purchase_number__startswith=prefix
+    ).count()
+    new_number = count + 1
+    return f"{prefix}-{str(new_number).zfill(3)}"
+
+
 class PurchaseBatch(models.Model):
+    purchase_number = models.CharField(max_length=20, unique=True, blank=True, help_text="Auto-generated unique sequential purchase number")
     PURCHASE_TYPE_CHOICES = [
         ("direct", "Direct"),
         ("auction", "Auction"),
@@ -21,7 +38,7 @@ class PurchaseBatch(models.Model):
     ]
 
     batch_number = models.CharField(max_length=50, unique=True, blank=True, null=True,
-                                    help_text="Auto-generated or manual batch reference")
+                                    help_text="Auto-generated or manual batch reference")  # Legacy, keep for now
     purchase_type = models.CharField(max_length=15, choices=PURCHASE_TYPE_CHOICES)
     supplier = models.ForeignKey(Supplier, on_delete=models.PROTECT, null=True, blank=True, related_name='purchase_batches')
     fisherman_name = models.CharField(max_length=150, blank=True, null=True,
@@ -130,13 +147,12 @@ class PurchaseBatch(models.Model):
         self.pending_amount = self.total_expense - amount_paid
 
     def save(self, *args, **kwargs):
+        if not self.purchase_number:
+            self.purchase_number = generate_purchase_number()
+        # Legacy batch_number logic (optional, can be removed if not needed)
         if not self.batch_number:
-            from datetime import datetime
-            timestamp = datetime.now().strftime('%Y%m%d%H%M%S%f')
+            timestamp = timezone.now().strftime('%Y%m%d%H%M%S%f')
             self.batch_number = f"BATCH-{timestamp}-{uuid.uuid4().hex[:6]}"
-
-        if not self.company_id and self.tenant_id and self.tenant.company_id:
-            self.company = self.tenant.company
         if not self.tenant_id and self.company_id and self.company.admin_id:
             self.tenant = self.company.admin
 

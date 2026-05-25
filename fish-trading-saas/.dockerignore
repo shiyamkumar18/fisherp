@@ -45,7 +45,7 @@ Thumbs.db
 .env.*
 !.env.example
 
-# SQLite development databases
+# Legacy SQLite database files
 *.sqlite3
 db.sqlite3
 

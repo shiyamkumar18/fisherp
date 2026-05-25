@@ -3,15 +3,15 @@ import { useAuthStore } from "@/store/authStore";
 import { canAccessRoute } from "@/utils/permissions";
 
 export default function ProtectedRoute({ children }) {
-  const { session, isHydrated } = useAuthStore();
+  const { user, token } = useAuthStore();
   const location = useLocation();
+  const session = token ? { user } : null;
 
-  if (!isHydrated) return null;
   if (!session) return <Navigate to="/login" replace />;
 
   const role = session.user?.role || "customer";
   if (!canAccessRoute(role, location.pathname)) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/app/dashboard" replace />;
   }
 
   return children;

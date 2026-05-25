@@ -79,7 +79,7 @@ class Payment(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.receipt_number:
-            timestamp = datetime.now().strftime('%Y%m%d%H%M%S%f')
+            timestamp = timezone.now().strftime('%Y%m%d%H%M%S%f')
             self.receipt_number = f"RCP-{timestamp}-{uuid.uuid4().hex[:6]}"
 
         # Validate amount is positive
@@ -96,5 +96,5 @@ class Payment(models.Model):
         if isinstance(self.date, datetime):
             self.date = self.date.date()
         if self.date is None:
-            self.date = date.today()
+            self.date = timezone.localdate()
         super().save(*args, **kwargs)

@@ -1,3 +1,5 @@
+# Use custom allauth adapter for Google login
+SOCIALACCOUNT_ADAPTER = "accounts.adapters.CustomSocialAccountAdapter"
 """
 Django settings for config project.
 Phase 0 – SaaS Multi-Tenant Foundation
@@ -46,6 +48,7 @@ SHARED_APPS = [
 
 TENANT_APPS = [
     "rest_framework",
+    "rest_framework.authtoken",
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
     "drf_spectacular",
@@ -57,7 +60,25 @@ TENANT_APPS = [
     "saas_admin",  # Platform Manager App
 ]
 
-INSTALLED_APPS = SHARED_APPS + TENANT_APPS
+INSTALLED_APPS = SHARED_APPS + TENANT_APPS + [
+    "django.contrib.sites",
+    "allauth",
+    "allauth.account",
+    "allauth.socialaccount",
+    "allauth.socialaccount.providers.google",
+    "dj_rest_auth",
+]
+
+SITE_ID = 1
+
+SOCIALACCOUNT_PROVIDERS = {
+    "google": {
+        "APP": {
+            "client_id": os.getenv("GOOGLE_CLIENT_ID", "YOUR_GOOGLE_CLIENT_ID"),
+            "secret": os.getenv("GOOGLE_CLIENT_SECRET", "YOUR_GOOGLE_SECRET"),
+        }
+    }
+}
 
 # =========================
 # MIDDLEWARE
@@ -65,6 +86,7 @@ INSTALLED_APPS = SHARED_APPS + TENANT_APPS
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "allauth.account.middleware.AccountMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "accounts.middleware.ImpersonationMiddleware",
@@ -101,31 +123,41 @@ TEMPLATES = [
 WSGI_APPLICATION = "config.wsgi.application"
 
 # =========================
-# DATABASE (PostgreSQL only)
+# DATABASE
 # =========================
 
-_db_name = os.getenv("DB_NAME", "fisherp_dev")
-_db_user = os.getenv("DB_USER", "fisherp_user")
-_db_password = os.getenv("DB_PASSWORD", "fisherp_pass")
+if DEBUG:
+    _db_name = os.getenv("DB_NAME", "fisherp_dev")
+    _db_user = os.getenv("DB_USER", "fisherp_user")
+    _db_password = os.getenv("DB_PASSWORD", "fisherp_pass")
+    _db_host = os.getenv("DB_HOST", "localhost")
+else:
+    _db_name = os.getenv("DB_NAME")
+    _db_user = os.getenv("DB_USER")
+    _db_password = os.getenv("DB_PASSWORD")
+    _db_host = os.getenv("DB_HOST")
 
-_missing_db_env_vars = [
-    var_name
-    for var_name, var_value in [
-        ("DB_NAME", _db_name),
-        ("DB_USER", _db_user),
-        ("DB_PASSWORD", _db_password),
+_db_port = os.getenv("DB_PORT", "5432")
+
+if not DEBUG:
+    _missing_db_env_vars = [
+        var_name
+        for var_name, var_value in [
+            ("DB_NAME", _db_name),
+            ("DB_USER", _db_user),
+            ("DB_PASSWORD", _db_password),
+            ("DB_HOST", _db_host),
+        ]
+        if not var_value
     ]
-    if not var_value
-]
-
-if _missing_db_env_vars:
-    raise ValueError(
-        "Missing required database environment variable(s) for PostgreSQL: "
-        + ", ".join(_missing_db_env_vars)
-    )
+    if _missing_db_env_vars:
+        raise ValueError(
+            "Missing required database environment variable(s) for PostgreSQL: "
+            + ", ".join(_missing_db_env_vars)
+        )
 
 # When routing through PgBouncer in transaction mode, persistent connections
-# must be disabled (CONN_MAX_AGE=0); honour the USE_PGBOUNCER flag here.
+# must be disabled (CONN_MAX_AGE=0).
 _use_pgbouncer = os.getenv("USE_PGBOUNCER", "").lower() in ("1", "true", "yes")
 _conn_max_age = 0 if _use_pgbouncer else int(os.getenv("DB_CONN_MAX_AGE", "600"))
 
@@ -135,8 +167,8 @@ DATABASES = {
         "NAME": _db_name,
         "USER": _db_user,
         "PASSWORD": _db_password,
-        "HOST": os.getenv("DB_HOST", "localhost"),
-        "PORT": os.getenv("DB_PORT", "5432"),
+        "HOST": _db_host,
+        "PORT": _db_port,
         "CONN_MAX_AGE": _conn_max_age,
         "OPTIONS": {
             "connect_timeout": int(os.getenv("DB_CONNECT_TIMEOUT", "10")),
@@ -207,11 +239,13 @@ USE_TZ = True
 # =========================
 
 STATIC_URL = '/static/'
-# Only include frontend in STATICFILES_DIRS if it exists (may not in Docker)
-# In Docker, frontend is mounted at /app/frontend, outside Docker at BASE_DIR.parent / "frontend"
+# Only include frontend build assets in STATICFILES_DIRS if they exist.
+# In Docker, frontend is mounted at /app/frontend, outside Docker at BASE_DIR.parent / "frontend".
 _frontend_paths = [
-    BASE_DIR / "frontend",  # Docker path
-    BASE_DIR.parent / "frontend",  # Local development path
+    BASE_DIR / "frontend" / "dist",
+    BASE_DIR.parent / "frontend" / "dist",
+    BASE_DIR / "frontend",
+    BASE_DIR.parent / "frontend",
 ]
 STATICFILES_DIRS = [path for path in _frontend_paths if path.exists()]
 STATIC_ROOT = BASE_DIR / "staticfiles"

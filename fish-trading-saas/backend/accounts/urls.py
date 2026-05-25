@@ -19,6 +19,7 @@ from .views import (
     ChangePasswordView,
 )
 from .views.multi_identifier_auth import MultiIdentifierLoginView, SimpleRegistrationView
+from .views_google import GoogleLogin
 
 urlpatterns = [
     # NEW MULTI-IDENTIFIER LOGIN/REGISTRATION (RECOMMENDED)
@@ -38,6 +39,7 @@ urlpatterns = [
     path("auth/tenant-users/", TenantUserManagementView.as_view(), name="tenant-user-management"),
     path("impersonate/", ImpersonationAPIView.as_view(), name="impersonation"),
     path("platform/login/", PlatformLoginView.as_view(), name="platform-login-api"),
+    path("auth/google/", GoogleLogin.as_view(), name="google-login"),
     path("auth/platform-login/", PlatformLoginView.as_view(), name="platform-login-api-legacy"),
     path("login/<str:tenant_slug>/", TenantLoginView.as_view(), name="tenant-login-api"),
     path("register/<str:tenant_slug>/", TenantRegisterView.as_view(), name="tenant-register-api"),

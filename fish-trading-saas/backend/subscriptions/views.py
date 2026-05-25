@@ -24,10 +24,24 @@ class SubscriptionTierViewSet(viewsets.ReadOnlyModelViewSet):
     Backward-compatible tier endpoints:
     - GET /api/subscription-tiers/
     - GET /api/subscription-tiers/<id>/
+
+    RBAC:
+    - platform_operator: can view subscription tiers
+    - platform_support: can view subscription tiers
     """
+
     queryset = SubscriptionTier.objects.filter(is_active=True).order_by("display_order")
     serializer_class = SubscriptionTierSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_superuser:
+            return self.queryset
+        if getattr(user, "is_platform_operator", False) or getattr(user, "is_platform_support", False):
+            return self.queryset
+        return SubscriptionTier.objects.none()
+
 
 
 class SubscriptionViewSet(viewsets.ModelViewSet):

@@ -1,7 +1,7 @@
 """
 tests/test_postgres_migration.py
 ---------------------------------
-Validation tests for the SQLite → PostgreSQL migration.
+Validation tests for PostgreSQL deployment and health checks.
 
 These tests are designed to run against an actual PostgreSQL instance
 (configured via the standard DB_* environment variables) and verify:
@@ -34,7 +34,7 @@ from django.test import TestCase
     "PostgreSQL environment variables not set (DB_ENGINE=postgresql and DB_NAME required).",
 )
 class PostgresMigrationTests(TestCase):
-    """Validation tests for the SQLite → PostgreSQL migration using Django's test framework."""
+    """Validation tests for the PostgreSQL deployment using Django's test framework."""
 
     def test_database_engine_is_postgresql(self):
         """The active Django database backend must be PostgreSQL."""
@@ -181,7 +181,7 @@ class PostgresHealthCheckTests(TestCase):
 
 
 # ---------------------------------------------------------------------------
-# 5. Migration script syntax checks (always run)
+# 5. Operational script syntax checks (always run)
 # ---------------------------------------------------------------------------
 
 class ScriptSyntaxTests(unittest.TestCase):
@@ -197,9 +197,6 @@ class ScriptSyntaxTests(unittest.TestCase):
             ast.parse(source)
         except SyntaxError as exc:
             self.fail(f"{script_name} has a syntax error: {exc}")
-
-    def test_migration_script_valid_syntax(self):
-        self._assert_script_parseable("migrate_sqlite_to_postgres.py")
 
     def test_backup_script_valid_syntax(self):
         self._assert_script_parseable("backup_database.py")

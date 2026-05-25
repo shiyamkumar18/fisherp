@@ -52,8 +52,8 @@ services:
   # ---------------------------------------------------------------------------
   web:
     build:
-      context: ./fish-trading-saas/backend
-      dockerfile: Dockerfile
+      context: ./fish-trading-saas
+      dockerfile: backend/Dockerfile
     restart: unless-stopped
     environment:
       DJANGO_SETTINGS_MODULE: config.settings
@@ -95,8 +95,8 @@ services:
   # ---------------------------------------------------------------------------
   celery:
     build:
-      context: ./fish-trading-saas/backend
-      dockerfile: Dockerfile
+      context: ./fish-trading-saas
+      dockerfile: backend/Dockerfile
     restart: unless-stopped
     environment:
       DJANGO_SETTINGS_MODULE: config.settings
@@ -123,8 +123,8 @@ services:
   # ---------------------------------------------------------------------------
   celery-beat:
     build:
-      context: ./fish-trading-saas/backend
-      dockerfile: Dockerfile
+      context: ./fish-trading-saas
+      dockerfile: backend/Dockerfile
     restart: unless-stopped
     environment:
       DJANGO_SETTINGS_MODULE: config.settings

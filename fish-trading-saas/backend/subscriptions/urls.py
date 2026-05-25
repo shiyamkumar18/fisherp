@@ -19,6 +19,7 @@ router.register(r"subscription-tiers", SubscriptionTierViewSet, basename="subscr
 
 urlpatterns = [
     # Tier endpoints
+    path("tiers/", SubscriptionTierListView.as_view(), name="tiers"),
     path("subscriptions/tiers/", SubscriptionTierListView.as_view(), name="subscription-tiers"),
     
     # Add-on endpoints

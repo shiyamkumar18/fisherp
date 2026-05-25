@@ -138,8 +138,7 @@ class Sale(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.invoice_number:
-            from datetime import datetime
-            timestamp = datetime.now().strftime('%Y%m%d%H%M%S%f')
+            timestamp = timezone.now().strftime('%Y%m%d%H%M%S%f')
             self.invoice_number = f"INV-{timestamp}-{uuid.uuid4().hex[:6]}"
 
         if not self.company_id and self.tenant_id and self.tenant.company_id:

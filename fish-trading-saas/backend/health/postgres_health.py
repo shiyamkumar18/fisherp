@@ -70,7 +70,7 @@ def replication_check() -> dict[str, Any]:
         detail       : human-readable message
 
     "not_applicable" is returned when the instance is a replica (no
-    pg_stat_replication data) or when running SQLite locally.
+    pg_stat_replication data) or when not connected to PostgreSQL.
     """
     try:
         from django.db import connection  # noqa: PLC0415

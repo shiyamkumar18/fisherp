@@ -4,12 +4,6 @@ Global pytest fixtures and factory helpers for the Fisherp test suite.
 import pytest
 from decimal import Decimal
 from django.contrib.auth import get_user_model
-from rest_framework.test import APIClient
-
-from companies.models import Company
-from trading.models import FishCategory, Fish, Supplier, Buyer
-
-User = get_user_model()
 
 
 # ---------------------------------------------------------------------------
@@ -27,6 +21,8 @@ def make_company(slug=None, name=None, **kwargs):
     uid = uuid.uuid4().hex[:8]
     slug = slug or f"company-{uid}"
     name = name or f"Company {uid}"
+    from companies.models import Company
+
     return Company.objects.create(slug=slug, name=name, is_active=True, **kwargs)
 
 
@@ -46,6 +42,8 @@ def make_user(username=None, role="tenant_admin", company=None, password="testpa
     if role not in platform_roles and company is None:
         company = make_company()
 
+    User = get_user_model()
+
     user = User(
         username=username,
         email=email,
@@ -61,6 +59,8 @@ def make_user(username=None, role="tenant_admin", company=None, password="testpa
 def make_fish_category(name=None, category_type="saltwater", **kwargs):
     import uuid
     name = name or f"Category-{uuid.uuid4().hex[:6]}"
+    from trading.models import FishCategory
+
     return FishCategory.objects.create(name=name, category_type=category_type, **kwargs)
 
 
@@ -71,6 +71,8 @@ def make_fish(name=None, category=None, tenant=None, company=None, **kwargs):
     if tenant is None:
         tenant = make_user(role="tenant_admin")
     company = company or tenant.company
+    from trading.models import Fish
+
     return Fish.objects.create(
         name=name, category=category, unit_type="kg", tenant=tenant, company=company, **kwargs
     )
@@ -82,6 +84,8 @@ def make_supplier(name=None, tenant=None, company=None, **kwargs):
     if tenant is None:
         tenant = make_user(role="tenant_admin")
     company = company or tenant.company
+    from trading.models import Supplier
+
     return Supplier.objects.create(name=name, tenant=tenant, company=company, **kwargs)
 
 
@@ -91,6 +95,8 @@ def make_buyer(name=None, tenant=None, company=None, **kwargs):
     if tenant is None:
         tenant = make_user(role="tenant_admin")
     company = company or tenant.company
+    from trading.models import Buyer
+
     return Buyer.objects.create(name=name, tenant=tenant, company=company, **kwargs)
 
 
@@ -132,6 +138,8 @@ def make_purchase_batch(fish=None, tenant=None, company=None, **kwargs):
 @pytest.fixture
 def api_client():
     """Unauthenticated DRF test client."""
+    from rest_framework.test import APIClient
+
     return APIClient()
 
 

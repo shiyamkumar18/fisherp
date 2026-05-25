@@ -659,6 +659,13 @@ class UnifiedLoginView(APIView):
                     {'error': 'This company account is not verified. Please contact support.'},
                     status=status.HTTP_403_FORBIDDEN
                 )
+        elif user and user.company:
+            company = user.company
+            if not company.is_active:
+                return Response(
+                    {'error': 'This company account is not active. Please contact support.'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
 
         if user is None:
             record_failed_login(email)

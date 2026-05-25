@@ -131,8 +131,8 @@ services:
   # ---------------------------------------------------------------------------
   web:
     build:
-      context: ./fish-trading-saas/backend
-      dockerfile: Dockerfile
+      context: ./fish-trading-saas
+      dockerfile: backend/Dockerfile
     image: fisherp-backend:${IMAGE_TAG:-latest}
     restart: unless-stopped
     environment:
@@ -197,8 +197,8 @@ services:
   # ---------------------------------------------------------------------------
   celery:
     build:
-      context: ./fish-trading-saas/backend
-      dockerfile: Dockerfile
+      context: ./fish-trading-saas
+      dockerfile: backend/Dockerfile
     image: fisherp-backend:${IMAGE_TAG:-latest}
     restart: unless-stopped
     environment:
@@ -242,8 +242,8 @@ services:
   # ---------------------------------------------------------------------------
   celery-beat:
     build:
-      context: ./fish-trading-saas/backend
-      dockerfile: Dockerfile
+      context: ./fish-trading-saas
+      dockerfile: backend/Dockerfile
     image: fisherp-backend:${IMAGE_TAG:-latest}
     restart: unless-stopped
     environment:
@@ -267,6 +267,7 @@ services:
     volumes:
       - prod_logs:/app/logs
     command: celery -A trading.celery:app beat --loglevel=info
+    deploy:
       resources:
         limits:
           cpus: '0.5'

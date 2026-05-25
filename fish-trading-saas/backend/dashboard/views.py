@@ -1,3 +1,29 @@
+
+from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
+from trading.models.sale import Sale
+from trading.models.supplier import Supplier
+from companies.models import Company
+
+# Simple API for /dashboard/ (SaaS frontend quick stats)
+class DashboardView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        company = getattr(user, 'company', None)
+        if not company:
+            return Response({"error": "No company assigned to user."}, status=400)
+
+        total_orders = Sale.objects.filter(company=company).count()
+        revenue = Sale.objects.filter(company=company).aggregate(total=Sum('total_revenue'))['total'] or 0
+        suppliers = Supplier.objects.filter(company=company).count()
+
+        return Response({
+            "total_orders": total_orders,
+            "revenue": revenue,
+            "suppliers": suppliers
+        })
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView

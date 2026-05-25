@@ -4,6 +4,7 @@ from django.db import models
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.utils import OperationalError
+from django.utils import timezone
 
 from .fish import Fish
 from .purchase_batch import PurchaseBatch
@@ -121,9 +122,9 @@ class Inventory(models.Model):
 
     def check_expiry_alert(self):
         if self.expiry_date:
-            from datetime import datetime, timedelta
+            from datetime import timedelta
             alert_date = self.expiry_date - timedelta(days=self.expiry_alert_threshold_days)
-            return datetime.now().date() >= alert_date
+            return timezone.localdate() >= alert_date
         return False
 
     def needs_reorder(self):

@@ -42,15 +42,16 @@ class UnifiedLoginViewTests(TestCase):
         self.platform_user.set_password("platform123")
         self.platform_user.save()
 
-    def test_tenant_login_requires_company_name(self):
+    def test_tenant_login_succeeds_without_company_name_for_existing_company_users(self):
         response = self.client.post(
             self.login_url,
             {"username": self.tenant_user.username, "password": "tenant123"},
             format="json",
         )
 
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(response.data["error"], "Company name is required for company users.")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["company_name"], self.company.name)
+        self.assertEqual(response.data["tenant_slug"], self.company.slug)
 
     def test_tenant_login_accepts_matching_company_slug(self):
         response = self.client.post(
