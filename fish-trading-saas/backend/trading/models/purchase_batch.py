@@ -153,6 +153,8 @@ class PurchaseBatch(models.Model):
         if not self.batch_number:
             timestamp = timezone.now().strftime('%Y%m%d%H%M%S%f')
             self.batch_number = f"BATCH-{timestamp}-{uuid.uuid4().hex[:6]}"
+        if not self.company_id and self.tenant_id and self.tenant.company_id:
+            self.company = self.tenant.company
         if not self.tenant_id and self.company_id and self.company.admin_id:
             self.tenant = self.company.admin
 

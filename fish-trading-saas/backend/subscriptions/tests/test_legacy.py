@@ -422,8 +422,10 @@ class SubscriptionTierAPITest(APITestCase):
         self.user = User.objects.create_user(
             username='tier_user',
             email='tier@user.com',
-            password='testpass123'
+            password='testpass123',
+            role='platform_operator'
         )
+        self.client.force_authenticate(user=self.user)
         
         self.tier = SubscriptionTier.objects.create(
             name="api_test_tier",
