@@ -1,5 +1,3 @@
-# Use custom allauth adapter for Google login
-SOCIALACCOUNT_ADAPTER = "accounts.adapters.CustomSocialAccountAdapter"
 """
 Django settings for config project.
 Phase 0 – SaaS Multi-Tenant Foundation
@@ -10,6 +8,10 @@ from dotenv import load_dotenv
 from datetime import timedelta
 import os
 import sys
+
+# Use custom allauth adapter for Google login
+SOCIALACCOUNT_ADAPTER = "accounts.adapters.CustomSocialAccountAdapter"
+
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, os.path.join(BASE_DIR))

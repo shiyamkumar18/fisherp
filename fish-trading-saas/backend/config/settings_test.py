@@ -55,10 +55,10 @@ PASSWORD_HASHERS = [
 
 # Disable throttling for test execution to avoid intermittent 429 failures.
 REST_FRAMEWORK = {
-    **REST_FRAMEWORK,
+    **REST_FRAMEWORK,  # noqa: F405
     "DEFAULT_THROTTLE_CLASSES": [],
     "DEFAULT_THROTTLE_RATES": {
-        **REST_FRAMEWORK.get("DEFAULT_THROTTLE_RATES", {}),
+        **REST_FRAMEWORK.get("DEFAULT_THROTTLE_RATES", {}),  # noqa: F405
         "impersonate": "100000/hour",
     },
     "EXCEPTION_HANDLER": "rest_framework.views.exception_handler",

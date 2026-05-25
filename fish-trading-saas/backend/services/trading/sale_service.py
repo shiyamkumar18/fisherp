@@ -3,7 +3,7 @@ from django.utils import timezone
 from django.db import transaction
 from django.core.exceptions import ValidationError
 from ..base import BaseService
-from trading.models import Sale, Payment
+from trading.models import Sale, Payment, Inventory
 from trading.helpers import _user_company
 
 class SaleService(BaseService):

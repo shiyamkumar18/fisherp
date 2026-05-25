@@ -1,7 +1,6 @@
 
 from django.contrib import admin
 from django.urls import path, include
-from django.views.generic import TemplateView
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET
 from accounts.views import CustomProfileRedirectView, UnifiedLoginView, TenantRegisterView, PlatformLoginView
@@ -21,6 +20,7 @@ def root(request):
     Returns a simple JSON message indicating the API is running.
     """
     return JsonResponse({"message": "API running"})
+
 
 urlpatterns = [
     # Root API health/info endpoint

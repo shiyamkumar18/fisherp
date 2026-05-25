@@ -1,9 +1,19 @@
 
+from decimal import Decimal
+from datetime import timedelta
+from django.utils import timezone
+from django.db.models import Sum, F
+from rest_framework import permissions, status
+from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
-from trading.models.sale import Sale
-from trading.models.supplier import Supplier
-from companies.models import Company
+
+from .models import DashboardManager
+from trading.models import Sale, Inventory, Fish, Buyer, Supplier, PurchaseBatch
+from accounts.permissions import (
+    IsPlatformOperator, CanViewFinancials, IsTenantUser, HasAnyRole
+)
+
 
 # Simple API for /dashboard/ (SaaS frontend quick stats)
 class DashboardView(APIView):
@@ -24,19 +34,7 @@ class DashboardView(APIView):
             "revenue": revenue,
             "suppliers": suppliers
         })
-from rest_framework import permissions, status
-from rest_framework.response import Response
-from rest_framework.views import APIView
-from django.utils import timezone
-from django.db.models import Sum, F
-from decimal import Decimal
-from datetime import timedelta
 
-from .models import DashboardManager
-from trading.models import Sale, Inventory, Fish, Buyer, Supplier, PurchaseBatch
-from accounts.permissions import (
-    IsPlatformOperator, CanViewFinancials, IsTenantUser, HasAnyRole
-)
 
 
 def _tenant_scope_kwargs(user):

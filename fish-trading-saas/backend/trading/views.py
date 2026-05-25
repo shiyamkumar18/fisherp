@@ -33,7 +33,7 @@ from accounts.permissions import (
     QuerysetProtectionMixin, TenantObjectPermission, is_impersonating, get_impersonated_tenant
 )
 from .helpers import _user_company   # <-- new import
-from datetime import timedelta
+from datetime import timedelta, datetime
 
 
 def _get_create_scope(request):

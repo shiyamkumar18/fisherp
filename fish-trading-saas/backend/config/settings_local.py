@@ -8,8 +8,6 @@ WARNING: Never use these settings in production.
 """
 
 from datetime import timedelta  # noqa: E402
-import os
-
 from .settings import *  # noqa: F401, F403
 
 # -------------------------
@@ -30,7 +28,7 @@ CORS_ALLOW_CREDENTIALS = True
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "NAME": BASE_DIR / "db.sqlite3",  # noqa: F405
     }
 }
 
