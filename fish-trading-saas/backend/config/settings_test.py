@@ -54,16 +54,25 @@ PASSWORD_HASHERS = [
 ]
 
 # Disable throttling for test execution to avoid intermittent 429 failures.
-from config.settings import REST_FRAMEWORK as _BASE_REST_FRAMEWORK  # noqa: E402
-
 REST_FRAMEWORK = {
-    **_BASE_REST_FRAMEWORK,
+    "EXCEPTION_HANDLER": "rest_framework.views.exception_handler",
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "rest_framework.authentication.SessionAuthentication",
+    ],
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 25,
     "DEFAULT_THROTTLE_CLASSES": [],
     "DEFAULT_THROTTLE_RATES": {
-        **_BASE_REST_FRAMEWORK.get("DEFAULT_THROTTLE_RATES", {}),
+        "anon": "50/hour",
+        "user": "500/hour",
+        "login": "5/min",
         "impersonate": "100000/hour",
     },
-    "EXCEPTION_HANDLER": "rest_framework.views.exception_handler",
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
 
 # Disable SSL enforcement so HTTP test clients don't get 301 redirects
