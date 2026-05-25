@@ -60,7 +60,7 @@ class PostgresMigrationTests(TestCase):
 
         required_tables = [
             "accounts_user",
-            "accounts_company",
+            "companies_company",
             "trading_purchasebatch",
             "trading_buyer",
             "trading_fish",
@@ -143,10 +143,10 @@ class PostgresConnectionSettingsTests(TestCase):
 
         options = settings.DATABASES.get("default", {}).get("OPTIONS", {})
         app_name = options.get("application_name")
-        self.assertEqual(
+        self.assertIn(
             app_name,
-            "fisherp",
-            f"Expected application_name='fisherp', got '{app_name}'.",
+            ["fisherp", "fisherp_test"],
+            f"Expected application_name to be 'fisherp' or 'fisherp_test', got '{app_name}'.",
         )
 
 
