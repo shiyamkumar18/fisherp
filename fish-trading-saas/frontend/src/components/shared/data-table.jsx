@@ -28,7 +28,7 @@ export function DataTable({
             <Input
               value={search || ""}
               onChange={(e) => onSearch(e.target.value)}
-              placeholder="Search…"
+              placeholder="Search..."
               className="md:max-w-xs"
             />
           )}
@@ -37,15 +37,15 @@ export function DataTable({
       )}
 
       {/* Table */}
-      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+      <div className="overflow-x-auto rounded-xl border border-border bg-surface">
         <table className="min-w-full text-left text-sm">
-          <thead className="bg-slate-50 text-xs font-bold uppercase tracking-wide text-slate-500">
+          <thead className="bg-border/20 text-xs font-bold uppercase tracking-wider text-textSecondary/80">
             <tr>
               {columns.map((column) => (
                 <th key={column.key} className="px-4 py-3">
                   {column.sortable ? (
                     <button
-                      className="inline-flex items-center gap-1 hover:text-slate-800"
+                      className="inline-flex items-center gap-1 hover:text-textPrimary cursor-pointer"
                       onClick={() => onSort && onSort(column.key)}
                       type="button"
                     >
@@ -67,11 +67,11 @@ export function DataTable({
               ))}
             </tr>
           </thead>
-          <tbody>
+          <tbody className="font-semibold text-textPrimary">
             {loading ? (
               // Skeleton placeholder rows while fetching
               [...Array(5)].map((_, idx) => (
-                <tr key={idx} className="border-t border-slate-100">
+                <tr key={idx} className="border-t border-border/40">
                   {columns.map((col) => (
                     <td key={col.key} className="px-4 py-3">
                       <Skeleton className="h-4 w-full" />
@@ -83,7 +83,7 @@ export function DataTable({
               <tr>
                 <td
                   colSpan={columns.length}
-                  className="py-12 text-center text-sm text-slate-400"
+                  className="py-12 text-center text-sm text-textSecondary"
                 >
                   No records found.
                 </td>
@@ -92,10 +92,10 @@ export function DataTable({
               data.map((row) => (
                 <tr
                   key={row.id}
-                  className="border-t border-slate-100 transition-colors hover:bg-slate-50"
+                  className="border-t border-border/40 transition-colors hover:bg-border/10"
                 >
                   {columns.map((column) => (
-                    <td key={column.key} className="px-4 py-3 text-slate-700">
+                    <td key={column.key} className="px-4 py-3 text-textPrimary">
                       {column.render ? column.render(row) : (row[column.key] ?? "—")}
                     </td>
                   ))}
@@ -108,9 +108,9 @@ export function DataTable({
 
       {/* Pagination */}
       <div className="flex items-center justify-between">
-        <p className="text-sm text-slate-500">
+        <p className="text-xs font-bold text-textSecondary">
           {loading
-            ? "Loading…"
+            ? "Loading..."
             : total > 0
             ? `${total} record${total !== 1 ? "s" : ""} · Page ${page} of ${totalPages}`
             : "No records"}
@@ -118,6 +118,7 @@ export function DataTable({
         <div className="flex gap-2">
           <Button
             variant="outline"
+            size="sm"
             disabled={page <= 1 || loading}
             onClick={() => onPageChange(page - 1)}
           >
@@ -125,6 +126,7 @@ export function DataTable({
           </Button>
           <Button
             variant="outline"
+            size="sm"
             disabled={page >= totalPages || loading}
             onClick={() => onPageChange(page + 1)}
           >
