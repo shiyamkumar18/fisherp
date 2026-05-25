@@ -54,11 +54,13 @@ PASSWORD_HASHERS = [
 ]
 
 # Disable throttling for test execution to avoid intermittent 429 failures.
+from config.settings import REST_FRAMEWORK as _BASE_REST_FRAMEWORK  # noqa: E402
+
 REST_FRAMEWORK = {
-    **REST_FRAMEWORK,  # noqa: F405
+    **_BASE_REST_FRAMEWORK,
     "DEFAULT_THROTTLE_CLASSES": [],
     "DEFAULT_THROTTLE_RATES": {
-        **REST_FRAMEWORK.get("DEFAULT_THROTTLE_RATES", {}),  # noqa: F405
+        **_BASE_REST_FRAMEWORK.get("DEFAULT_THROTTLE_RATES", {}),
         "impersonate": "100000/hour",
     },
     "EXCEPTION_HANDLER": "rest_framework.views.exception_handler",
