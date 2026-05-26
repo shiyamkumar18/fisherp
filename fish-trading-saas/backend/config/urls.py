@@ -1,16 +1,26 @@
-
+from django.conf import settings
+from django.conf.urls.static import static
 from django.contrib import admin
-from django.urls import path, include
 from django.http import JsonResponse
+from django.urls import include, path
 from django.views.decorators.http import require_GET
-from accounts.views import CustomProfileRedirectView, UnifiedLoginView, TenantRegisterView, PlatformLoginView
+from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
+from rest_framework.permissions import AllowAny
+
+from accounts.admin_sites import platform_admin_site
+from accounts.views import CustomProfileRedirectView, PlatformLoginView, TenantRegisterView, UnifiedLoginView
 from companies.views import CompanyDetailsView
 from dashboard.admin import dashboard_site
-from accounts.admin_sites import platform_admin_site
-from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
 from .spa_views import serve_spa_index
 
+class PublicSpectacularAPIView(SpectacularAPIView):
+    permission_classes = [AllowAny]
 
+class PublicSpectacularSwaggerView(SpectacularSwaggerView):
+    permission_classes = [AllowAny]
+
+class PublicSpectacularRedocView(SpectacularRedocView):
+    permission_classes = [AllowAny]
 
 # Root API health/info endpoint
 @require_GET
@@ -21,15 +31,14 @@ def root(request):
     """
     return JsonResponse({"message": "API running"})
 
-
 urlpatterns = [
     # Root API health/info endpoint
     path("", root, name="api-root"),
 
     # API Documentation
-    path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
-    path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
-    path("api/redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
+    path("api/schema/", PublicSpectacularAPIView.as_view(), name="schema"),
+    path("api/docs/", PublicSpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
+    path("api/redoc/", PublicSpectacularRedocView.as_view(url_name="schema"), name="redoc"),
 
     # Main Django admin (for superusers only)
     path("admin/", admin.site.urls),
@@ -90,9 +99,7 @@ urlpatterns = [
 
 
 # Serve frontend static assets (css/, js/, icons/, app/, etc.) at root path during development
-from django.conf import settings  # noqa: E402
 if settings.DEBUG:
-    from django.conf.urls.static import static
 
     frontend_source = settings.BASE_DIR / "frontend"
     frontend_dist = frontend_source / "dist"

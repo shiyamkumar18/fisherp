@@ -356,7 +356,7 @@ SPECTACULAR_SETTINGS = {
     'TITLE': 'Fish Trading SaaS API',
     'DESCRIPTION': 'API for fish trading and supply chain management',
     'VERSION': '1.0.0',
-    'SERVE_PERMISSIONS': ['rest_framework.permissions.IsAuthenticated'],
+    'SERVE_PERMISSIONS': ['rest_framework.permissions.AllowAny'],
     'SERVERS': [
         {
             'url': 'http://localhost:8000',

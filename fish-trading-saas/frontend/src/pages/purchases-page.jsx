@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { 
   ShoppingBag, Plus, Search, Calendar, User, MapPin, 
-  Dolly, Weight, DollarSign, AlertCircle, Info, Sparkles, Trash2, ShieldCheck
+  Package, Weight, DollarSign, AlertCircle, Info, Sparkles, Trash2, ShieldCheck
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -203,14 +203,14 @@ export default function PurchasesPage() {
             <span className="text-2xl font-extrabold text-textPrimary">
               {batches.reduce((sum, b) => sum + (b.remaining_packages || 0), 0)}
             </span>
-            <Dolly className="h-5 w-5 text-cyan-500 opacity-65" />
+            <Package className="h-5 w-5 text-cyan-500 opacity-65" />
           </div>
         </Card>
         <Card>
           <p className="text-xs font-bold uppercase tracking-wider text-textSecondary mb-1">Total Tonnage</p>
           <div className="flex items-center justify-between">
             <span className="text-2xl font-extrabold text-textPrimary">
-              {((batches.reduce((sum, b) => sum + (b.total_weight || 0), 0)) / 1000).toFixed(1)} MT
+              {((batches.reduce((sum, b) => sum + (Number(b.total_weight) || 0), 0)) / 1000).toFixed(1)} MT
             </span>
             <Weight className="h-5 w-5 text-emerald-500 opacity-65" />
           </div>
@@ -302,8 +302,8 @@ export default function PurchasesPage() {
                     </td>
                     <td className="py-3.5 pr-4 text-right">
                       <div>
-                        <p className="font-bold text-textPrimary">{formatINR(b.fish_cost + b.total_expense)}</p>
-                        <p className="text-[10px] text-textSecondary">Exp: {formatINR(b.total_expense)}</p>
+                        <p className="font-bold text-textPrimary">{formatINR(Number(b.total_expense) || 0)}</p>
+                        <p className="text-[10px] text-textSecondary">Exp: {formatINR(Math.max(0, Number(b.total_expense || 0) - Number(b.fish_cost || 0)))}</p>
                       </div>
                     </td>
                     <td className="py-3.5 pr-4 text-right">

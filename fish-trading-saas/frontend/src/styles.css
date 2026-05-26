@@ -1,8 +1,20 @@
+@import "tailwindcss";
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap');
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@theme {
+  --color-primary: #0284c7;
+  --color-primary-hover: #0369a1;
+  --color-secondary: #0f172a;
+  --color-success: #10b981;
+  --color-danger: #ef4444;
+  --color-warning: #f59e0b;
+  --color-info: #3b82f6;
+  --color-bg: #f8fafc;
+  --color-surface: #ffffff;
+  --color-border: #e2e8f0;
+  --color-textPrimary: #0f172a;
+  --color-textSecondary: #475569;
+}
 
 :root {
   --bg: #f8fafc;
@@ -26,18 +38,18 @@
 }
 
 .dark {
-  --bg: #030712; /* Gray 950 */
-  --surface: #0b0f19; /* Sleek dark blue-gray */
-  --border: #1f2937; /* Gray 800 */
-  --primary: #38bdf8; /* Sky 400 */
-  --primary-hover: #0ea5e9; /* Sky 500 */
-  --secondary: #f8fafc; /* Slate 50 */
-  --success: #34d399; /* Emerald 400 */
-  --danger: #f87171; /* Red 400 */
-  --warning: #fbbf24; /* Amber 400 */
-  --info: #60a5fa; /* Blue 400 */
-  --text-primary: #f9fafb; /* Gray 50 */
-  --text-secondary: #9ca3af; /* Gray 400 */
+  --bg: #030712;
+  --surface: #0b0f19;
+  --border: #1f2937;
+  --primary: #38bdf8;
+  --primary-hover: #0ea5e9;
+  --secondary: #f8fafc;
+  --success: #34d399;
+  --danger: #f87171;
+  --warning: #fbbf24;
+  --info: #60a5fa;
+  --text-primary: #f9fafb;
+  --text-secondary: #9ca3af;
 
   /* Glassmorphism primitives dark mode */
   --glass-bg: rgba(11, 15, 25, 0.7);
@@ -47,34 +59,44 @@
 }
 
 @layer base {
+  @reference "tailwindcss";
+
   * {
-    @apply box-border transition-colors duration-250 ease-in-out;
+    box-sizing: border-box;
+    transition-property: color, background-color, border-color;
+    transition-duration: 200ms;
+    transition-timing-function: ease-in-out;
   }
 
   html,
   body,
   #root {
-    @apply min-h-screen;
+    min-height: 100vh;
     background-color: var(--bg);
     color: var(--text-primary);
   }
 
   body {
-    @apply m-0 font-sans antialiased;
+    margin: 0;
     font-family: 'Outfit', 'Manrope', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   h1, h2, h3, h4, h5, h6 {
     color: var(--text-primary);
-    @apply tracking-tight font-extrabold;
+    letter-spacing: -0.025em;
+    font-weight: 800;
   }
 
   p, span, label, input, button {
-    @apply font-medium;
+    font-weight: 500;
   }
 }
 
 @layer components {
+  @reference "tailwindcss";
+
   /* Glassmorphic panel layout */
   .glass-card {
     background: var(--glass-bg);
@@ -82,7 +104,9 @@
     -webkit-backdrop-filter: blur(var(--glass-blur));
     border: 1px solid var(--glass-border);
     box-shadow: var(--glass-shadow);
-    @apply rounded-2xl p-6 transition-all duration-300;
+    border-radius: 1rem;
+    padding: 1.5rem;
+    transition: all 300ms ease;
   }
 
   .glass-card:hover {
@@ -96,14 +120,23 @@
     -webkit-backdrop-filter: blur(var(--glass-blur));
     border: 1px solid var(--glass-border);
     box-shadow: var(--glass-shadow);
-    @apply rounded-2xl p-6;
+    border-radius: 1rem;
+    padding: 1.5rem;
   }
 
   .glass-input {
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid var(--border);
     color: var(--text-primary);
-    @apply rounded-xl px-4 py-2.5 outline-none transition-all duration-200 focus:border-primary focus:ring-4 focus:ring-primary/10;
+    border-radius: 0.75rem;
+    padding: 0.625rem 1rem;
+    outline: none;
+    transition: all 200ms ease;
+  }
+
+  .glass-input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px rgba(2, 132, 199, 0.1);
   }
 
   .dark .glass-input {
@@ -113,7 +146,9 @@
   .surface-card {
     background-color: var(--surface);
     border: 1px solid var(--border);
-    @apply rounded-2xl p-6 shadow-sm;
+    border-radius: 1rem;
+    padding: 1.5rem;
+    box-shadow: 0 1px 3px 0 rgba(0,0,0,0.05);
   }
 
   /* Custom animated scrollbar */
@@ -128,7 +163,7 @@
   
   ::-webkit-scrollbar-thumb {
     background: var(--border);
-    @apply rounded-full;
+    border-radius: 9999px;
   }
   
   ::-webkit-scrollbar-thumb:hover {
@@ -143,6 +178,28 @@
   }
 
   .sidebar-link {
-    @apply flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-900/50 text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-primary;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-radius: 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    transition: all 200ms ease;
+    color: #475569;
+  }
+
+  .sidebar-link:hover {
+    background-color: rgb(241 245 249);
+    color: var(--primary);
+  }
+
+  .dark .sidebar-link {
+    color: #9ca3af;
+  }
+
+  .dark .sidebar-link:hover {
+    background-color: rgba(15, 23, 42, 0.5);
+    color: var(--primary);
   }
 }

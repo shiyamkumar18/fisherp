@@ -11,7 +11,7 @@ export default function ProtectedRoute({ children }) {
 
   const role = session.user?.role || "customer";
   if (!canAccessRoute(role, location.pathname)) {
-    return <Navigate to="/app/dashboard" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   return children;

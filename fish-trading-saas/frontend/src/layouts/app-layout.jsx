@@ -3,6 +3,7 @@ import { Outlet, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuthStore } from "@/store/authStore";
 import { useUiStore } from "@/store/uiStore";
+import { logoutUser } from "@/services/authService";
 import {
   LayoutDashboard,
   FileText,
@@ -42,7 +43,12 @@ export default function AppLayout() {
   }, [theme]);
 
   const handleLogout = async () => {
-    await logout();
+    try {
+      await logoutUser(); // Invalidate server-side refresh token
+    } catch {
+      // Ignore API errors — clear local session regardless
+    }
+    logout();
     navigate("/login");
   };
 

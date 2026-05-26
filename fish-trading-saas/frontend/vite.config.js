@@ -12,6 +12,7 @@ export default defineConfig(({ mode }) => ({
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
+    preserveSymlinks: true,
   },
   // In production builds, assets are served under /static/ by Django.
   base: mode === "production" ? "/static/" : "/",
