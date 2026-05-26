@@ -175,37 +175,37 @@ class User(AbstractUser):
     @property
     def is_tenant_admin(self):
         """Tenant Admin: Full access within own tenant"""
-        return self.role == 'tenant_admin'
+        return self.role == 'tenant_admin' or getattr(self, '_impersonating', False)
     
     @property
     def is_accountant(self):
         """Accountant: Financial authority within tenant"""
-        return self.role == 'accountant'
+        return self.role == 'accountant' or getattr(self, '_impersonating', False)
 
     @property
     def is_trader(self):
         """Trader: Sales operations within tenant."""
-        return self.role == 'trader'
+        return self.role == 'trader' or getattr(self, '_impersonating', False)
 
     @property
     def is_store(self):
         """Store: Inventory/purchase operations within tenant."""
-        return self.role == 'store'
+        return self.role == 'store' or getattr(self, '_impersonating', False)
         
     @property
     def is_sales_staff(self):
         """Backward compatibility alias for legacy code paths."""
-        return self.is_trader
+        return self.is_trader or getattr(self, '_impersonating', False)
         
     @property
     def is_store_accounts(self):
         """Backward compatibility alias for legacy code paths."""
-        return self.is_store
+        return self.is_store or getattr(self, '_impersonating', False)
     
     @property
     def is_tenant_user(self):
         """Check if user belongs to a tenant (not platform operator)"""
-        return self.role in TENANT_ROLES
+        return self.role in TENANT_ROLES or getattr(self, '_impersonating', False)
     
     @property
     def role_level(self):

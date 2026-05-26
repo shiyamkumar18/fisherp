@@ -25,7 +25,7 @@ from datetime import timedelta
 import secrets
 import string
 
-from accounts.permissions import IsPlatformOperator, CanUseImpersonation
+from accounts.permissions import IsPlatformOperator, CanUseImpersonation, IsPlatformOperatorOrReadOnlySupport
 from accounts.models_audit import AuditLog, ImpersonationLog, get_client_ip
 from companies.models import Company
 from subscriptions.models import Subscription, SubscriptionTier
@@ -57,7 +57,7 @@ class PlatformDashboardView(APIView):
     - Tenant customer list
     - Tenant supplier data
     """
-    permission_classes = [permissions.IsAuthenticated, IsPlatformOperator]
+    permission_classes = [permissions.IsAuthenticated, IsPlatformOperatorOrReadOnlySupport]
     
     def get(self, request):
         now = timezone.now()
@@ -232,7 +232,7 @@ class TenantListView(APIView):
     - Buyer names
     - Purchase details
     """
-    permission_classes = [permissions.IsAuthenticated, IsPlatformOperator]
+    permission_classes = [permissions.IsAuthenticated, IsPlatformOperatorOrReadOnlySupport]
     
     def get(self, request):
         # Get query params
@@ -347,7 +347,7 @@ class TenantDetailView(APIView):
     - Edit tenant settings
     - View subscription details
     """
-    permission_classes = [permissions.IsAuthenticated, IsPlatformOperator]
+    permission_classes = [permissions.IsAuthenticated, IsPlatformOperatorOrReadOnlySupport]
     
     def get(self, request, tenant_id):
         try:
@@ -676,7 +676,7 @@ class FeatureFlagListView(APIView):
     """
     List all feature flags across the platform.
     """
-    permission_classes = [permissions.IsAuthenticated, IsPlatformOperator]
+    permission_classes = [permissions.IsAuthenticated, IsPlatformOperatorOrReadOnlySupport]
     
     def get(self, request):
         """List all tenants with their enabled features"""
@@ -916,7 +916,7 @@ class ImpersonationStatusView(APIView):
     """
     Check current impersonation status.
     """
-    permission_classes = [permissions.IsAuthenticated, IsPlatformOperator]
+    permission_classes = [permissions.IsAuthenticated, IsPlatformOperatorOrReadOnlySupport]
     
     def get(self, request):
         impersonation = ImpersonationLog.objects.filter(
@@ -946,7 +946,7 @@ class ActiveImpersonationsView(APIView):
     """
     List all active impersonations (for super admin).
     """
-    permission_classes = [permissions.IsAuthenticated, IsPlatformOperator]
+    permission_classes = [permissions.IsAuthenticated, IsPlatformOperatorOrReadOnlySupport]
     
     def get(self, request):
         impersonations = ImpersonationLog.objects.filter(
@@ -980,7 +980,7 @@ class TenantSearchView(APIView):
     """
     Search tenants by name, slug, email, or phone.
     """
-    permission_classes = [permissions.IsAuthenticated, IsPlatformOperator]
+    permission_classes = [permissions.IsAuthenticated, IsPlatformOperatorOrReadOnlySupport]
     
     def get(self, request):
         query = request.query_params.get('q', '')
@@ -1180,7 +1180,7 @@ class AuditLogListView(APIView):
     """
     List platform audit logs.
     """
-    permission_classes = [permissions.IsAuthenticated, IsPlatformOperator]
+    permission_classes = [permissions.IsAuthenticated, IsPlatformOperatorOrReadOnlySupport]
     
     def get(self, request):
         page = int(request.query_params.get('page', 1))
@@ -1223,7 +1223,7 @@ class ImpersonationLogListView(APIView):
     """
     List impersonation logs.
     """
-    permission_classes = [permissions.IsAuthenticated, IsPlatformOperator]
+    permission_classes = [permissions.IsAuthenticated, IsPlatformOperatorOrReadOnlySupport]
     
     def get(self, request):
         page = int(request.query_params.get('page', 1))
@@ -1268,7 +1268,7 @@ class PlatformActivityView(APIView):
     """
     View platform operator activity.
     """
-    permission_classes = [permissions.IsAuthenticated, IsPlatformOperator]
+    permission_classes = [permissions.IsAuthenticated, IsPlatformOperatorOrReadOnlySupport]
     
     def get(self, request):
         operator_id = request.query_params.get('operator_id')
@@ -1303,7 +1303,7 @@ class SystemHealthView(APIView):
     """
     System health and monitoring metrics.
     """
-    permission_classes = [permissions.IsAuthenticated, IsPlatformOperator]
+    permission_classes = [permissions.IsAuthenticated, IsPlatformOperatorOrReadOnlySupport]
     
     def get(self, request):
         now = timezone.now()
@@ -1363,7 +1363,7 @@ class SubscriptionTierManagementView(APIView):
     """
     Manage subscription tiers (CRUD).
     """
-    permission_classes = [permissions.IsAuthenticated, IsPlatformOperator]
+    permission_classes = [permissions.IsAuthenticated, IsPlatformOperatorOrReadOnlySupport]
     
     def get(self, request):
         """List all tiers"""
@@ -1437,7 +1437,7 @@ class SubscriptionTierDetailView(APIView):
     """
     Manage individual subscription tier.
     """
-    permission_classes = [permissions.IsAuthenticated, IsPlatformOperator]
+    permission_classes = [permissions.IsAuthenticated, IsPlatformOperatorOrReadOnlySupport]
     
     def get(self, request, tier_id):
         try:
@@ -1521,7 +1521,7 @@ class TenantActivityHeatmapView(APIView):
     
     Returns activity counts grouped by hour of day and day of week.
     """
-    permission_classes = [permissions.IsAuthenticated, IsPlatformOperator]
+    permission_classes = [permissions.IsAuthenticated, IsPlatformOperatorOrReadOnlySupport]
     
     def get(self, request):
         # Get last 30 days of data
@@ -1567,7 +1567,7 @@ class BillingHistoryView(APIView):
     """
     View complete billing history across all tenants.
     """
-    permission_classes = [permissions.IsAuthenticated, IsPlatformOperator]
+    permission_classes = [permissions.IsAuthenticated, IsPlatformOperatorOrReadOnlySupport]
     
     def get(self, request):
         page = int(request.query_params.get('page', 1))
@@ -1621,7 +1621,7 @@ class ErrorTrackingView(APIView):
     """
     Error tracking dashboard - view recent errors and exceptions.
     """
-    permission_classes = [permissions.IsAuthenticated, IsPlatformOperator]
+    permission_classes = [permissions.IsAuthenticated, IsPlatformOperatorOrReadOnlySupport]
     
     def get(self, request):
         # Get recent permission denied and error events
@@ -1666,7 +1666,7 @@ class BackupStatusView(APIView):
     
     In production, this would connect to actual backup systems.
     """
-    permission_classes = [permissions.IsAuthenticated, IsPlatformOperator]
+    permission_classes = [permissions.IsAuthenticated, IsPlatformOperatorOrReadOnlySupport]
     
     def get(self, request):
         # Simulated backup status (in production, connect to actual backup system)

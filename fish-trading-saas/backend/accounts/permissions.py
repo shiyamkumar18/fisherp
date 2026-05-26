@@ -59,17 +59,35 @@ class IsPlatformSupport(permissions.BasePermission):
         return request.user.is_platform_support or request.user.is_platform_super_admin
 
 
-class CanUseImpersonation(permissions.BasePermission):
+class IsPlatformOperatorOrReadOnlySupport(permissions.BasePermission):
     """
-    Permission to use impersonation feature.
-    Only platform operators can impersonate tenants.
+    Allows Platform Operators full access, but Platform Support read-only access.
     """
-    message = "Only platform operators can impersonate tenants."
+    message = "Platform Operator access required, or Platform Support for viewing only."
 
     def has_permission(self, request, view):
         if not request.user or not request.user.is_authenticated:
             return False
-        return request.user.is_platform_operator or request.user.is_platform_super_admin
+        if request.user.is_platform_super_admin or request.user.is_platform_operator:
+            return True
+        if request.user.is_platform_support:
+            return request.method in permissions.SAFE_METHODS
+        return False
+
+
+class CanUseImpersonation(permissions.BasePermission):
+    """
+    Permission to use impersonation feature.
+    Allows platform operators and platform support to impersonate tenants.
+    """
+    message = "Only platform operators and support staff can impersonate tenants."
+
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        return (request.user.is_platform_operator or 
+                request.user.is_platform_support or 
+                request.user.is_platform_super_admin)
 
 
 # =====================
@@ -85,6 +103,8 @@ class IsTenantAdmin(permissions.BasePermission):
     def has_permission(self, request, view):
         if not request.user or not request.user.is_authenticated:
             return False
+        if request.user.is_platform_user and is_impersonating(request):
+            return True
         return request.user.is_tenant_admin
 
 
@@ -97,6 +117,8 @@ class IsAccountant(permissions.BasePermission):
     def has_permission(self, request, view):
         if not request.user or not request.user.is_authenticated:
             return False
+        if request.user.is_platform_user and is_impersonating(request):
+            return True
         return request.user.is_accountant or request.user.is_tenant_admin
 
 
@@ -109,6 +131,8 @@ class IsSalesStaff(permissions.BasePermission):
     def has_permission(self, request, view):
         if not request.user or not request.user.is_authenticated:
             return False
+        if request.user.is_platform_user and is_impersonating(request):
+            return True
         return request.user.is_sales_staff or request.user.is_tenant_admin or request.user.is_accountant
 
 
@@ -121,6 +145,8 @@ class IsStoreAccounts(permissions.BasePermission):
     def has_permission(self, request, view):
         if not request.user or not request.user.is_authenticated:
             return False
+        if request.user.is_platform_user and is_impersonating(request):
+            return True
         return request.user.is_store_accounts or request.user.is_tenant_admin or request.user.is_accountant
 
 
@@ -135,6 +161,8 @@ class IsTenantAdminOrAbove(permissions.BasePermission):
     def has_permission(self, request, view):
         if not request.user or not request.user.is_authenticated:
             return False
+        if request.user.is_platform_user and is_impersonating(request):
+            return True
         return request.user.is_tenant_admin or request.user.is_platform_user
 
 
@@ -145,6 +173,8 @@ class IsTenantUser(permissions.BasePermission):
     def has_permission(self, request, view):
         if not request.user or not request.user.is_authenticated:
             return False
+        if request.user.is_platform_user and is_impersonating(request):
+            return True
         return request.user.is_tenant_user
 
 
@@ -163,6 +193,8 @@ class HasAnyRole(permissions.BasePermission):
     def has_permission(self, request, view):
         if not request.user or not request.user.is_authenticated:
             return False
+        if request.user.is_platform_user and is_impersonating(request):
+            return True
         return any(getattr(request.user, role_flag, False) for role_flag in self.role_flags)
 
 
@@ -376,8 +408,11 @@ class QuerysetProtectionMixin:
     def get_queryset(self):
         user = self.request.user
         if user.is_superuser or user.is_platform_user:
-            if hasattr(self.request, 'session') and self.request.session.get('impersonating_company_id'):
-                return self.queryset.filter(company_id=self.request.session['impersonating_company_id'])
+            session = getattr(self.request, 'session', None)
+            if session:
+                impersonating_id = session.get('impersonating_company_id') or session.get('impersonating_tenant_id')
+                if impersonating_id:
+                    return self.queryset.filter(company_id=impersonating_id)
             return self.queryset.none()
         return self.queryset.for_user(user)
 

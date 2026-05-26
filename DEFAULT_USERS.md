@@ -12,7 +12,7 @@ This file lists the pre-seeded default demo credentials for local development an
 | Role | Username | Email | Password | Description |
 |---|---|---|---|---|
 | **Platform Operator** | `platform_operator` | `platform.operator@fishapp.com` | `platform123` | Can manage SaaS subscriptions and tenants. (Not a superuser; requires audit-logged impersonation to see business data). |
-| **Platform Support** | `platform_support` | `support@fishapp.com` | `support123` | Limited-privilege support role for troubleshooting tenant issues. |
+| **Platform Support** | `platform_support` | `support@fishapp.com` | `support123` | Limited-privilege support role for troubleshooting tenant issues (GET-only access to SaaS dashboard/monitoring, supports audit-logged tenant impersonation). |
 
 ---
 
