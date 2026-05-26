@@ -1205,6 +1205,16 @@ function BusinessDashboard() {
           <h2 className="text-2xl font-extrabold tracking-tight">Overview Dashboard</h2>
           <p className="text-xs text-textSecondary">Real-time trading telemetry and tenant analytics.</p>
         </div>
+        <Button
+          onClick={() => {
+            localStorage.setItem('is_simple_ux', 'true');
+            window.location.reload();
+          }}
+          variant="outline"
+          className="flex items-center gap-2 border-primary/40 text-primary hover:bg-primary/5 font-bold"
+        >
+          Simple Mode / எளிய முறை
+        </Button>
       </div>
 
       {/* KPI Cards Row */}

@@ -20,10 +20,15 @@ from .models.purchase_batch import PurchaseBatch
 from .models.sale import Sale
 from .models.payment import Payment
 from .models.inventory import Inventory
+from .models.market_price import MarketFishPrice
+from .models.stock_movement import StockMovement
+from .models.whatsapp import WhatsAppConfig, WhatsAppMessageLog
 from .serializers import (
     FishCategorySerializer, FishSerializer, FishListSerializer,
     SupplierSerializer, BuyerSerializer, PurchaseBatchSerializer,
-    SaleSerializer, PaymentSerializer, InventorySerializer
+    SaleSerializer, PaymentSerializer, InventorySerializer,
+    MarketFishPriceSerializer, StockMovementSerializer,
+    WhatsAppConfigSerializer, WhatsAppMessageLogSerializer
 )
 from services.trading import SaleService, InventoryService
 from services.purchase import PurchaseService
@@ -1065,3 +1070,284 @@ def get_dashboard_summary(request):
         return Response({'success': True, 'summary': summary})
     except Exception as e:
         return Response({'error': str(e)}, status=400)
+
+
+class MarketFishPriceViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.ModelViewSet):
+    queryset = MarketFishPrice.objects.all()
+    serializer_class = MarketFishPriceSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['fish', 'city', 'source']
+    search_fields = ['fish__name', 'market_name', 'city']
+    ordering_fields = ['recorded_at', 'price_per_kg']
+    ordering = ['-recorded_at']
+
+    def get_queryset(self):
+        user = self.request.user
+        company = _user_company(user)
+        if company:
+            from django.db.models import Q
+            return MarketFishPrice.objects.filter(Q(company=company) | Q(company__isnull=True))
+        return MarketFishPrice.objects.filter(company__isnull=True)
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        company = _user_company(user)
+        serializer.save(company=company)
+
+    @action(detail=False, methods=['post'], url_path='bulk-upload')
+    @transaction.atomic
+    def bulk_upload(self, request):
+        data = request.data
+        if not isinstance(data, list):
+            return Response({'error': 'Expected a list of price entries'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        user = request.user
+        company = _user_company(user)
+        
+        created_count = 0
+        for entry in data:
+            fish_id = entry.get('fish_id')
+            city = entry.get('city')
+            market_name = entry.get('market_name', '')
+            price_per_kg = entry.get('price_per_kg')
+            source = entry.get('source', 'manual')
+            recorded_at = entry.get('recorded_at', timezone.now())
+            confidence_score = entry.get('confidence_score', 1.00)
+            
+            try:
+                fish = Fish.objects.get(id=fish_id)
+                if fish.company != company and not user.is_superuser:
+                    continue
+                
+                MarketFishPrice.objects.create(
+                    fish=fish,
+                    city=city,
+                    market_name=market_name,
+                    price_per_kg=Decimal(str(price_per_kg)),
+                    source=source,
+                    recorded_at=recorded_at,
+                    confidence_score=Decimal(str(confidence_score)),
+                    company=company
+                )
+                created_count += 1
+            except Exception as e:
+                pass
+                
+        return Response({'success': True, 'message': f'Uploaded {created_count} price entries.'}, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=['get'], url_path='analytics')
+    def analytics(self, request):
+        user = request.user
+        company = _user_company(user)
+        
+        from django.db.models import Avg
+        import datetime
+        
+        today = timezone.localdate()
+        seven_days_ago = today - datetime.timedelta(days=7)
+        thirty_days_ago = today - datetime.timedelta(days=30)
+        
+        base_qs = self.get_queryset()
+        
+        today_prices = base_qs.filter(recorded_at__date=today).values('fish__name', 'city').annotate(avg_price=Avg('price_per_kg'))
+        weekly_trends = base_qs.filter(recorded_at__date__gte=seven_days_ago).values('recorded_at__date', 'fish__name').annotate(avg_price=Avg('price_per_kg')).order_by('recorded_at__date')
+        city_comparison = base_qs.filter(recorded_at__date=today).values('fish__name', 'city').annotate(avg_price=Avg('price_per_kg'))
+        highest_price_regions = base_qs.filter(recorded_at__date__gte=thirty_days_ago).values('city', 'fish__name').annotate(avg_price=Avg('price_per_kg')).order_by('-avg_price')[:15]
+        
+        return Response({
+            'today_prices': list(today_prices),
+            'weekly_trends': list(weekly_trends),
+            'city_comparison': list(city_comparison),
+            'best_selling_regions': list(highest_price_regions)
+        })
+
+    @action(detail=False, methods=['get'], url_path='suggestions')
+    def suggestions(self, request):
+        user = request.user
+        company = _user_company(user)
+        if not company:
+            return Response({'error': 'Company not associated with user'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        from services.trading.ai_engine import AISuggestionEngine
+        engine = AISuggestionEngine(company, user)
+        suggestions = engine.generate_suggestions()
+        return Response(suggestions)
+
+
+class StockMovementViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.ReadOnlyModelViewSet):
+    queryset = StockMovement.objects.all()
+    serializer_class = StockMovementSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['fish', 'purchase_batch', 'movement_type']
+    search_fields = ['fish__name', 'purchase_batch__batch_number', 'notes']
+    ordering_fields = ['timestamp', 'quantity_packages']
+    ordering = ['-timestamp']
+
+    def get_queryset(self):
+        return _scoped_queryset(self.request, StockMovement).select_related('fish', 'purchase_batch', 'tenant')
+
+
+class WhatsAppConfigViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.ModelViewSet):
+    queryset = WhatsAppConfig.objects.all()
+    serializer_class = WhatsAppConfigSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        company = _user_company(user)
+        return WhatsAppConfig.objects.filter(company=company)
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        company = _user_company(user)
+        serializer.save(company=company)
+
+
+class WhatsAppMessageLogViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.ReadOnlyModelViewSet):
+    queryset = WhatsAppMessageLog.objects.all()
+    serializer_class = WhatsAppMessageLogSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['status', 'message_type']
+    search_fields = ['recipient', 'message_body', 'error_message']
+    ordering_fields = ['created_at', 'sent_at']
+    ordering = ['-created_at']
+
+    def get_queryset(self):
+        user = self.request.user
+        company = _user_company(user)
+        return WhatsAppMessageLog.objects.filter(company=company)
+
+
+import re
+
+class VoiceParserAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        text = request.data.get('text', '').strip()
+        language = request.data.get('language', 'ta-IN')
+        
+        if not text:
+            return Response({'error': 'No text provided'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        normalized = text.lower()
+
+        pkg_pattern = re.compile(r'(\d+)\s*(box|boxes|பெட்டி|மூட்டை|bag|bags|pkg|வடை|பேக்)')
+        pkg_match = pkg_pattern.search(normalized)
+        packages = int(pkg_match.group(1)) if pkg_match else None
+
+        price_pattern = re.compile(r'(rate|price|விலை|ரூபாய்|rs)\s*(\d+)|(\d+)\s*(rate|price|விலை|ரூபாய்|rs)')
+        price_match = price_pattern.search(normalized)
+        price_per_kg = None
+        if price_match:
+            price_per_kg = float(price_match.group(2) or price_match.group(3))
+        else:
+            rate_search = re.search(r'(?:rate|price|விலை|ரூபாய்|rs)\D*(\d+)', normalized)
+            if rate_search:
+                price_per_kg = float(rate_search.group(1))
+
+        weight_pattern = re.compile(r'(\d+(?:\.\d+)?)\s*(kilo|kg|கிலோ|கிகி)')
+        weight_match = weight_pattern.search(normalized)
+        package_weight = float(weight_match.group(1)) if weight_match else 37.00
+
+        ice_pattern = re.search(r'(?:ice|ஐஸ்)\D*(\d+)', normalized)
+        ice_cost = float(ice_pattern.group(1)) if ice_pattern else 0.0
+
+        transport_pattern = re.search(r'(?:transport|வண்டி|vandi|வண்டி வாடகை|வாடகை|carriage)\D*(\d+)', normalized)
+        transport_cost = float(transport_pattern.group(1)) if transport_pattern else 0.0
+
+        labour_pattern = re.search(r'(?:labour|கூலி|coolie|labor|ஏத்து|labor)\D*(\d+)', normalized)
+        labour_cost = float(labour_pattern.group(1)) if labour_pattern else 0.0
+
+        commission_pattern = re.search(r'(?:commission|கமிஷன்|கமிசன்)\D*(\d+)', normalized)
+        commission_cost = float(commission_pattern.group(1)) if commission_pattern else 0.0
+
+        other_pattern = re.search(r'(?:other|இதர|செலவு|others)\D*(\d+)', normalized)
+        other_cost = float(other_pattern.group(1)) if other_pattern else 0.0
+
+        company = request.user.company
+        fishes = Fish.objects.filter(company=company, is_deleted=False)
+        matched_fish = None
+        
+        for f in fishes:
+            fish_name = f.name.lower()
+            tamil_map = {
+                'vanjaram': ['வஞ்சரம்', 'vanjaram', 'seer'],
+                'nethili': ['நெத்திலி', 'nethili', 'anchovy'],
+                'sankara': ['சங்கரா', 'sankara', 'red snapper'],
+                'kanangeluthi': ['கானாங்கெளுத்தி', 'mackerel', 'kanangeluthi'],
+                'mathi': ['மத்தி', 'sardine', 'mathi'],
+            }
+            aliases = tamil_map.get(fish_name, [fish_name])
+            if any(alias in normalized for alias in aliases):
+                matched_fish = f
+                break
+
+        matched_supplier = None
+        matched_buyer = None
+        
+        suppliers = Supplier.objects.filter(company=company, is_deleted=False)
+        for s in suppliers:
+            if s.name.lower() in normalized:
+                matched_supplier = s
+                break
+
+        buyers = Buyer.objects.filter(company=company, is_deleted=False)
+        for b in buyers:
+            if b.name.lower() in normalized:
+                matched_buyer = b
+                break
+
+        confidence = 1.0
+        missing_fields = []
+        next_prompt = ""
+
+        if not matched_fish:
+            confidence -= 0.3
+            missing_fields.append("fish_name")
+            next_prompt = "Enna meen (fish name) வாங்கினீங்க?"
+        
+        if not packages:
+            confidence -= 0.2
+            missing_fields.append("packages")
+            if not next_prompt:
+                next_prompt = "Ethana box (quantity) வாங்கினீங்க?"
+                
+        if not price_per_kg:
+            confidence -= 0.2
+            missing_fields.append("price")
+            if not next_prompt:
+                next_prompt = "Rate / price per kg sollunga"
+
+        if confidence < 0.3:
+            confidence = 0.3
+            
+        if not next_prompt and confidence >= 0.8:
+            next_prompt = "Save purchase ah?"
+
+        return Response({
+            'success': True,
+            'text': text,
+            'entities': {
+                'fish_id': matched_fish.id if matched_fish else None,
+                'fish_name': matched_fish.name if matched_fish else None,
+                'packages': packages,
+                'package_weight': package_weight,
+                'price_per_kg': price_per_kg,
+                'labour_cost': labour_cost,
+                'ice_cost': ice_cost,
+                'transport_cost': transport_cost,
+                'commission_cost': commission_cost,
+                'other_cost': other_cost,
+                'supplier_id': matched_supplier.id if matched_supplier else None,
+                'supplier_name': matched_supplier.name if matched_supplier else None,
+                'buyer_id': matched_buyer.id if matched_buyer else None,
+                'buyer_name': matched_buyer.name if matched_buyer else None,
+            },
+            'confidence_score': round(confidence, 2),
+            'missing_fields': missing_fields,
+            'next_prompt': next_prompt,
+        })

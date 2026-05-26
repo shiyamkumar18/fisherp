@@ -2,7 +2,8 @@
 from rest_framework import serializers
 from .models import (
     FishCategory, Fish, Supplier, Buyer, 
-    PurchaseBatch, Sale, Payment, Inventory
+    PurchaseBatch, Sale, Payment, Inventory,
+    MarketFishPrice, StockMovement, WhatsAppConfig, WhatsAppMessageLog
 )
 
 
@@ -169,13 +170,19 @@ class BuyerSerializer(serializers.ModelSerializer):
             'preferred_delivery_time', 'delivery_instructions',
             'default_discount_percent', 'credit_limit',
             'total_credit_allowed', 'total_credit_repaid', 'current_credit_balance',
+            'risk_score', 'overdue_invoices_count', 'average_payment_delay_days',
+            'bounced_payments_count', 'risk_category',
             'rating', 'referral_source', 'referral_source_display', 'referred_by',
             'date_of_birth', 'anniversary_date', 'total_purchases', 'total_orders',
             'is_active', 'is_preferred', 'is_verified',
             'created_at', 'updated_at', 'total_pending',
             'tenant', 'tenant_name', 'company', 'company_name'
         ]
-        read_only_fields = ['created_at', 'updated_at', 'current_credit_balance', 'total_pending', 'tenant', 'company']
+        read_only_fields = [
+            'created_at', 'updated_at', 'current_credit_balance', 'total_pending',
+            'tenant', 'company', 'risk_score', 'overdue_invoices_count',
+            'average_payment_delay_days', 'bounced_payments_count', 'risk_category'
+        ]
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
@@ -299,6 +306,7 @@ class SaleSerializer(serializers.ModelSerializer):
     batch_number = serializers.CharField(source='batch.batch_number', read_only=True)
     tenant_name = serializers.CharField(source='tenant.username', read_only=True)
     company_name = serializers.CharField(source='company.name', read_only=True)
+    pricing_warnings = serializers.SerializerMethodField()
 
     class Meta:
         model = Sale
@@ -314,13 +322,39 @@ class SaleSerializer(serializers.ModelSerializer):
             'discount_amount', 'discount_percent', 'tax_percent', 'tax_amount', 'final_amount',
             'is_returned', 'return_date', 'return_reason', 'refund_amount',
             'notes', 'created_at', 'updated_at',
-            'tenant', 'tenant_name', 'company', 'company_name'
+            'tenant', 'tenant_name', 'company', 'company_name',
+            'pricing_warnings'
         ]
         read_only_fields = [
             'total_revenue', 'total_cost', 'profit', 'profit_margin_percent',
             'pending_amount', 'tax_amount', 'final_amount',
-            'created_at', 'updated_at', 'tenant', 'company'
+            'created_at', 'updated_at', 'tenant', 'company', 'pricing_warnings'
         ]
+
+    def get_pricing_warnings(self, obj):
+        warnings = []
+        if obj.selling_price_per_kg and obj.batch and obj.batch.fish:
+            from django.db.models import Avg
+            from django.utils import timezone
+            import datetime
+            from trading.models import MarketFishPrice
+            
+            fish = obj.batch.fish
+            thirty_days_ago = timezone.now() - datetime.timedelta(days=30)
+            # Company scoping is handled automatically by MarketFishPrice.objects
+            avg_price = MarketFishPrice.objects.filter(
+                fish=fish,
+                recorded_at__gte=thirty_days_ago
+            ).aggregate(Avg('price_per_kg'))['price_per_kg__avg']
+            
+            if not avg_price:
+                avg_price = MarketFishPrice.objects.filter(fish=fish).aggregate(Avg('price_per_kg'))['price_per_kg__avg']
+                
+            if avg_price:
+                if obj.selling_price_per_kg < avg_price:
+                    diff = avg_price - obj.selling_price_per_kg
+                    warnings.append(f"Current selling price is below market average by ₹{diff:.2f}/kg")
+        return warnings
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
@@ -368,6 +402,36 @@ class SaleSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({
                 'batch': 'Invalid purchase batch. Must belong to your organization.'
             })
+
+        # Credit limit check
+        buyer_obj = data.get('buyer', getattr(instance, 'buyer', None))
+        if buyer_obj:
+            from decimal import Decimal
+            selling_price = data.get('selling_price_per_kg', getattr(instance, 'selling_price_per_kg', 0))
+            weight = data.get('selling_weight_per_package', getattr(instance, 'selling_weight_per_package', 0))
+            packages = data.get('number_of_packages_sold', getattr(instance, 'number_of_packages_sold', 0))
+            if selling_price and weight and packages:
+                new_sale_amount = Decimal(str(selling_price)) * Decimal(str(weight)) * Decimal(str(packages))
+                
+                subtotal = new_sale_amount
+                if discount_amount > 0:
+                    subtotal -= Decimal(str(discount_amount))
+                elif discount_percent > 0:
+                    subtotal -= subtotal * (Decimal(str(discount_percent)) / Decimal('100'))
+                
+                final_amount = subtotal
+                if tax_percent > 0:
+                    final_amount += subtotal * (Decimal(str(tax_percent)) / Decimal('100'))
+                
+                if buyer_obj.credit_limit > 0:
+                    current_pending = buyer_obj.get_total_pending()
+                    if instance and instance.payment_status in ['pending', 'partial']:
+                        current_pending -= instance.pending_amount
+                    
+                    if current_pending + final_amount > buyer_obj.credit_limit:
+                        raise serializers.ValidationError({
+                            'buyer': f"Credit limit exceeded. Buyer credit limit is ₹{buyer_obj.credit_limit:.2f}, current outstanding is ₹{current_pending:.2f}, and this sale is ₹{final_amount:.2f}."
+                        })
         return data
 
 
@@ -486,3 +550,60 @@ class InventorySerializer(serializers.ModelSerializer):
                 remaining_packages = data.get('remaining_packages', initial_packages)
                 data['remaining_weight_kg'] = remaining_packages * purchase_batch.package_weight
         return data
+
+
+class MarketFishPriceSerializer(serializers.ModelSerializer):
+    fish_name = serializers.CharField(source='fish.name', read_only=True)
+    city_display = serializers.CharField(source='get_city_display', read_only=True)
+
+    class Meta:
+        model = MarketFishPrice
+        fields = [
+            'id', 'fish', 'fish_name', 'city', 'city_display', 'market_name',
+            'price_per_kg', 'source', 'confidence_score', 'recorded_at', 'company'
+        ]
+        read_only_fields = ['id', 'company']
+
+    def validate(self, data):
+        request = self.context.get('request')
+        if request and request.user:
+            data['company'] = request.user.company
+        return data
+
+
+class StockMovementSerializer(serializers.ModelSerializer):
+    fish_name = serializers.CharField(source='fish.name', read_only=True)
+    batch_number = serializers.CharField(source='purchase_batch.batch_number', read_only=True)
+    movement_type_display = serializers.CharField(source='get_movement_type_display', read_only=True)
+    tenant_name = serializers.CharField(source='tenant.username', read_only=True)
+
+    class Meta:
+        model = StockMovement
+        fields = [
+            'id', 'fish', 'fish_name', 'purchase_batch', 'batch_number', 'inventory',
+            'movement_type', 'movement_type_display', 'quantity_packages', 'weight_kg',
+            'notes', 'timestamp', 'company', 'tenant', 'tenant_name'
+        ]
+        read_only_fields = ['id', 'company', 'tenant', 'timestamp']
+
+
+class WhatsAppConfigSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = WhatsAppConfig
+        fields = [
+            'id', 'company', 'whatsapp_api_key', 'sender_number', 'templates', 'is_enabled',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'company', 'created_at', 'updated_at']
+
+
+class WhatsAppMessageLogSerializer(serializers.ModelSerializer):
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+
+    class Meta:
+        model = WhatsAppMessageLog
+        fields = [
+            'id', 'company', 'recipient', 'message_type', 'message_body', 'status',
+            'status_display', 'retry_count', 'error_message', 'created_at', 'sent_at'
+        ]
+        read_only_fields = ['id', 'company', 'created_at', 'sent_at']

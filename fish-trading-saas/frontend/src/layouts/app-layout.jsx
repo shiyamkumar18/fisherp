@@ -25,6 +25,7 @@ import {
   ShoppingBag,
   BarChart3
 } from "lucide-react";
+import VoiceAssistant from "@/components/shared/voice-assistant";
 
 export default function AppLayout() {
   const { user, logout } = useAuthStore();
@@ -322,6 +323,7 @@ export default function AppLayout() {
             <Outlet />
           </motion.div>
         </main>
+        <VoiceAssistant />
       </div>
     </div>
   );

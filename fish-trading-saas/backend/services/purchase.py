@@ -503,7 +503,7 @@ class PurchaseService:
         batch.save()
 
         # Create inventory record (stock is initialised here, not via update_stock)
-        Inventory.objects.create(
+        inventory = Inventory.objects.create(
             fish=fish,
             purchase_batch=batch,
             initial_packages=1,
@@ -513,6 +513,18 @@ class PurchaseService:
             status="in_stock",
             tenant=user,
             company=company,
+        )
+
+        from trading.models.stock_movement import StockMovement
+        StockMovement.objects.create(
+            fish=fish,
+            purchase_batch=batch,
+            inventory=inventory,
+            movement_type='purchase',
+            quantity_packages=1,
+            weight_kg=qty,
+            company=company,
+            tenant=user,
         )
 
         # Write audit trail

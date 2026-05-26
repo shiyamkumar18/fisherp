@@ -1,6 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import views
+from trading.views import VoiceParserAPIView
 
 router = DefaultRouter()
 router.register(r'fish-categories', views.FishCategoryViewSet, basename='fishcategory')
@@ -11,9 +12,14 @@ router.register(r'purchase-batches', views.PurchaseBatchViewSet, basename='purch
 router.register(r'sales', views.SaleViewSet, basename='sale')
 router.register(r'payments', views.PaymentViewSet, basename='payment')
 router.register(r'inventory', views.InventoryViewSet, basename='inventory')
+router.register(r'market-prices', views.MarketFishPriceViewSet, basename='marketprice')
+router.register(r'stock-movements', views.StockMovementViewSet, basename='stockmovement')
+router.register(r'whatsapp-config', views.WhatsAppConfigViewSet, basename='whatsappconfig')
+router.register(r'whatsapp-logs', views.WhatsAppMessageLogViewSet, basename='whatsapplog')
 
 urlpatterns = [
     path('', include(router.urls)),
+    path('voice/parse/', VoiceParserAPIView.as_view(), name='voice-parse'),
     # Purchase creation endpoints
     path('purchase/', views.CreatePurchaseView.as_view(), name='create-purchase'),
     path('price-history/<int:fish_id>/', views.get_price_history, name='price-history'),

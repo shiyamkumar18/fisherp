@@ -120,6 +120,53 @@ class Inventory(models.Model):
         self.status = inventory.status
         return self
 
+    def adjust_stock(self, packages_delta, weight_delta=None, movement_type='correction'):
+        """
+        Adjust stock packages and weight atomically (positive or negative).
+        """
+        from decimal import Decimal
+        for attempt in range(MAX_STOCK_UPDATE_RETRIES):
+            try:
+                with transaction.atomic():
+                    inventory = Inventory.objects.select_for_update().get(pk=self.pk)
+                    
+                    if inventory.remaining_packages + packages_delta < 0:
+                        raise ValidationError({'remaining_packages': 'Remaining packages cannot be negative.'})
+                    
+                    inventory.remaining_packages += packages_delta
+                    if packages_delta < 0:
+                        inventory.sold_packages += abs(packages_delta)
+                    else:
+                        if movement_type == 'return':
+                            inventory.sold_packages = max(0, inventory.sold_packages - packages_delta)
+                    
+                    if weight_delta is not None:
+                        inventory.remaining_weight_kg = max(Decimal('0.00'), inventory.remaining_weight_kg + Decimal(str(weight_delta)))
+                    else:
+                        if inventory.initial_packages > 0:
+                            weight_per_package = inventory.initial_weight_kg / inventory.initial_packages
+                            inventory.remaining_weight_kg = inventory.remaining_packages * weight_per_package
+                            
+                    if inventory.remaining_packages <= 0:
+                        inventory.status = 'out_of_stock'
+                    elif inventory.remaining_packages <= inventory.reorder_level:
+                        inventory.status = 'low_stock'
+                    else:
+                        inventory.status = 'in_stock'
+                        
+                    inventory.save(update_fields=['sold_packages', 'remaining_packages', 'remaining_weight_kg', 'status'])
+                break
+            except OperationalError:
+                if attempt == MAX_STOCK_UPDATE_RETRIES - 1:
+                    raise
+                time.sleep(0.01)
+                
+        self.sold_packages = inventory.sold_packages
+        self.remaining_packages = inventory.remaining_packages
+        self.remaining_weight_kg = inventory.remaining_weight_kg
+        self.status = inventory.status
+        return self
+
     def check_expiry_alert(self):
         if self.expiry_date:
             from datetime import timedelta

@@ -11,3 +11,6 @@ from .purchase_batch import PurchaseBatch  # noqa: F401
 from .sale import Sale  # noqa: F401
 from .payment import Payment  # noqa: F401
 from .inventory import Inventory  # noqa: F401
+from .market_price import MarketFishPrice  # noqa: F401
+from .stock_movement import StockMovement  # noqa: F401
+from .whatsapp import WhatsAppConfig, WhatsAppMessageLog  # noqa: F401

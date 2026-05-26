@@ -41,6 +41,10 @@ class Buyer(models.Model):
     total_credit_allowed = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     total_credit_repaid = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     current_credit_balance = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    risk_score = models.PositiveIntegerField(default=0, help_text="Risk score from 0 to 100")
+    overdue_invoices_count = models.PositiveIntegerField(default=0)
+    average_payment_delay_days = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    bounced_payments_count = models.PositiveIntegerField(default=0)
     rating = models.DecimalField(max_digits=3, decimal_places=2, default=5.00,
                                  help_text="Rating from 0.00 to 5.00")
     referral_source = models.CharField(max_length=20, choices=REFERRAL_SOURCE_CHOICES, blank=True, null=True)
@@ -98,3 +102,11 @@ class Buyer(models.Model):
         return self.sales.filter(payment_status__in=['pending', 'partial']).aggregate(
             total=models.Sum('pending_amount')
         )['total'] or Decimal("0.00")
+
+    @property
+    def risk_category(self):
+        if self.risk_score <= 30:
+            return 'green'
+        elif self.risk_score <= 70:
+            return 'yellow'
+        return 'red'

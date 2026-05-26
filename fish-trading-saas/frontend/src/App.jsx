@@ -11,6 +11,12 @@ const LoginPage = lazy(() => import("@/pages/login-page"));
 const RegisterPage = lazy(() => import("@/pages/register-page"));
 const LandingPage = lazy(() => import("@/pages/landing-page"));
 const DashboardPage = lazy(() => import("@/pages/dashboard-page"));
+const HomePortal = lazy(() => import("@/pages/home-portal"));
+
+function DashboardRoot() {
+  const isSimple = localStorage.getItem("is_simple_ux") === "true";
+  return isSimple ? <HomePortal /> : <DashboardPage />;
+}
 const OrdersPage = lazy(() => import("@/pages/orders-page"));
 const ProductsPage = lazy(() => import("@/pages/products-page"));
 const SalesPage = lazy(() => import("@/pages/sales-page"));
@@ -105,7 +111,7 @@ export default function App() {
               </ProtectedRoute>
             }
           >
-            <Route index element={<DashboardPage />} />
+            <Route index element={<DashboardRoot />} />
             <Route path="orders" element={<OrdersPage />} />
             <Route path="sales" element={<SalesPage />} />
             <Route path="purchases" element={<PurchasesPage />} />
