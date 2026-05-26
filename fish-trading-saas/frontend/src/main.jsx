@@ -2,7 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import App from "./App";
-import { LanguageProvider } from "./utils/i18n";
+import { LanguageProvider } from "./utils/i18n.jsx";
 import "./styles.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(

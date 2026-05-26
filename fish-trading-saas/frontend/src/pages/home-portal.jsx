@@ -15,7 +15,7 @@ import {
   WifiOff,
   Globe
 } from 'lucide-react';
-import { useTranslation } from '../utils/i18n';
+import { useTranslation } from '../utils/i18n.jsx';
 import { offlineDB } from '../utils/offline-db';
 import axios from 'axios';
 

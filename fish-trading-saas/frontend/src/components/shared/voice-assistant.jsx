@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mic, MicOff, Volume2, X, MessageSquare } from 'lucide-react';
-import { useTranslation } from '../../utils/i18n';
+import { useTranslation } from '../../utils/i18n.jsx';
 import axios from 'axios';
 
 export default function VoiceAssistant({ onFieldsParsed }) {
