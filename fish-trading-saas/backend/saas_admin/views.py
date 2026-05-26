@@ -66,19 +66,19 @@ class PlatformDashboardView(APIView):
         # ===== TENANT STATS =====
         total_tenants = Company.objects.count()
         
-        # Get active subscriptions
+        # Get active subscriptions (distinct by company)
         active_subscriptions = Subscription.objects.filter(
             status='active',
             expiry_date__gte=now.date()
         )
-        active_tenants = active_subscriptions.count()
+        active_tenants = active_subscriptions.values('company').distinct().count()
         
         expired_tenants = Subscription.objects.filter(
             Q(status='expired') |  # noqa: W504
             Q(expiry_date__lt=now.date())
-        ).count()
+        ).values('company').distinct().count()
         
-        suspended_tenants = Subscription.objects.filter(status='suspended').count()
+        suspended_tenants = Subscription.objects.filter(status='suspended').values('company').distinct().count()
         
         # ===== REVENUE STATS =====
         # MRR - Monthly Recurring Revenue (from active subscriptions)
@@ -142,24 +142,20 @@ class PlatformDashboardView(APIView):
         )['total'] or 0
         
         # ===== SUBSCRIPTION TIERS BREAKDOWN =====
-        # Single annotated query instead of N+1 COUNT per tier
-        tier_breakdown = list(
-            Subscription.objects.filter(
-                status='active',
-                expiry_date__gte=now.date(),
-                tier__is_active=True,
-            )
-            .values('tier__name', 'tier__price_monthly')
-            .annotate(count=Count('id'))
-            .order_by('tier__name')
-        )
+        # Distinct companies per tier to avoid inflating stats
+        tier_breakdown_query = Subscription.objects.filter(
+            status='active',
+            expiry_date__gte=now.date(),
+            tier__is_active=True,
+        ).values('tier__name', 'tier__price_monthly').annotate(count=Count('company', distinct=True)).order_by('tier__name')
+        
         tier_breakdown = [
             {
                 'tier': row['tier__name'],
                 'count': row['count'],
                 'price_monthly': str(row['tier__price_monthly']),
             }
-            for row in tier_breakdown
+            for row in tier_breakdown_query
         ]
         
         # ===== ACTIVITY RECENT =====
@@ -358,11 +354,15 @@ class TenantDetailView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
         
-        # Get subscription
-        try:
-            subscription = Subscription.objects.get(company=company)
+        # Get subscription — prefer the most recent active subscription
+        subscription = (
+            Subscription.objects.filter(company=company, status='active')
+            .order_by('-created_at')
+            .first()
+            or Subscription.objects.filter(company=company).order_by('-created_at').first()
+        )
+        if subscription:
             tier = subscription.tier
-            
             subscription_data = {
                 'id': subscription.id,
                 'status': subscription.status,
@@ -384,7 +384,7 @@ class TenantDetailView(APIView):
                 'api_calls_this_month': subscription.api_calls_this_month,
                 'total_paid_till_date': str(subscription.total_paid_till_date),
             }
-        except Subscription.DoesNotExist:
+        else:
             subscription_data = None
         
         # Get users
@@ -478,13 +478,18 @@ class TenantSuspendView(APIView):
         
         try:
             company = Company.objects.get(id=tenant_id)
-            subscription = Subscription.objects.get(company=company)
         except Company.DoesNotExist:
             return Response(
                 {'error': 'Tenant not found'},
                 status=status.HTTP_404_NOT_FOUND
             )
-        except Subscription.DoesNotExist:
+        subscription = (
+            Subscription.objects.filter(company=company, status='active')
+            .order_by('-created_at')
+            .first()
+            or Subscription.objects.filter(company=company).order_by('-created_at').first()
+        )
+        if not subscription:
             return Response(
                 {'error': 'No subscription found'},
                 status=status.HTTP_404_NOT_FOUND
@@ -624,13 +629,19 @@ class ExtendSubscriptionView(APIView):
         
         try:
             company = Company.objects.get(id=tenant_id)
-            subscription = Subscription.objects.get(company=company)
         except Company.DoesNotExist:
             return Response(
                 {'error': 'Tenant not found'},
                 status=status.HTTP_404_NOT_FOUND
             )
-        except Subscription.DoesNotExist:
+        # Prefer the most recent active subscription; fall back to any subscription.
+        subscription = (
+            Subscription.objects.filter(company=company, status='active')
+            .order_by('-created_at')
+            .first()
+            or Subscription.objects.filter(company=company).order_by('-created_at').first()
+        )
+        if not subscription:
             return Response(
                 {'error': 'No subscription found'},
                 status=status.HTTP_404_NOT_FOUND
@@ -685,39 +696,48 @@ class FeatureFlagListView(APIView):
         if tenant_id:
             try:
                 company = Company.objects.get(id=tenant_id)
-                subscription = Subscription.objects.get(company=company)
-                
-                return Response({
-                    'tenant': {
-                        'id': company.id,
-                        'name': company.name,
-                    },
-                    'enabled_features': subscription.enabled_features,
-                    'tier_features': subscription.get_tier_features(),
-                })
             except Company.DoesNotExist:
                 return Response(
                     {'error': 'Tenant not found'},
                     status=status.HTTP_404_NOT_FOUND
                 )
-            except Subscription.DoesNotExist:
+            subscription = (
+                Subscription.objects.filter(company=company, status='active')
+                .order_by('-created_at')
+                .first()
+                or Subscription.objects.filter(company=company).order_by('-created_at').first()
+            )
+            if not subscription:
                 return Response(
                     {'error': 'No subscription found'},
                     status=status.HTTP_404_NOT_FOUND
                 )
+            return Response({
+                'tenant': {
+                    'id': company.id,
+                    'name': company.name,
+                },
+                'enabled_features': subscription.enabled_features,
+                'tier_features': subscription.get_tier_features(),
+            })
         
         # Return all tenants with their features
         tenants = []
         for company in Company.objects.all()[:50]:
-            try:
-                subscription = Subscription.objects.get(company=company)
+            subscription = (
+                Subscription.objects.filter(company=company, status='active')
+                .order_by('-created_at')
+                .first()
+                or Subscription.objects.filter(company=company).order_by('-created_at').first()
+            )
+            if subscription:
                 tenants.append({
                     'id': company.id,
                     'name': company.name,
                     'tier': subscription.tier.name,
                     'enabled_features': subscription.enabled_features,
                 })
-            except Subscription.DoesNotExist:
+            else:
                 tenants.append({
                     'id': company.id,
                     'name': company.name,
@@ -746,13 +766,18 @@ class FeatureFlagUpdateView(APIView):
         
         try:
             company = Company.objects.get(id=tenant_id)
-            subscription = Subscription.objects.get(company=company)
         except Company.DoesNotExist:
             return Response(
                 {'error': 'Tenant not found'},
                 status=status.HTTP_404_NOT_FOUND
             )
-        except Subscription.DoesNotExist:
+        subscription = (
+            Subscription.objects.filter(company=company, status='active')
+            .order_by('-created_at')
+            .first()
+            or Subscription.objects.filter(company=company).order_by('-created_at').first()
+        )
+        if not subscription:
             return Response(
                 {'error': 'No subscription found'},
                 status=status.HTTP_404_NOT_FOUND
@@ -1000,11 +1025,16 @@ class TenantSearchView(APIView):
         
         results = []
         for company in companies:
-            try:
-                subscription = Subscription.objects.get(company=company)
+            subscription = (
+                Subscription.objects.filter(company=company, status='active')
+                .order_by('-created_at')
+                .first()
+                or Subscription.objects.filter(company=company).order_by('-created_at').first()
+            )
+            if subscription:
                 sub_status = subscription.status
                 tier = subscription.tier.name
-            except Subscription.DoesNotExist:
+            else:
                 sub_status = 'none'
                 tier = None
             
