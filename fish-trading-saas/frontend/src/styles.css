@@ -2,18 +2,21 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap');
 
 @theme {
-  --color-primary: #0284c7;
-  --color-primary-hover: #0369a1;
-  --color-secondary: #0f172a;
-  --color-success: #10b981;
-  --color-danger: #ef4444;
-  --color-warning: #f59e0b;
-  --color-info: #3b82f6;
-  --color-bg: #f8fafc;
-  --color-surface: #ffffff;
-  --color-border: #e2e8f0;
-  --color-textPrimary: #0f172a;
-  --color-textSecondary: #475569;
+  --color-primary: var(--primary);
+  --color-primaryHover: var(--primary-hover);
+  --color-primary-hover: var(--primary-hover);
+  --color-secondary: var(--secondary);
+  --color-success: var(--success);
+  --color-danger: var(--danger);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-border: var(--border);
+  --color-textPrimary: var(--text-primary);
+  --color-text-primary: var(--text-primary);
+  --color-textSecondary: var(--text-secondary);
+  --color-text-secondary: var(--text-secondary);
 }
 
 :root {

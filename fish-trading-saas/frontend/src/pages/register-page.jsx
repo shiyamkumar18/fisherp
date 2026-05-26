@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Eye, EyeOff, Building2, Mail, Lock, User, Phone } from "lucide-react";
+import { Eye, EyeOff, Building2, Mail, Lock, User, Phone, Sun, Moon } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/shared/toast-provider";
+import { useUiStore } from "@/store/uiStore";
 import { apiClient } from "@/services/apiClient";
 
 const strengthColors = ["bg-red-400", "bg-orange-400", "bg-yellow-400", "bg-green-400", "bg-emerald-500"];
@@ -22,6 +23,7 @@ function getPasswordStrength(value) {
 export default function RegisterPage() {
   const navigate = useNavigate();
   const { push } = useToast();
+  const { theme, toggleTheme } = useUiStore();
 
   const [form, setForm] = useState({
     first_name: "",
@@ -99,15 +101,27 @@ export default function RegisterPage() {
   const strength = getPasswordStrength(form.password);
 
   return (
-    <div className="grid min-h-screen place-items-center bg-bg bg-gradient-to-br from-primary/5 to-cyan-500/5 p-4">
+    <div className="relative grid min-h-screen place-items-center bg-bg bg-gradient-to-br from-primary/5 to-cyan-500/5 p-4">
+      {/* Floating Theme Toggle */}
+      <div className="absolute right-4 top-4">
+        <button
+          type="button"
+          onClick={toggleTheme}
+          className="rounded-xl border border-border bg-surface/80 backdrop-blur-md p-2.5 text-textSecondary hover:text-textPrimary transition-colors cursor-pointer shadow-sm hover:shadow-md"
+          title={theme === "light" ? "Switch to Dark Mode" : "Switch to Light Mode"}
+        >
+          {theme === "light" ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+        </button>
+      </div>
+
       <Card className="w-full max-w-lg select-none">
         <h1 className="text-2xl font-bold">Create Account</h1>
-        <p className="mt-2 text-sm text-slate-600">
+        <p className="mt-2 text-sm text-textSecondary">
           Join FisherP and start managing your fish trading business.
         </p>
 
         {error && (
-          <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div className="mt-4 rounded-lg border border-danger/20 bg-danger/10 px-4 py-3 text-sm text-danger">
             {error}
           </div>
         )}
@@ -118,7 +132,7 @@ export default function RegisterPage() {
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-textSecondary" htmlFor="first_name">First Name *</label>
               <div className="relative">
-                <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-textSecondary/50" />
                 <Input id="first_name" className="pl-9" placeholder="John" value={form.first_name} onChange={set("first_name")} />
               </div>
               {fieldErrors.first_name && <p className="text-xs text-red-500">{fieldErrors.first_name}</p>}
@@ -126,7 +140,7 @@ export default function RegisterPage() {
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-textSecondary" htmlFor="last_name">Last Name *</label>
               <div className="relative">
-                <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-textSecondary/50" />
                 <Input id="last_name" className="pl-9" placeholder="Doe" value={form.last_name} onChange={set("last_name")} />
               </div>
               {fieldErrors.last_name && <p className="text-xs text-red-500">{fieldErrors.last_name}</p>}
@@ -137,7 +151,7 @@ export default function RegisterPage() {
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-textSecondary" htmlFor="company_name">Company Name *</label>
             <div className="relative">
-              <Building2 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Building2 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-textSecondary/50" />
               <Input id="company_name" className="pl-9" placeholder="Your Company Ltd" autoComplete="organization" value={form.company_name} onChange={set("company_name")} />
             </div>
             {fieldErrors.company_name && <p className="text-xs text-red-500">{fieldErrors.company_name}</p>}
@@ -147,7 +161,7 @@ export default function RegisterPage() {
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-textSecondary" htmlFor="reg_email">Email *</label>
             <div className="relative">
-              <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-textSecondary/50" />
               <Input id="reg_email" type="email" className="pl-9" placeholder="you@company.com" autoComplete="email" value={form.email} onChange={set("email")} />
             </div>
             {fieldErrors.email && <p className="text-xs text-red-500">{fieldErrors.email}</p>}
@@ -157,7 +171,7 @@ export default function RegisterPage() {
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-textSecondary" htmlFor="reg_phone">Phone *</label>
             <div className="relative">
-              <Phone className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Phone className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-textSecondary/50" />
               <Input id="reg_phone" type="tel" className="pl-9" placeholder="+91 98765 43210" autoComplete="tel" value={form.phone} onChange={set("phone")} />
             </div>
             {fieldErrors.phone && <p className="text-xs text-red-500">{fieldErrors.phone}</p>}
@@ -167,7 +181,7 @@ export default function RegisterPage() {
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-textSecondary" htmlFor="reg_password">Password *</label>
             <div className="relative">
-              <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-textSecondary/50" />
               <Input
                 id="reg_password"
                 type={showPassword ? "text" : "password"}
@@ -180,7 +194,7 @@ export default function RegisterPage() {
               <button
                 type="button"
                 onClick={() => setShowPassword((v) => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-slate-600"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-textSecondary/50 transition hover:text-textPrimary cursor-pointer"
                 aria-label={showPassword ? "Hide password" : "Show password"}
               >
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -190,10 +204,10 @@ export default function RegisterPage() {
               <div className="flex items-center gap-2">
                 <div className="flex h-1 flex-1 gap-1">
                   {[1, 2, 3, 4].map((i) => (
-                    <div key={i} className={`h-full flex-1 rounded-full transition-colors ${strength >= i ? strengthColors[i] : "bg-slate-200"}`} />
+                    <div key={i} className={`h-full flex-1 rounded-full transition-colors ${strength >= i ? strengthColors[i] : "bg-border"}`} />
                   ))}
                 </div>
-                <span className="text-xs text-slate-500">{strengthLabels[strength]}</span>
+                <span className="text-xs text-textSecondary/70">{strengthLabels[strength]}</span>
               </div>
             )}
             {fieldErrors.password && <p className="text-xs text-red-500">{fieldErrors.password}</p>}
@@ -203,7 +217,7 @@ export default function RegisterPage() {
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-textSecondary" htmlFor="reg_password_confirm">Confirm Password *</label>
             <div className="relative">
-              <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-textSecondary/50" />
               <Input
                 id="reg_password_confirm"
                 type={showConfirm ? "text" : "password"}
@@ -216,7 +230,7 @@ export default function RegisterPage() {
               <button
                 type="button"
                 onClick={() => setShowConfirm((v) => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-slate-600"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-textSecondary/50 transition hover:text-textPrimary cursor-pointer"
                 aria-label={showConfirm ? "Hide password" : "Show password"}
               >
                 {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -226,14 +240,14 @@ export default function RegisterPage() {
           </div>
 
           {/* Terms */}
-          <label className="flex cursor-pointer items-start gap-2.5 text-sm text-slate-600">
+          <label className="flex cursor-pointer items-start gap-2.5 text-sm text-textSecondary">
             <input
               type="checkbox"
               checked={agreed}
               onChange={(e) => { setAgreed(e.target.checked); setFieldErrors((prev) => ({ ...prev, terms: "" })); }}
-              className="mt-0.5 h-4 w-4 rounded border-slate-300 accent-blue-600"
+              className="mt-0.5 h-4 w-4 rounded border-border accent-primary cursor-pointer"
             />
-            I agree to the Terms of Service and Privacy Policy
+            <span>I agree to the Terms of Service and Privacy Policy</span>
           </label>
           {fieldErrors.terms && <p className="text-xs text-red-500">{fieldErrors.terms}</p>}
 
@@ -242,9 +256,9 @@ export default function RegisterPage() {
           </Button>
         </form>
 
-        <p className="mt-5 text-center text-sm text-slate-500">
+        <p className="mt-5 text-center text-sm text-textSecondary">
           Already have an account?{" "}
-          <Link to="/login" className="font-semibold text-blue-600 hover:underline">
+          <Link to="/login" className="font-semibold text-primary hover:underline">
             Sign in
           </Link>
         </p>

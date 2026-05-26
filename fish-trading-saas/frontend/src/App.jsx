@@ -4,6 +4,7 @@ import AppLayout from "@/layouts/app-layout";
 import ProtectedRoute from "@/components/shared/protected-route";
 import { ToastProvider } from "@/components/shared/toast-provider";
 import { useAuthStore } from "@/store/authStore";
+import { useUiStore } from "@/store/uiStore";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const LoginPage = lazy(() => import("@/pages/login-page"));
@@ -36,10 +37,19 @@ function Fallback() {
 
 export default function App() {
   const { hydrate } = useAuthStore();
+  const { theme } = useUiStore();
 
   useEffect(() => {
     hydrate();
   }, [hydrate]);
+
+  useEffect(() => {
+    if (theme === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, [theme]);
 
   return (
     <ToastProvider>

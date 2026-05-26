@@ -27,20 +27,10 @@ import {
 
 export default function AppLayout() {
   const { user, logout } = useAuthStore();
-  const { sidebarOpen, toggleSidebar, closeSidebar } = useUiStore();
+  const { sidebarOpen, toggleSidebar, closeSidebar, theme, setTheme } = useUiStore();
   const location = useLocation();
   const navigate = useNavigate();
-  const [theme, setTheme] = useState(localStorage.getItem("theme") || "light");
   const [dropdownOpen, setDropdownOpen] = useState(false);
-
-  useEffect(() => {
-    if (theme === "dark") {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-    localStorage.setItem("theme", theme);
-  }, [theme]);
 
   const handleLogout = async () => {
     try {

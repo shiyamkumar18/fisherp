@@ -1,17 +1,19 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Eye, EyeOff, Building2, Mail, Lock } from "lucide-react";
+import { Eye, EyeOff, Building2, Mail, Lock, Sun, Moon } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { loginUser } from "@/services/authService";
 import { useAuthStore } from "@/store/authStore";
+import { useUiStore } from "@/store/uiStore";
 import { useToast } from "@/components/shared/toast-provider";
 import { config } from "@/config";
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const { login } = useAuthStore();
+  const { theme, toggleTheme } = useUiStore();
   const { push } = useToast();
 
   const [form, setForm] = useState({ company_name: "", email: "", password: "" });
@@ -52,16 +54,28 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="grid min-h-screen place-items-center bg-bg bg-gradient-to-br from-primary/5 to-cyan-500/5 p-4">
+    <div className="relative grid min-h-screen place-items-center bg-bg bg-gradient-to-br from-primary/5 to-cyan-500/5 p-4">
+      {/* Floating Theme Toggle */}
+      <div className="absolute right-4 top-4">
+        <button
+          type="button"
+          onClick={toggleTheme}
+          className="rounded-xl border border-border bg-surface/80 backdrop-blur-md p-2.5 text-textSecondary hover:text-textPrimary transition-colors cursor-pointer shadow-sm hover:shadow-md"
+          title={theme === "light" ? "Switch to Dark Mode" : "Switch to Light Mode"}
+        >
+          {theme === "light" ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+        </button>
+      </div>
+
       <Card className="w-full max-w-md select-none">
         <h1 className="text-2xl font-bold">Sign in</h1>
-        <p className="mt-2 text-sm text-slate-600">Use your account to access the fish trading dashboard.</p>
+        <p className="mt-2 text-sm text-textSecondary">Use your account to access the fish trading dashboard.</p>
 
         {/* Google Sign-in */}
         <button
           type="button"
           onClick={handleGoogleLogin}
-          className="mt-6 flex h-11 w-full items-center justify-center gap-3 rounded-xl border border-slate-300 bg-white text-sm font-semibold text-slate-700 transition hover:bg-slate-50 hover:shadow-sm"
+          className="mt-6 flex h-11 w-full items-center justify-center gap-3 rounded-xl border border-border bg-surface text-sm font-semibold text-textPrimary transition hover:bg-border/30 hover:shadow-sm cursor-pointer"
         >
           <svg viewBox="0 0 48 48" className="h-5 w-5">
             <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
@@ -72,10 +86,10 @@ export default function LoginPage() {
           Sign in with Google
         </button>
 
-        <div className="my-5 flex items-center gap-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
-          <span className="h-px flex-1 bg-slate-200" />
+        <div className="my-5 flex items-center gap-3 text-xs font-semibold uppercase tracking-wider text-textSecondary/60">
+          <span className="h-px flex-1 bg-border" />
           or sign in with credentials
-          <span className="h-px flex-1 bg-slate-200" />
+          <span className="h-px flex-1 bg-border" />
         </div>
 
         <form className="space-y-4" onSubmit={onSubmit}>
@@ -85,7 +99,7 @@ export default function LoginPage() {
               Company Name <span className="text-[10px] text-textSecondary/70">(optional)</span>
             </label>
             <div className="relative">
-              <Building2 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Building2 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-textSecondary/50" />
               <Input
                 id="company_name"
                 className="pl-9"
@@ -101,7 +115,7 @@ export default function LoginPage() {
           <div className="space-y-2">
             <label className="text-xs font-bold text-textSecondary" htmlFor="email">Email Address</label>
             <div className="relative">
-              <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-textSecondary/50" />
               <Input
                 id="email"
                 type="email"
@@ -118,7 +132,7 @@ export default function LoginPage() {
           <div className="space-y-2">
             <label className="text-xs font-bold text-textSecondary" htmlFor="password">Password</label>
             <div className="relative">
-              <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-textSecondary/50" />
               <Input
                 id="password"
                 type={showPassword ? "text" : "password"}
@@ -131,7 +145,7 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => setShowPassword((v) => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-slate-600"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-textSecondary/50 transition hover:text-textPrimary cursor-pointer"
                 aria-label={showPassword ? "Hide password" : "Show password"}
               >
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -146,9 +160,9 @@ export default function LoginPage() {
           </Button>
         </form>
 
-        <p className="mt-5 text-center text-sm text-slate-500">
+        <p className="mt-5 text-center text-sm text-textSecondary">
           Don&apos;t have an account?{" "}
-          <Link to="/register" className="font-semibold text-blue-600 hover:underline">
+          <Link to="/register" className="font-semibold text-primary hover:underline">
             Create your workspace
           </Link>
         </p>
