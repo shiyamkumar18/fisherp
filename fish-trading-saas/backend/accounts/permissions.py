@@ -518,7 +518,7 @@ def check_feature_access(user, feature_name):
     subscription = subscription_qs.order_by('-created_at').first()
     if not subscription:
         return (False, "No active subscription")
-    if subscription.expiry_date and subscription.expiry_date < timezone.now().date():
+    if subscription.expiry_date and subscription.expiry_date < timezone.now():
         return (False, "Subscription expired")
     if subscription.can_access_feature(feature_name):
         return (True, f"Feature enabled in {subscription.tier.name} tier")

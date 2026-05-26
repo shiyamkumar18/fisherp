@@ -78,9 +78,26 @@ export default function AppLayout() {
     }
   ];
 
+  const operatorNavGroups = [
+    {
+      title: "Core",
+      items: [
+        { path: "/dashboard", label: "Platform Dashboard", icon: LayoutDashboard }
+      ]
+    },
+    {
+      title: "Settings",
+      items: [
+        { path: "/dashboard/profile", label: "My Profile", icon: User }
+      ]
+    }
+  ];
+
+  const activeNavGroups = user?.role === "platform_operator" ? operatorNavGroups : navGroups;
+
   const currentPath = location.pathname;
   let currentPageLabel = "Dashboard";
-  for (const group of navGroups) {
+  for (const group of activeNavGroups) {
     const item = group.items.find(i => i.path === currentPath);
     if (item) {
       currentPageLabel = item.label;
@@ -135,7 +152,7 @@ export default function AppLayout() {
 
         {/* Sidebar Nav Links */}
         <nav className="flex-1 overflow-y-auto p-4 space-y-5">
-          {navGroups.map((group, idx) => (
+          {activeNavGroups.map((group, idx) => (
             <div key={idx} className="space-y-1">
               <span className="px-4 text-[10px] font-bold uppercase tracking-wider text-textSecondary/50">
                 {group.title}

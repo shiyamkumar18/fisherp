@@ -285,7 +285,7 @@ class TenantListView(APIView):
                 expiry_date = subscription.expiry_date
                 storage_used = float(subscription.storage_used_mb or 0)
                 is_active = subscription.is_active()
-                days_remaining = (expiry_date - timezone.now().date()).days if expiry_date else None
+                days_remaining = (expiry_date.date() - timezone.now().date()).days if expiry_date else None
             else:
                 tier_name = 'None'
                 sub_status = 'no_subscription'
