@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect } from "react";
+import { Suspense, lazy, useEffect, useRef } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import AppLayout from "@/layouts/app-layout";
 import ProtectedRoute from "@/components/shared/protected-route";
@@ -38,17 +38,56 @@ function Fallback() {
 export default function App() {
   const { hydrate } = useAuthStore();
   const { theme } = useUiStore();
+  const isFirstMount = useRef(true);
 
   useEffect(() => {
     hydrate();
   }, [hydrate]);
 
   useEffect(() => {
-    if (theme === "dark") {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
+    const root = document.documentElement;
+
+    const applyTheme = (withTransition) => {
+      if (withTransition) {
+        root.classList.add("theme-transition");
+      }
+
+      const isDark =
+        theme === "dark" ||
+        (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+
+      if (isDark) {
+        root.classList.add("dark");
+      } else {
+        root.classList.remove("dark");
+      }
+
+      if (withTransition) {
+        return setTimeout(() => {
+          root.classList.remove("theme-transition");
+        }, 300);
+      }
+      return null;
+    };
+
+    const timeoutId = applyTheme(!isFirstMount.current);
+    isFirstMount.current = false;
+
+    if (theme === "system") {
+      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+      const listener = () => {
+        applyTheme(true);
+      };
+      mediaQuery.addEventListener("change", listener);
+      return () => {
+        if (timeoutId) clearTimeout(timeoutId);
+        mediaQuery.removeEventListener("change", listener);
+      };
     }
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
   }, [theme]);
 
   return (

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Eye, EyeOff, Building2, Mail, Lock, User, Phone, Sun, Moon } from "lucide-react";
+import { Eye, EyeOff, Building2, Mail, Lock, User, Phone, Sun, Moon, Monitor } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -108,9 +108,21 @@ export default function RegisterPage() {
           type="button"
           onClick={toggleTheme}
           className="rounded-xl border border-border bg-surface/80 backdrop-blur-md p-2.5 text-textSecondary hover:text-textPrimary transition-colors cursor-pointer shadow-sm hover:shadow-md"
-          title={theme === "light" ? "Switch to Dark Mode" : "Switch to Light Mode"}
+          title={
+            theme === "light"
+              ? "Theme: Light (Switch to Dark)"
+              : theme === "dark"
+              ? "Theme: Dark (Switch to System)"
+              : "Theme: System (Switch to Light)"
+          }
         >
-          {theme === "light" ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+          {theme === "light" ? (
+            <Sun className="h-5 w-5" />
+          ) : theme === "dark" ? (
+            <Moon className="h-5 w-5" />
+          ) : (
+            <Monitor className="h-5 w-5" />
+          )}
         </button>
       </div>
 

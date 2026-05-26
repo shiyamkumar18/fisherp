@@ -1,17 +1,9 @@
 import { create } from "zustand";
 
-const getInitialTheme = () => {
-  if (typeof window === "undefined") return "light";
-  const saved = localStorage.getItem("theme");
-  if (saved) return saved;
-  const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-  return prefersDark ? "dark" : "light";
-};
-
 export const useUiStore = create((set) => ({
   sidebarOpen: false,
   notifications: [],
-  theme: getInitialTheme(),
+  theme: localStorage.getItem("theme") || "system",
   toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
   closeSidebar: () => set({ sidebarOpen: false }),
   addNotification: (notification) =>
@@ -21,7 +13,14 @@ export const useUiStore = create((set) => ({
     set({ theme });
   },
   toggleTheme: () => set((state) => {
-    const nextTheme = state.theme === "light" ? "dark" : "light";
+    let nextTheme;
+    if (state.theme === "light") {
+      nextTheme = "dark";
+    } else if (state.theme === "dark") {
+      nextTheme = "system";
+    } else {
+      nextTheme = "light";
+    }
     localStorage.setItem("theme", nextTheme);
     return { theme: nextTheme };
   }),

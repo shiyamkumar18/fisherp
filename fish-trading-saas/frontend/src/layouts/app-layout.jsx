@@ -17,6 +17,7 @@ import {
   LogOut,
   Sun,
   Moon,
+  Monitor,
   Menu,
   X,
   ChevronRight,
@@ -27,7 +28,7 @@ import {
 
 export default function AppLayout() {
   const { user, logout } = useAuthStore();
-  const { sidebarOpen, toggleSidebar, closeSidebar, theme, setTheme } = useUiStore();
+  const { sidebarOpen, toggleSidebar, closeSidebar, theme, toggleTheme } = useUiStore();
   const location = useLocation();
   const navigate = useNavigate();
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -207,11 +208,23 @@ export default function AppLayout() {
             {/* Theme Toggle */}
             <button
               type="button"
-              onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+              onClick={toggleTheme}
               className="rounded-xl p-2 hover:bg-border/30 text-textSecondary hover:text-textPrimary transition-colors cursor-pointer"
-              title={theme === "light" ? "Switch to Dark Mode" : "Switch to Light Mode"}
+              title={
+                theme === "light"
+                  ? "Theme: Light (Switch to Dark)"
+                  : theme === "dark"
+                  ? "Theme: Dark (Switch to System)"
+                  : "Theme: System (Switch to Light)"
+              }
             >
-              {theme === "light" ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+              {theme === "light" ? (
+                <Sun className="h-5 w-5" />
+              ) : theme === "dark" ? (
+                <Moon className="h-5 w-5" />
+              ) : (
+                <Monitor className="h-5 w-5" />
+              )}
             </button>
 
             {/* User Dropdown Menu */}

@@ -66,9 +66,13 @@
 
   * {
     box-sizing: border-box;
-    transition-property: color, background-color, border-color;
-    transition-duration: 200ms;
-    transition-timing-function: ease-in-out;
+  }
+
+  /* Temporary transition helper applied only during active theme toggles */
+  .theme-transition,
+  .theme-transition * {
+    transition: background-color 300ms ease, border-color 300ms ease, color 300ms ease, fill 300ms ease, stroke 300ms ease !important;
+    transition-delay: 0s !important;
   }
 
   html,
