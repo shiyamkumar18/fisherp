@@ -43,6 +43,7 @@ SHARED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
+    "django.contrib.postgres",
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
@@ -57,6 +58,7 @@ TENANT_APPS = [
     "corsheaders",
     "django_filters",
     "trading",
+    "voice",  # Voice Assistant
     "subscriptions",
     "dashboard",
     "saas_admin",  # Platform Manager App

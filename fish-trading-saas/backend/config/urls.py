@@ -72,6 +72,9 @@ urlpatterns = [
     # Backward-compatible trading prefix
     path("api/trading/", include("trading.urls")),
 
+    # Voice Assistant API
+    path("api/voice/", include("voice.urls")),
+
     # Dashboard API (Analytics, Reports)
     path("api/", include("dashboard.urls")),
 
