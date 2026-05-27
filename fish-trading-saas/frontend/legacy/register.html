@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fish ERP - Create Account</title>
+    <style></style>
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 420px;
+            padding: 40px;
+        }
+
+        .auth-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .auth-header h1 {
+            font-size: 28px;
+            color: #1a202c;
+            margin-bottom: 8px;
+        }
+
+        .auth-header p {
+            color: #718096;
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 6px;
+        }
+
+        input {
+            width: 100%;
+            padding: 11px 12px;
+            border: 1px solid #cbd5e0;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        input::placeholder {
+            color: #a0aec0;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .form-row .form-group {
+            margin-bottom: 0;
+        }
+
+        .password-wrapper {
+            position: relative;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #718096;
+            cursor: pointer;
+            font-size: 16px;
+            padding: 5px;
+        }
+
+        .password-toggle:hover {
+            color: #667eea;
+        }
+
+        .password-strength {
+            font-size: 12px;
+            margin-top: 4px;
+            height: 4px;
+            background: #e2e8f0;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .password-strength-bar {
+            height: 100%;
+            border-radius: 2px;
+            transition: all 0.2s;
+            width: 0%;
+        }
+
+        .error-text {
+            font-size: 12px;
+            color: #e53e3e;
+            margin-top: 4px;
+            display: none;
+        }
+
+        .error-text.show {
+            display: block;
+        }
+
+        input.error {
+            border-color: #fc8181;
+            background-color: #fff5f5;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: flex-start;
+            margin: 20px 0;
+            gap: 10px;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+            margin-top: 3px;
+            cursor: pointer;
+        }
+
+        .checkbox-group label {
+            margin: 0;
+            font-size: 13px;
+            font-weight: 400;
+            cursor: pointer;
+        }
+
+        .alert {
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .alert.show {
+            display: block;
+        }
+
+        .alert.success {
+            background-color: #f0fff4;
+            color: #22543d;
+            border: 1px solid #9ae6b4;
+        }
+
+        .alert.error {
+            background-color: #fff5f5;
+            color: #742a2a;
+            border: 1px solid #fc8181;
+        }
+
+        button {
+            width: 100%;
+            padding: 11px 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-text {
+            display: inline;
+        }
+
+        .btn-loading {
+            display: none;
+        }
+
+        button.loading .btn-text {
+            display: none;
+        }
+
+        button.loading .btn-loading {
+            display: inline;
+        }
+
+        .switch-link {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 13px;
+            color: #718096;
+        }
+
+        .switch-link a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .switch-link a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 480px) {
+            .auth-container {
+                padding: 30px 20px;
+            }
+
+            .auth-header h1 {
+                font-size: 24px;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-header">
+            <h1>Create Account</h1>
+            <p>Join Fish ERP and start managing your business</p>
+        </div>
+
+        <div id="alertBox" class="alert"></div>
+
+        <form id="registerForm">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="first_name">First Name *</label>
+                    <input type="text" id="first_name" name="first_name" placeholder="John" required>
+                    <div class="error-text"></div>
+                </div>
+                <div class="form-group">
+                    <label for="last_name">Last Name *</label>
+                    <input type="text" id="last_name" name="last_name" placeholder="Doe" required>
+                    <div class="error-text"></div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="company_name">Company Name *</label>
+                <input type="text" id="company_name" name="company_name" placeholder="Your Company Ltd" required>
+                <div class="error-text"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="email">Email *</label>
+                <input type="email" id="email" name="email" placeholder="you@example.com" required>
+                <div class="error-text"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="phone">Phone *</label>
+                <input type="tel" id="phone" name="phone" placeholder="+1 (555) 000-0000" required>
+                <div class="error-text"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password *</label>
+                <div class="password-wrapper">
+                    <input type="password" id="password" name="password" placeholder="Minimum 8 characters" required minlength="8">
+                    <button type="button" class="password-toggle" data-target="password">👁️</button>
+                </div>
+                <div class="password-strength">
+                    <div class="password-strength-bar"></div>
+                </div>
+                <div class="error-text"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="password_confirm">Confirm Password *</label>
+                <div class="password-wrapper">
+                    <input type="password" id="password_confirm" name="password_confirm" placeholder="Re-enter password" required minlength="8">
+                    <button type="button" class="password-toggle" data-target="password_confirm">👁️</button>
+                </div>
+                <div class="error-text"></div>
+            </div>
+
+            <div class="checkbox-group">
+                <input type="checkbox" id="terms" name="terms" required>
+                <label for="terms">I agree to the Terms of Service and Privacy Policy</label>
+            </div>
+
+            <button type="submit">
+                <span class="btn-text">Create Account</span>
+                <span class="btn-loading">Creating...</span>
+            </button>
+        </form>
+
+        <div class="switch-link">
+            Already have an account? <a href="/login.html">Sign in</a>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('registerForm');
+        const alertBox = document.getElementById('alertBox');
+        const submitBtn = form.querySelector('button[type="submit"]');
+
+        // Password visibility toggle
+        document.querySelectorAll('.password-toggle').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const targetId = btn.getAttribute('data-target');
+                const input = document.getElementById(targetId);
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    btn.textContent = '🙈';
+                } else {
+                    input.type = 'password';
+                    btn.textContent = '👁️';
+                }
+            });
+        });
+
+        // Password strength indicator
+        document.getElementById('password').addEventListener('input', (e) => {
+            const value = e.target.value;
+            let strength = 0;
+
+            if (value.length >= 8) strength++;
+            if (/[a-z]/.test(value) && /[A-Z]/.test(value)) strength++;
+            if (/[0-9]/.test(value)) strength++;
+            if (/[^a-zA-Z0-9]/.test(value)) strength++;
+
+            const bar = e.target.parentElement.nextElementSibling.querySelector('.password-strength-bar');
+            const widths = ['0%', '25%', '50%', '75%', '100%'];
+            const colors = ['#fc8181', '#f6ad55', '#f6e05e', '#68d391', '#38a169'];
+
+            bar.style.width = widths[strength];
+            bar.style.backgroundColor = colors[strength];
+        });
+
+        // Field validation
+        function validateField(fieldId) {
+            const field = document.getElementById(fieldId);
+            const errorDiv = field.parentElement.querySelector('.error-text');
+            let error = '';
+
+            if (!field.value.trim()) {
+                error = 'This field is required';
+            } else if (fieldId === 'email' && !isValidEmail(field.value)) {
+                error = 'Please enter a valid email address';
+            } else if (fieldId === 'phone' && !isValidPhone(field.value)) {
+                error = 'Please enter a valid phone number';
+            } else if (fieldId === 'password' && field.value.length < 8) {
+                error = 'Password must be at least 8 characters';
+            } else if (fieldId === 'password_confirm' && field.value !== document.getElementById('password').value) {
+                error = 'Passwords do not match';
+            }
+
+            if (error) {
+                field.classList.add('error');
+                errorDiv.textContent = error;
+                errorDiv.classList.add('show');
+                return false;
+            } else {
+                field.classList.remove('error');
+                errorDiv.classList.remove('show');
+                return true;
+            }
+        }
+
+        function isValidEmail(email) {
+            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+        }
+
+        function isValidPhone(phone) {
+            const cleaned = phone.replace(/\D/g, '');
+            return cleaned.length >= 10;
+        }
+
+        function showAlert(message, type) {
+            alertBox.textContent = message;
+            alertBox.className = `alert ${type} show`;
+        }
+
+        // Real-time validation on blur
+        ['first_name', 'last_name', 'company_name', 'email', 'phone', 'password', 'password_confirm'].forEach(fieldId => {
+            document.getElementById(fieldId).addEventListener('blur', () => validateField(fieldId));
+        });
+
+        // Form submission
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            // Validate all fields
+            let isValid = true;
+            ['first_name', 'last_name', 'company_name', 'email', 'phone', 'password', 'password_confirm'].forEach(fieldId => {
+                if (!validateField(fieldId)) {
+                    isValid = false;
+                }
+            });
+
+            if (!document.getElementById('terms').checked) {
+                showAlert('Please accept the terms and conditions', 'error');
+                isValid = false;
+            }
+
+            if (!isValid) return;
+
+            // Submit form
+            submitBtn.classList.add('loading');
+            submitBtn.disabled = true;
+
+            try {
+                const response = await fetch('/api/register/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        first_name: document.getElementById('first_name').value.trim(),
+                        last_name: document.getElementById('last_name').value.trim(),
+                        company_name: document.getElementById('company_name').value.trim(),
+                        email: document.getElementById('email').value.trim(),
+                        phone: document.getElementById('phone').value.trim(),
+                        password: document.getElementById('password').value,
+                        password_confirm: document.getElementById('password_confirm').value
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showAlert('Account created successfully! Redirecting to login...', 'success');
+                    setTimeout(() => {
+                        window.location.href = '/login.html';
+                    }, 2000);
+                } else {
+                    showAlert(data.errors?.detail || data.message || 'Registration failed. Please try again.', 'error');
+                }
+            } catch (error) {
+                console.error('Registration error:', error);
+                showAlert('Unable to connect to server. Please try again.', 'error');
+            } finally {
+                submitBtn.classList.remove('loading');
+                submitBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,125 @@
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Analytics</h1>
+        <p class="page-subtitle">Track revenue quality, payment flow, and buyer risk with live business signals from the backend.</p>
+    </div>
+</div>
+
+<section class="kpi-row">
+    <article class="kpi-card">
+        <div class="metric-eyebrow">Revenue</div>
+        <div class="kpi-value" id="monthlyRevenueAnalytics">₹0.00</div>
+        <div class="kpi-label">Current reporting-period revenue</div>
+    </article>
+    <article class="kpi-card">
+        <div class="metric-eyebrow">Profit Margin</div>
+        <div class="kpi-value" id="profitMarginAnalytics">0%</div>
+        <div class="kpi-label">Margin ratio from realized sales and profit</div>
+    </article>
+    <article class="kpi-card">
+        <div class="metric-eyebrow">Cash Inflow</div>
+        <div class="kpi-value" id="cashInflow">₹0.00</div>
+        <div class="kpi-label">Collections received from buyers</div>
+    </article>
+    <article class="kpi-card">
+        <div class="metric-eyebrow">Cash Outflow</div>
+        <div class="kpi-value" id="cashOutflow">₹0.00</div>
+        <div class="kpi-label">Payments made to suppliers</div>
+    </article>
+</section>
+
+<div class="charts-row">
+    <div class="chart-container">
+        <div class="table-header">
+            <div>
+                <h3>Profit Trend</h3>
+                <span>Margin movement over time</span>
+            </div>
+        </div>
+        <div style="padding: 1.4rem;">
+            <canvas id="profitTrendChart"></canvas>
+        </div>
+    </div>
+    <div class="chart-container">
+        <div class="table-header">
+            <div>
+                <h3>Payment Mix</h3>
+                <span>How customers are paying</span>
+            </div>
+        </div>
+        <div style="padding: 1.4rem;">
+            <canvas id="paymentMethodChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<section class="spotlight-grid">
+    <div class="table-container">
+        <div class="table-header">
+            <div>
+                <h3>Profit By Purchase Type</h3>
+                <span>Which buying patterns are producing profit</span>
+            </div>
+        </div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Purchase Type</th>
+                    <th>Profit</th>
+                </tr>
+            </thead>
+            <tbody id="profitByTypeTable">
+                <tr>
+                    <td colspan="2" class="text-center">Loading analytics...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="table-container">
+        <div class="table-header">
+            <div>
+                <h3>Credit Customers</h3>
+                <span>Buyers with outstanding balances</span>
+            </div>
+        </div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Buyer</th>
+                    <th>Balance</th>
+                </tr>
+            </thead>
+            <tbody id="creditCustomersTable">
+                <tr>
+                    <td colspan="2" class="text-center">Loading customers...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<div class="table-container">
+    <div class="table-header">
+        <div>
+            <h3>Pending Payments</h3>
+            <span>Invoices and dues that still need attention</span>
+        </div>
+    </div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Reference</th>
+                <th>Party</th>
+                <th>Amount</th>
+                <th>Due</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody id="pendingPaymentsTable">
+            <tr>
+                <td colspan="5" class="text-center">Loading pending payments...</td>
+            </tr>
+        </tbody>
+    </table>
+</div>

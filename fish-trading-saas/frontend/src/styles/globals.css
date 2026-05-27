@@ -1,0 +1,121 @@
+@import "tailwindcss";
+
+/* globals.css */
+
+.animate-fade-in {
+  animation: fadeIn 0.8s cubic-bezier(0.4,0,0.2,1);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* your custom styles */
+
+html, body, #root {
+  height: 100%;
+}
+
+/* Auth screen fallbacks (fixes “white page” when class-based styles are missing) */
+.auth-container,
+.auth-entry-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: #ffffff;
+  color: #111827;
+}
+
+.auth-modes {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.auth-modes button {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  background: #f3f4f6;
+  color: #111827;
+  cursor: pointer;
+}
+
+.auth-modes button.active {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #ffffff;
+}
+
+.auth-form {
+  width: 100%;
+}
+
+.auth-btn,
+.back-btn,
+.link-btn {
+  border-radius: 10px;
+  border: none;
+  padding: 10px 14px;
+  cursor: pointer;
+}
+
+.auth-btn {
+  width: 100%;
+  background: #2563eb;
+  color: #ffffff;
+  margin-top: 12px;
+}
+
+.back-btn {
+  margin-top: 16px;
+  background: transparent;
+  border: 1px solid #e5e7eb;
+  color: #111827;
+}
+
+.link-btn {
+  background: transparent;
+  color: #2563eb;
+  padding: 0;
+  text-decoration: underline;
+}
+
+
+body {
+  background: var(--bg);
+  color: var(--text-primary);
+  margin: 0;
+  font-family: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+  transition: background 0.2s, color 0.2s;
+}
+
+/* Design system utility classes */
+.section-padding {
+  padding-top: 5rem;
+  padding-bottom: 5rem;
+}
+.card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(16,30,54,0.08);
+}
+.gap-6 {
+  gap: 1.5rem;
+}
+.gap-8 {
+  gap: 2rem;
+}
+.text-section-title {
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.text-body {
+  color: var(--text-secondary);
+}

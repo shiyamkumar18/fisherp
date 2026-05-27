@@ -1,0 +1,143 @@
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Account Settings</h1>
+        <p class="page-subtitle">Manage your personal account, security, and password</p>
+    </div>
+</div>
+
+<section class="spotlight-grid">
+    <div class="form-section">
+        <div class="section-caption">Profile</div>
+        <h2>Your account information</h2>
+        <form id="profileForm">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label" for="settingsName">Full Name</label>
+                    <input class="form-input" type="text" id="settingsName" placeholder="Your name">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="settingsEmail">Email</label>
+                    <input class="form-input" type="email" id="settingsEmail" placeholder="name@company.com">
+                </div>
+            </div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label" for="settingsPhone">Phone</label>
+                    <input class="form-input" type="text" id="settingsPhone" placeholder="+91 98765 43210">
+                </div>
+            </div>
+            <div class="hero-actions">
+                <button class="btn btn-primary" type="submit">Save Profile</button>
+                <button class="btn btn-ghost" type="button" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
+            </div>
+        </form>
+    </div>
+
+    <aside class="insight-card">
+        <div>
+            <div class="section-caption">Security</div>
+            <h3>Account protection</h3>
+        </div>
+        <div id="twoFactorStatus">
+            <div class="insight-item">
+                <i class="fas fa-shield-halved"></i>
+                <div>
+                    <strong>Checking security status...</strong>
+                    <p>Your account protection level is being verified.</p>
+                </div>
+            </div>
+        </div>
+    </aside>
+</section>
+
+<div class="form-section">
+    <div class="section-caption">Password</div>
+    <h2>Change your password</h2>
+    <form id="passwordForm">
+        <div class="form-grid">
+            <div class="form-group">
+                <label class="form-label" for="currentPassword">Current Password</label>
+                <input class="form-input" type="password" id="currentPassword" placeholder="Enter current password">
+            </div>
+        </div>
+        <div class="form-grid">
+            <div class="form-group">
+                <label class="form-label" for="newPassword">New Password</label>
+                <input class="form-input" type="password" id="newPassword" placeholder="Enter new password">
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="confirmPassword">Confirm Password</label>
+                <input class="form-input" type="password" id="confirmPassword" placeholder="Confirm new password">
+            </div>
+        </div>
+        <div class="hero-actions">
+            <button class="btn btn-primary" type="submit">Update Password</button>
+        </div>
+    </form>
+</div>
+
+<script>
+// Profile form submission
+document.getElementById('profileForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = document.getElementById('settingsName').value;
+    const email = document.getElementById('settingsEmail').value;
+    const phone = document.getElementById('settingsPhone').value;
+
+    const result = await apiCall('/auth/profile/', 'PUT', {
+        first_name: name.split(' ')[0],
+        last_name: name.split(' ').slice(1).join(' '),
+        email,
+        phone_number: phone
+    });
+
+    if (result) {
+        showAlert('Profile updated successfully', 'success');
+        localStorage.setItem('username', name);
+    } else {
+        showAlert('Failed to update profile', 'danger');
+    }
+});
+
+// Password form submission
+document.getElementById('passwordForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const current = document.getElementById('currentPassword').value;
+    const newPwd = document.getElementById('newPassword').value;
+    const confirm = document.getElementById('confirmPassword').value;
+
+    if (newPwd !== confirm) {
+        showAlert('New passwords do not match', 'danger');
+        return;
+    }
+
+    if (newPwd.length < 8) {
+        showAlert('Password must be at least 8 characters', 'danger');
+        return;
+    }
+
+    const result = await apiCall('/auth/change-password/', 'POST', {
+        old_password: current,
+        new_password: newPwd
+    });
+
+    if (result) {
+        showAlert('Password changed successfully', 'success');
+        document.getElementById('passwordForm').reset();
+    } else {
+        showAlert('Failed to change password. Check your current password.', 'danger');
+    }
+});
+
+// Load profile data on page init
+async function loadProfileData() {
+    const profile = await apiCall('/auth/profile/', 'GET');
+    if (profile) {
+        document.getElementById('settingsName').value = `${profile.first_name || ''} ${profile.last_name || ''}`.trim();
+        document.getElementById('settingsEmail').value = profile.email || '';
+        document.getElementById('settingsPhone').value = profile.phone_number || '';
+    }
+}
+
+loadProfileData();
+</script>

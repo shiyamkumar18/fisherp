@@ -1,0 +1,240 @@
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Sales Execution</h1>
+        <p class="page-subtitle">Capture invoices fast, keep payment status visible, and protect margin with every batch sold.</p>
+    </div>
+    <div class="hero-actions">
+        <button class="btn btn-primary" onclick="window.showAddSaleModal?.()">
+            <i class="fas fa-plus"></i>
+            Create Invoice
+        </button>
+        <button class="btn btn-secondary" onclick="App.loadPage('payments')">
+            <i class="fas fa-money-check-dollar"></i>
+            Open Collections
+        </button>
+    </div>
+</div>
+
+<section class="kpi-row">
+    <article class="kpi-card">
+        <div class="kpi-card-icon"><i class="fas fa-arrow-up-right-dots"></i></div>
+        <div class="metric-eyebrow">Sales Total</div>
+        <div class="kpi-value">—</div>
+        <div class="kpi-label">Live turnover from completed sales entries</div>
+    </article>
+    <article class="kpi-card">
+        <div class="kpi-card-icon kpi-icon-blue"><i class="fas fa-check-double"></i></div>
+        <div class="metric-eyebrow">Collections</div>
+        <div class="kpi-value">—</div>
+        <div class="kpi-label">Invoices settled in the current cycle</div>
+    </article>
+    <article class="kpi-card">
+        <div class="kpi-card-icon kpi-icon-amber"><i class="fas fa-percent"></i></div>
+        <div class="metric-eyebrow">Average Margin</div>
+        <div class="kpi-value">—</div>
+        <div class="kpi-label">Gross spread across latest transactions</div>
+    </article>
+</section>
+
+<div class="table-container">
+    <div class="table-header">
+        <div>
+            <h3>Sales Ledger</h3>
+            <span>Invoice, buyer, revenue, margin, and payment status in one stream</span>
+        </div>
+        <div class="table-actions">
+            <input class="form-input" type="text" id="salesSearch" placeholder="Search invoice or buyer" style="min-width: 240px;">
+        </div>
+    </div>
+    <div class="table-filter-bar">
+        <div class="table-filter-controls">
+            <select class="form-select" id="salesPaymentFilter" style="min-width: 180px;">
+                <option value="">All Payment States</option>
+                <option value="paid">Paid</option>
+                <option value="partial">Partial</option>
+                <option value="pending">Pending</option>
+                <option value="overdue">Overdue</option>
+            </select>
+            <select class="form-select" id="salesMarginFilter" style="min-width: 180px;">
+                <option value="">All Margin Bands</option>
+                <option value="guardrail">Below Guardrail</option>
+                <option value="healthy">Healthy Margin</option>
+            </select>
+        </div>
+        <div class="bulk-selection" id="salesSelectionCount">0 selected</div>
+    </div>
+    <div class="bulk-action-bar">
+        <div class="bulk-action-controls">
+            <button class="btn btn-secondary btn-sm" type="button">Send Collection Prompt</button>
+            <button class="btn btn-ghost btn-sm" type="button">Mark Follow-up</button>
+            <button class="btn btn-ghost btn-sm" type="button">Export Selected</button>
+        </div>
+    </div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>
+                    <input type="checkbox" id="salesSelectAll" aria-label="Select all sales rows" onchange="toggleSalesSelection(this.checked)">
+                </th>
+                <th>Invoice</th>
+                <th>Buyer</th>
+                <th>Fish / Batch</th>
+                <th>Packages</th>
+                <th>Revenue</th>
+                <th>Profit</th>
+                <th>Payment</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="saleTable">
+            <tr>
+                <td colspan="9" class="text-center">Loading sales ledger...</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<aside class="insight-card">
+    <div>
+        <div class="section-caption">Invoice Lifecycle</div>
+        <h3>Move partial and overdue invoices quickly</h3>
+    </div>
+    <div class="insight-list">
+        <div class="insight-item">
+            <i class="fas fa-receipt"></i>
+            <div>
+                <strong>Use payment-state filters daily</strong>
+                <p>Keep pending and overdue invoices visible for collection priority calls.</p>
+            </div>
+        </div>
+    </div>
+</aside>
+
+<script>
+// ===== SALES PAGE FUNCTIONS =====
+
+function toggleSalesSelection(checked) {
+    document.querySelectorAll('#saleTable input[type="checkbox"]').forEach((input) => {
+        input.checked = checked;
+    });
+    if (window.updateSalesSelectionCount) window.updateSalesSelectionCount();
+}
+
+function updateSalesSelectionCount() {
+    const selected = document.querySelectorAll('#saleTable input[type="checkbox"]:checked').length;
+    const el = document.getElementById('salesSelectionCount');
+    if (el) el.textContent = `${selected} selected`;
+}
+
+// Export to global scope
+window.toggleSalesSelection = toggleSalesSelection;
+window.updateSalesSelectionCount = updateSalesSelectionCount;
+
+async function showAddSaleModal() {
+    try {
+        const buyers = await window.App?.apiCall?.('/trading/buyers/') || [];
+        const batches = await window.App?.apiCall?.('/trading/purchase-batches/') || [];
+        
+        if ((!buyers || buyers.length === 0) && (!batches || batches.length === 0)) {
+            if (window.App?.showAlert) {
+                window.App.showAlert('Please add buyers and purchase batches before creating sales.', 'warning');
+            }
+            return;
+        }
+
+        const buyerOptions = (buyers || []).map((buyer) =>
+            `<option value="${buyer.id}">${String(buyer.name || 'Unnamed Buyer')}</option>`
+        ).join('');
+        const batchOptions = (batches || []).map((batch) =>
+            `<option value="${batch.id}">${String(batch.batch_number || batch.id)} - ${String(batch.fish_name || 'Fish')}</option>`
+        ).join('');
+
+        // Use the global showModal function which is properly defined in app.js
+        if (window.showModal) {
+            window.showModal(
+                'Create Sale Invoice',
+                `
+                <div class="form-group">
+                    <label class="form-label">Buyer</label>
+                    <select id="saleBuyerId" class="form-select">${buyerOptions}</select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Batch / Fish</label>
+                    <select id="saleBatchId" class="form-select">${batchOptions}</select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Packages</label>
+                    <input type="number" id="salePackages" class="form-input" min="1" placeholder="0">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Weight Per Package (kg)</label>
+                    <input type="number" id="saleWeightPerPackage" class="form-input" min="0.01" step="0.01" placeholder="0.00">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Rate (per kg)</label>
+                    <input type="number" id="saleRatePerKg" class="form-input" min="0" step="0.01" placeholder="0.00">
+                </div>
+                `,
+                '<button class="btn btn-secondary" onclick="window.closeModal?.()">Cancel</button><button class="btn btn-primary" onclick="window.saveSaleInvoice?.()">Save Draft</button>'
+            );
+        } else {
+            console.warn('showModal not available');
+        }
+    } catch (error) {
+        console.error('Failed to open add sale modal:', error);
+        if (window.App?.showAlert) {
+            window.App.showAlert('Failed to load form. Please try again.', 'danger');
+        }
+    }
+}
+
+async function saveSaleInvoice() {
+    try {
+        const buyerId = Number(document.getElementById('saleBuyerId')?.value || 0);
+        const batchId = Number(document.getElementById('saleBatchId')?.value || 0);
+        const packages = Number(document.getElementById('salePackages')?.value || 0);
+        const weightPerPackage = Number(document.getElementById('saleWeightPerPackage')?.value || 0);
+        const ratePerKg = Number(document.getElementById('saleRatePerKg')?.value || 0);
+
+        if (!buyerId || !batchId || packages <= 0 || weightPerPackage <= 0 || ratePerKg <= 0) {
+            if (window.App?.showAlert) {
+                window.App.showAlert('Fill all sale fields with valid values.', 'danger');
+            }
+            return;
+        }
+
+        const payload = {
+            buyer: buyerId,
+            batch: batchId,
+            date: new Date().toISOString().slice(0, 10),
+            number_of_packages_sold: packages,
+            selling_weight_per_package: weightPerPackage,
+            selling_price_per_kg: ratePerKg,
+        };
+
+        const created = await window.App?.apiCall?.('/trading/sales/', 'POST', payload);
+        if (!created) {
+            if (window.App?.showAlert) {
+                window.App.showAlert('Unable to save sale invoice.', 'danger');
+            }
+            return;
+        }
+
+        // Close modal and reload
+        if (window.closeModal) window.closeModal();
+        if (window.App?.showAlert) {
+            window.App.showAlert('Sale invoice created successfully.', 'success');
+        }
+        await window.App?.loadPage?.('sales');
+    } catch (error) {
+        console.error('Error saving invoice:', error);
+        if (window.App?.showAlert) {
+            window.App.showAlert('Error saving invoice: ' + error.message, 'danger');
+        }
+    }
+}
+
+// Export to global scope for onclick handlers
+window.showAddSaleModal = showAddSaleModal;
+window.saveSaleInvoice = saveSaleInvoice;
+</script>

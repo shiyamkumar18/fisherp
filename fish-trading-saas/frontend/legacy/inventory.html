@@ -1,0 +1,155 @@
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Inventory Control</h1>
+        <p class="page-subtitle">Monitor live stock, expiry pressure, and remaining value before margin gets exposed.</p>
+    </div>
+    <div class="hero-actions">
+        <button class="btn btn-secondary" onclick="App.loadPage('purchases')">
+            <i class="fas fa-cart-flatbed"></i>
+            Add Incoming Stock
+        </button>
+    </div>
+</div>
+
+<section class="kpi-row">
+    <article class="kpi-card">
+        <div class="kpi-card-icon"><i class="fas fa-boxes-stacked"></i></div>
+        <div class="metric-eyebrow">Stock Packages</div>
+        <div class="kpi-value">—</div>
+        <div class="kpi-label">Total packages available for sale</div>
+    </article>
+    <article class="kpi-card">
+        <div class="kpi-card-icon kpi-icon-amber"><i class="fas fa-coins"></i></div>
+        <div class="metric-eyebrow">Stock Value</div>
+        <div class="kpi-value">—</div>
+        <div class="kpi-label">Estimated value across active batches</div>
+    </article>
+    <article class="kpi-card">
+        <div class="kpi-card-icon kpi-icon-blue"><i class="fas fa-check-circle"></i></div>
+        <div class="metric-eyebrow">In Stock</div>
+        <div class="kpi-value">—</div>
+        <div class="kpi-label">Items in healthy stock status</div>
+    </article>
+    <article class="kpi-card">
+        <div class="kpi-card-icon" style="background:linear-gradient(135deg,rgba(220,38,38,0.12),rgba(239,68,68,0.12));color:#dc2626"><i class="fas fa-triangle-exclamation"></i></div>
+        <div class="metric-eyebrow">Low / Expiring</div>
+        <div class="kpi-value">—</div>
+        <div class="kpi-label">Items needing purchase planning</div>
+    </article>
+</section>
+
+<div class="table-container">
+    <div class="table-header">
+        <div>
+            <h3>Inventory Ledger</h3>
+            <span>Batch-level stock, expiry, value, and status</span>
+        </div>
+        <div class="table-actions">
+            <select class="form-select" id="inventoryFilterStatus" style="min-width: 190px;" onchange="filterInventory(this.value)">
+                <option value="">All Status</option>
+                <option value="in_stock">In Stock</option>
+                <option value="low_stock">Low Stock</option>
+                <option value="expiring">Expiring</option>
+                <option value="expired">Expired</option>
+            </select>
+        </div>
+    </div>
+    <div class="table-filter-bar">
+        <div class="table-filter-controls">
+            <input class="form-input" type="search" id="inventorySearch" placeholder="Search fish or batch" style="min-width: 220px;" oninput="filterInventory(document.getElementById('inventoryFilterStatus').value)">
+            <select class="form-select" id="inventoryRiskFilter" style="min-width: 190px;" onchange="filterInventory(document.getElementById('inventoryFilterStatus').value)">
+                <option value="">All Risk Levels</option>
+                <option value="high">High Risk</option>
+                <option value="medium">Medium Risk</option>
+                <option value="low">Low Risk</option>
+            </select>
+        </div>
+        <div class="bulk-selection" id="inventorySelectionCount">0 selected</div>
+    </div>
+    <div class="bulk-action-bar">
+        <div class="bulk-action-controls">
+            <button class="btn btn-secondary btn-sm" type="button">Mark Hold</button>
+            <button class="btn btn-ghost btn-sm" type="button">Schedule Clearance</button>
+            <button class="btn btn-ghost btn-sm" type="button">Export Selected</button>
+        </div>
+    </div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>
+                    <input type="checkbox" id="inventorySelectAll" aria-label="Select all inventory rows" onchange="toggleInventorySelection(this.checked)">
+                </th>
+                <th>Fish</th>
+                <th>Packages Remaining</th>
+                <th>Weight (kg)</th>
+                <th>Status</th>
+                <th>Expiry</th>
+                <th>Value</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="inventoryTable">
+            <tr>
+                <td colspan="8" class="text-center">Loading inventory...</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<aside class="insight-card">
+    <div>
+        <div class="section-caption">Inventory Guidance</div>
+        <h3>Use risk highlights to protect margin</h3>
+    </div>
+    <div class="insight-list">
+        <div class="insight-item">
+            <i class="fas fa-temperature-three-quarters"></i>
+            <div>
+                <strong>Prioritize expiring stock first</strong>
+                <p>Move high-risk lines to active buyer offers before value erosion starts.</p>
+            </div>
+        </div>
+        <div class="insight-item">
+            <i class="fas fa-layer-group"></i>
+            <div>
+                <strong>Use bulk actions for faster ops</strong>
+                <p>Select multiple lines to hold, clear, or export in one action.</p>
+            </div>
+        </div>
+    </div>
+</aside>
+
+<script>
+function toggleInventorySelection(checked) {
+    document.querySelectorAll('#inventoryTable input[type="checkbox"]').forEach((input) => {
+        input.checked = checked;
+    });
+    updateInventorySelectionCount();
+}
+
+function updateInventorySelectionCount() {
+    const countEl = document.getElementById('inventorySelectionCount');
+    if (!countEl) return;
+    const selected = document.querySelectorAll('#inventoryTable input[type="checkbox"]:checked').length;
+    countEl.textContent = `${selected} selected`;
+}
+
+window.updateInventorySelectionCount = updateInventorySelectionCount;
+
+function filterInventory(status) {
+    const table = document.getElementById('inventoryTable');
+    const query = document.getElementById('inventorySearch')?.value?.trim().toLowerCase() || '';
+    if (!table) return;
+
+    Array.from(table.querySelectorAll('tr')).forEach((row) => {
+        const text = row.textContent.toLowerCase();
+        const queryMatch = !query || text.includes(query);
+
+        const badge = row.querySelector('.status-badge');
+        const statusMatch = !status || (badge && badge.classList.contains(status));
+        row.style.display = queryMatch && statusMatch ? '' : 'none';
+    });
+
+    updateInventorySelectionCount();
+}
+</script>

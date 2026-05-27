@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fish ERP - Platform Login</title>
+    <link rel="stylesheet" href="css/auth-modern.css">
+</head>
+<body class="auth-page auth-admin">
+    <div class="auth-shell">
+        <section class="auth-panel brand-panel">
+            <div class="brand-chip">Platform Console</div>
+            <h1 class="brand-title">SaaS Administration</h1>
+            <p class="brand-subtitle">Manage tenants, subscriptions, and support operations from a single control panel.</p>
+
+            <div class="state-panel" style="margin: 1rem 0 0; min-height: 110px; background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.28); color: #fff;">
+                <i class="fas fa-shield-halved" style="color: #fff;"></i>
+                <strong style="color: #fff;">Privileged access surface</strong>
+                <p style="color: rgba(255,255,255,0.86);">Only authorized platform operators should sign in here. All actions are audit tracked.</p>
+            </div>
+
+            <ul class="brand-points">
+                <li>Platform-wide tenant visibility</li>
+                <li>Support workflows with safe access controls</li>
+                <li>Role-based admin and audit-ready operations</li>
+            </ul>
+        </section>
+
+        <section class="auth-panel form-panel">
+            <div class="auth-header">
+                <div class="auth-logo">🛡️</div>
+                <h2>Platform Login</h2>
+                <p>Sign in as platform operator or support user.</p>
+            </div>
+
+            <form id="loginForm" class="auth-form">
+                <div class="form-group">
+                    <label for="username">Username or Email</label>
+                    <input class="form-input" type="text" id="username" name="username" required placeholder="Enter username or email" autocomplete="username">
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input class="form-input" type="password" id="password" name="password" required placeholder="Enter password" autocomplete="current-password">
+                </div>
+
+                <button type="submit" class="btn-login">
+                    <span class="btn-text">Sign In to Platform</span>
+                    <span class="btn-loading">Signing in...</span>
+                </button>
+
+                <div class="error-message" id="errorMessage" role="alert" aria-live="assertive"></div>
+
+                <div class="switch-link" style="margin-top: 10px;">
+                    Trouble signing in? <a href="mailto:support@fisherp.com?subject=Platform%20Login%20Recovery">Request secure recovery support</a>
+                </div>
+            </form>
+
+            <div class="switch-link">
+                Company user? <a href="/login.html">Use company login</a>
+            </div>
+
+            <button class="credentials-toggle" type="button" id="demoToggle" aria-expanded="false" aria-controls="demoCredentials">
+                Show demo platform users
+            </button>
+
+            <div class="credentials-box" id="demoCredentials" hidden>
+                <p class="credentials-title">Demo Platform Users</p>
+                <div class="credential-item">
+                    <p>platform_operator / platform123</p>
+                    <button type="button" class="credential-copy" data-copy="platform_operator">Copy user</button>
+                </div>
+                <div class="credential-item">
+                    <p>platform_support / support123</p>
+                    <button type="button" class="credential-copy" data-copy="platform_support">Copy user</button>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script src="login.js"></script>
+</body>
+</html>

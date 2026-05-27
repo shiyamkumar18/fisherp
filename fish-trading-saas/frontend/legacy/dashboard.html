@@ -1,0 +1,227 @@
+<section class="dashboard-hero">
+    <div>
+        <div class="section-caption">Daily Control Room</div>
+        <h1>Keep trading, stock, and cashflow in one clear view.</h1>
+        <p>Move faster on purchases, catch payment pressure early, and keep the floor aligned around the numbers that matter today.</p>
+        <div class="hero-actions">
+            <button class="btn btn-primary" onclick="App.loadPage('sales')">
+                <i class="fas fa-arrow-up-right-dots"></i>
+                Record Sale
+            </button>
+            <button class="btn btn-secondary" onclick="App.loadPage('purchases')">
+                <i class="fas fa-cart-plus"></i>
+                Add Purchase
+            </button>
+        </div>
+    </div>
+
+    <aside class="hero-panel">
+        <div class="hero-panel-label">Today's Pulse</div>
+        <div class="hero-mini-grid">
+            <div class="hero-mini">
+                <span>Sales booked</span>
+                <strong id="todaySales">₹0.00</strong>
+            </div>
+            <div class="hero-mini">
+                <span>Purchase outflow</span>
+                <strong id="todayPurchases">₹0.00</strong>
+            </div>
+            <div class="hero-mini">
+                <span>Margin today</span>
+                <strong id="todayProfit">₹0.00</strong>
+            </div>
+            <div class="hero-mini">
+                <span>Stock packages</span>
+                <strong id="stockPackages">0</strong>
+            </div>
+        </div>
+    </aside>
+</section>
+
+<section class="kpi-row">
+    <article class="kpi-card">
+        <div class="kpi-card-icon"><i class="fas fa-arrow-up-right-dots"></i></div>
+        <div class="metric-eyebrow">Sales Today</div>
+        <div class="kpi-value" id="sales-today">₹0.00</div>
+        <div class="kpi-label">Live revenue from completed invoices</div>
+        <div class="trend-badge"><i class="fas fa-chart-line"></i> Revenue in motion</div>
+    </article>
+
+    <article class="kpi-card">
+        <div class="kpi-card-icon kpi-icon-blue"><i class="fas fa-cart-flatbed"></i></div>
+        <div class="metric-eyebrow">Purchases Today</div>
+        <div class="kpi-value" id="purchases-today">₹0.00</div>
+        <div class="kpi-label">Buying pace across current batches</div>
+        <div class="trend-badge"><i class="fas fa-truck"></i> Supplier spend</div>
+    </article>
+
+    <article class="kpi-card">
+        <div class="kpi-card-icon kpi-icon-amber"><i class="fas fa-coins"></i></div>
+        <div class="metric-eyebrow">Profit Today</div>
+        <div class="kpi-value" id="profit">₹0.00</div>
+        <div class="kpi-label">Estimated gross margin for the day</div>
+        <div class="trend-badge"><i class="fas fa-bolt"></i> Margin watch</div>
+    </article>
+
+    <article class="kpi-card">
+        <div class="kpi-card-icon kpi-icon-violet"><i class="fas fa-boxes-stacked"></i></div>
+        <div class="metric-eyebrow">Stock Packages</div>
+        <div class="kpi-value" id="stock">0</div>
+        <div class="kpi-label">Packages currently available for sale</div>
+        <div class="trend-badge"><i class="fas fa-warehouse"></i> Warehouse health</div>
+    </article>
+</section>
+
+<!-- Charts Section — MVP Chart System -->
+<section class="chart-section" style="margin-bottom:1.5rem;">
+    <!-- Chart 1: Profit / Loss / Receivables (full width) -->
+    <div class="table-container" style="padding:1.25rem;margin-bottom:1.5rem;">
+        <div class="table-header" style="margin-bottom:0.75rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;">
+            <div>
+                <h3>Profit / Loss / Receivables</h3>
+                <span>Business health at a glance — track net reality, not just sales</span>
+            </div>
+            <div class="chart-toggle" style="display:flex;gap:0.25rem;">
+                <button class="btn btn-sm plr-toggle active" data-period="day" style="padding:0.25rem 0.75rem;font-size:0.8rem;border-radius:6px;border:1px solid var(--border,#e2e8f0);background:var(--primary,#2563EB);color:#fff;cursor:pointer;">Day</button>
+                <button class="btn btn-sm plr-toggle" data-period="week" style="padding:0.25rem 0.75rem;font-size:0.8rem;border-radius:6px;border:1px solid var(--border,#e2e8f0);background:transparent;color:var(--text,#0F172A);cursor:pointer;">Week</button>
+                <button class="btn btn-sm plr-toggle" data-period="month" style="padding:0.25rem 0.75rem;font-size:0.8rem;border-radius:6px;border:1px solid var(--border,#e2e8f0);background:transparent;color:var(--text,#0F172A);cursor:pointer;">Month</button>
+            </div>
+        </div>
+        <div style="position:relative;height:300px;">
+            <canvas id="profitLossChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Chart 2 + 3: side by side -->
+    <div style="display:grid;grid-template-columns:1.2fr 1fr;gap:1.5rem;">
+        <!-- Chart 2: Sold vs Remaining (horizontal bar) -->
+        <div class="table-container" style="padding:1.25rem;">
+            <div class="table-header" style="margin-bottom:0.75rem;">
+                <div>
+                    <h3>Sold vs Remaining</h3>
+                    <span>Stock movement per fish — spot slow movers fast</span>
+                </div>
+            </div>
+            <div style="position:relative;height:320px;">
+                <canvas id="soldRemainingChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Chart 3: Fish Demand Trend (line) -->
+        <div class="table-container" style="padding:1.25rem;">
+            <div class="table-header" style="margin-bottom:0.75rem;">
+                <div>
+                    <h3>Fish Demand Trend</h3>
+                    <span>Buy based on pattern — "What fish should I buy tomorrow?"</span>
+                </div>
+            </div>
+            <div style="position:relative;height:320px;">
+                <canvas id="demandTrendChart"></canvas>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="spotlight-grid">
+    <div class="table-container">
+        <div class="table-header">
+            <div>
+                <h3>Recent Sales</h3>
+                <span>Latest invoices and payment movement</span>
+            </div>
+            <div class="table-actions">
+                <button class="btn btn-ghost btn-sm" onclick="App.loadPage('sales')">Open Sales</button>
+            </div>
+        </div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Invoice</th>
+                    <th>Buyer</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="dashboardRecentSales">
+                <tr>
+                    <td colspan="4" class="text-center">Loading recent sales...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <aside class="insight-card">
+        <div>
+            <div class="section-caption">Watchlist</div>
+            <h3>Operations attention points</h3>
+        </div>
+        <div class="insight-list" id="dashboardAlerts">
+            <div class="insight-item">
+                <i class="fas fa-water"></i>
+                <div>
+                    <strong>Checking live alerts</strong>
+                    <p>We are pulling stock and payment signals for this workspace.</p>
+                </div>
+            </div>
+        </div>
+    </aside>
+</section>
+
+<section class="spotlight-grid">
+    <div class="table-container">
+        <div class="table-header">
+            <div>
+                <h3>Recent Purchases</h3>
+                <span>Incoming stock and supplier activity</span>
+            </div>
+            <div class="table-actions">
+                <button class="btn btn-ghost btn-sm" onclick="App.loadPage('purchases')">Open Purchases</button>
+            </div>
+        </div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Batch</th>
+                    <th>Fish</th>
+                    <th>Supplier</th>
+                    <th>Cost</th>
+                </tr>
+            </thead>
+            <tbody id="dashboardRecentPurchases">
+                <tr>
+                    <td colspan="4" class="text-center">Loading recent purchases...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <aside class="insight-card">
+        <div>
+            <div class="section-caption">Execution Notes</div>
+            <h3>Shift priorities</h3>
+        </div>
+        <div class="insight-list">
+            <div class="insight-item">
+                <i class="fas fa-credit-card"></i>
+                <div>
+                    <strong>Keep receivables visible</strong>
+                    <p>Use the payments screen to follow up partial and pending invoices before the end of day.</p>
+                </div>
+            </div>
+            <div class="insight-item">
+                <i class="fas fa-boxes-stacked"></i>
+                <div>
+                    <strong>Protect high-value stock</strong>
+                    <p>Review inventory first when margin is strong so fast-moving fish stays available for repeat buyers.</p>
+                </div>
+            </div>
+            <div class="insight-item">
+                <i class="fas fa-chart-line"></i>
+                <div>
+                    <strong>Close the loop with reports</strong>
+                    <p>Wrap the day with reports to compare buying pace against realized profit and stock drawdown.</p>
+                </div>
+            </div>
+        </div>
+    </aside>
+</section>
