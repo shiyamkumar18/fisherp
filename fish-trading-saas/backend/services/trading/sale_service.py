@@ -27,15 +27,53 @@ class SaleService(BaseService):
         sale = Sale(**data)
         sale.full_clean()
         sale.save()
+        
+        # Trigger explicit stock deduction if applicable
+        ACTIVE_STATES = ['approved', 'paid', 'partial', 'overdue']
+        if sale.status in ACTIVE_STATES and not getattr(sale, 'is_deleted', False):
+            from services.trading.inventory_service import InventoryService
+            InventoryService(self.user).deduct_stock_for_sale(sale)
+            
+        # Recalculate credit metrics
+        if sale.buyer and sale.tenant:
+            from services.trading.credit_service import CreditService
+            CreditService(sale.tenant).calculate_buyer_metrics(sale.buyer)
+            
         return sale
     
     @transaction.atomic
     def update_sale(self, instance, data):
-        """Atomic update."""
+        """Atomic update with stock synchronization."""
+        old_status = instance.status
+        old_is_deleted = getattr(instance, 'is_deleted', False)
+        
         for field, value in data.items():
             setattr(instance, field, value)
         instance.full_clean()
         instance.save()
+        
+        # Determine stock movement needs
+        ACTIVE_STATES = ['approved', 'paid', 'partial', 'overdue']
+        new_status = instance.status
+        new_is_deleted = getattr(instance, 'is_deleted', False)
+        
+        was_active = old_status in ACTIVE_STATES and not old_is_deleted
+        is_active = new_status in ACTIVE_STATES and not new_is_deleted
+        
+        from services.trading.inventory_service import InventoryService
+        inv_service = InventoryService(self.user)
+        
+        if not was_active and is_active:
+            inv_service.deduct_stock_for_sale(instance)
+        elif was_active and not is_active:
+            movement_type = 'return' if new_status == 'returned' else 'correction'
+            inv_service.restore_stock_for_sale(instance, movement_type=movement_type)
+            
+        # Recalculate credit metrics
+        if instance.buyer and instance.tenant:
+            from services.trading.credit_service import CreditService
+            CreditService(instance.tenant).calculate_buyer_metrics(instance.buyer)
+            
         return instance
     
     @transaction.atomic
