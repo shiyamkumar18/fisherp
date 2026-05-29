@@ -963,25 +963,19 @@ class DashboardManager:
         ).count()
         
         # Subscriptions by tier
+        tier_stats = Subscription.objects.filter(
+            status='active'
+        ).values('tier__name').annotate(
+            active_count=Count('id', filter=Q(expiry_date__gte=today)),
+            total_revenue=Sum('total_paid_till_date')
+        )
+        
         tier_breakdown = []
-        for tier in SubscriptionTier.objects.all():
-            count = Subscription.objects.filter(
-                tier=tier,
-                status='active',
-                expiry_date__gte=today
-            ).count()
-            
-            revenue = Subscription.objects.filter(
-                tier=tier,
-                status='active'
-            ).aggregate(
-                total=Sum('total_paid_till_date')
-            )['total'] or Decimal('0.00')
-            
+        for stat in tier_stats:
             tier_breakdown.append({
-                'tier_name': tier.name,
-                'active_count': count,
-                'total_revenue': revenue,
+                'tier_name': stat['tier__name'] or 'Unknown',
+                'active_count': stat['active_count'],
+                'total_revenue': stat['total_revenue'] or Decimal('0.00'),
             })
         
         # New registrations this month
@@ -1269,14 +1263,15 @@ class DashboardManager:
         
         tenant_filter = DashboardManager._get_tenant_filter(user) if user else Q()
         
-        fishermen = PurchaseBatch.objects.filter(tenant_filter).exclude(
-            fisherman_name__isnull=True
-        ).exclude(fisherman_name='').values('fisherman_name').distinct()
+        suppliers = PurchaseBatch.objects.filter(tenant_filter).exclude(
+            supplier__isnull=True
+        ).values('supplier__id', 'supplier__name').distinct()
         
         result = []
-        for fisher_data in fishermen:
-            name = fisher_data['fisherman_name']
-            sales = Sale.objects.filter(tenant_filter, batch__fisherman_name=name)
+        for supp_data in suppliers:
+            supp_id = supp_data['supplier__id']
+            name = supp_data['supplier__name']
+            sales = Sale.objects.filter(tenant_filter, batch__supplier_id=supp_id)
             
             total_revenue = sales.aggregate(
                 total=Sum('total_revenue')

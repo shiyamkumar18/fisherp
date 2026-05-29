@@ -60,6 +60,7 @@ class Supplier(models.Model):
                                    related_name='created_suppliers', help_text="User who created this record")
     updated_by = models.ForeignKey('accounts.User', on_delete=models.SET_NULL, null=True, blank=True,
                                    related_name='updated_suppliers', help_text="User who last updated this record")
+    is_auto_created = models.BooleanField(default=False, help_text="True if auto-created from walk-in fisherman")
     is_deleted = models.BooleanField(default=False, help_text="Soft delete flag")
     payment_terms = models.CharField(max_length=15, choices=PAYMENT_TERM_CHOICES, default='immediate',
                                      help_text="Payment terms for this supplier")

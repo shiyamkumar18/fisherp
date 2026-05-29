@@ -63,7 +63,7 @@ class FishSerializer(serializers.ModelSerializer):
     unit_type_display = serializers.CharField(source='get_unit_type_display', read_only=True)
     tenant_name = serializers.CharField(source='tenant.username', read_only=True)
     company_name = serializers.CharField(source='company.name', read_only=True)
-    display_weight = serializers.DecimalField(source='get_display_weight', max_digits=8, decimal_places=2, read_only=True)
+    display_weight = serializers.DecimalField(source='get_display_weight', max_digits=8, decimal_places=2, read_only=True, allow_null=True)
 
     class Meta:
         model = Fish
@@ -277,6 +277,38 @@ class PurchaseBatchSerializer(serializers.ModelSerializer):
                 data['amount_paid'] = None
                 data['pending_amount'] = None
         return data
+
+    def create(self, validated_data):
+        from trading.services.supplier_resolution import SupplierResolutionService
+        fisherman_name = validated_data.get('fisherman_name')
+        supplier = validated_data.get('supplier')
+        company = validated_data.get('company')
+        created_by = validated_data.get('created_by')
+
+        if not supplier and fisherman_name and company:
+            resolved_supplier = SupplierResolutionService.resolve_fisherman(
+                fisherman_name, company=company, created_by=created_by
+            )
+            validated_data['supplier'] = resolved_supplier
+            
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        from trading.services.supplier_resolution import SupplierResolutionService
+        fisherman_name = validated_data.get('fisherman_name', instance.fisherman_name)
+        supplier = validated_data.get('supplier', instance.supplier)
+        
+        # If supplier is being removed or is empty, but we have a fisherman_name, resolve it.
+        # Note: company might not be in validated_data on update, fallback to instance.company.
+        if not supplier and fisherman_name:
+            company = validated_data.get('company', instance.company)
+            updated_by = validated_data.get('updated_by', getattr(self.context.get('request'), 'user', None))
+            resolved_supplier = SupplierResolutionService.resolve_fisherman(
+                fisherman_name, company=company, created_by=updated_by
+            )
+            validated_data['supplier'] = resolved_supplier
+            
+        return super().update(instance, validated_data)
 
     def validate(self, data):
         request = self.context.get('request')

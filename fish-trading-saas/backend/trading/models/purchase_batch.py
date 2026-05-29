@@ -160,6 +160,10 @@ class PurchaseBatch(models.Model):
         if not getattr(self, 'company_id', None):
             raise ValidationError({'company': 'Company is required.'})
 
+        # Backward compatibility for fisherman_name
+        if self.supplier:
+            self.fisherman_name = self.supplier.name
+
         explicit_pending = self.pending_amount
         self.full_clean()
         self.calculate_fields()
