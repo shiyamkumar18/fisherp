@@ -26,6 +26,7 @@ import {
   BarChart3
 } from "lucide-react";
 import VoiceAssistant from "@/components/shared/voice-assistant";
+import { canAccessRoute } from "@/utils/permissions";
 
 export default function AppLayout() {
   const { user, logout, entitlements = [] } = useAuthStore();
@@ -44,7 +45,7 @@ export default function AppLayout() {
     navigate("/login");
   };
 
-  const navGroups = [
+  const allNavGroups = [
     {
       title: "Core",
       items: [
@@ -78,6 +79,14 @@ export default function AppLayout() {
       ]
     }
   ];
+  
+  const role = user?.role || "guest";
+  
+  // Filter nav groups based on RBAC permissions
+  const navGroups = allNavGroups.map(group => ({
+    ...group,
+    items: group.items.filter(item => canAccessRoute(role, item.path))
+  })).filter(group => group.items.length > 0);
 
   const operatorNavGroups = [
     {

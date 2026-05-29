@@ -3,9 +3,11 @@ import Card from "@/components/ui/card";
 import Button from "@/components/ui/button";
 import { useAuthStore } from "@/store/authStore";
 import { Building2, Shield, CreditCard, CheckCircle } from "lucide-react";
+import { usePermission } from "@/hooks/usePermission";
 
 export default function SettingsPage() {
   const { user, entitlements } = useAuthStore();
+  const { canManageCompanySettings, canManageSubscription, canManageSecurity } = usePermission();
   const [activeTab, setActiveTab] = useState("company");
 
   return (
@@ -24,18 +26,24 @@ export default function SettingsPage() {
           >
             <Building2 size={16} /> Company Details
           </button>
-          <button
-            onClick={() => setActiveTab("subscription")}
-            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-bold transition-colors ${activeTab === "subscription" ? "bg-primary text-white" : "text-textSecondary hover:bg-border/30 hover:text-textPrimary"}`}
-          >
-            <CreditCard size={16} /> Subscription & Billing
-          </button>
-          <button
-            onClick={() => setActiveTab("security")}
-            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-bold transition-colors ${activeTab === "security" ? "bg-primary text-white" : "text-textSecondary hover:bg-border/30 hover:text-textPrimary"}`}
-          >
-            <Shield size={16} /> Security Settings
-          </button>
+          
+          {canManageSubscription() && (
+            <button
+              onClick={() => setActiveTab("subscription")}
+              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-bold transition-colors ${activeTab === "subscription" ? "bg-primary text-white" : "text-textSecondary hover:bg-border/30 hover:text-textPrimary"}`}
+            >
+              <CreditCard size={16} /> Subscription & Billing
+            </button>
+          )}
+
+          {canManageSecurity() && (
+            <button
+              onClick={() => setActiveTab("security")}
+              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-bold transition-colors ${activeTab === "security" ? "bg-primary text-white" : "text-textSecondary hover:bg-border/30 hover:text-textPrimary"}`}
+            >
+              <Shield size={16} /> Security Settings
+            </button>
+          )}
         </div>
 
         {/* Content Area */}
@@ -60,7 +68,7 @@ export default function SettingsPage() {
             </Card>
           )}
 
-          {activeTab === "subscription" && (
+          {activeTab === "subscription" && canManageSubscription() && (
             <Card className="space-y-6">
               <h3 className="text-lg font-bold border-b border-border pb-3">Active Subscriptions</h3>
               <div className="space-y-4">
@@ -91,7 +99,7 @@ export default function SettingsPage() {
             </Card>
           )}
 
-          {activeTab === "security" && (
+          {activeTab === "security" && canManageSecurity() && (
             <Card className="space-y-6">
               <h3 className="text-lg font-bold border-b border-border pb-3">Security & Alerts</h3>
               <div className="space-y-4">

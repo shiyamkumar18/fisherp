@@ -3,14 +3,15 @@ import {
   ShoppingBag, Plus, Search, Calendar, User, MapPin, 
   Package, Weight, DollarSign, AlertCircle, Info, Sparkles, Trash2, ShieldCheck
 } from "lucide-react";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import Card from "@/components/ui/card";
+import Button from "@/components/ui/button";
+import Input from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { fetchPurchaseBatches, createPurchaseBatch, updatePurchaseBatch, deletePurchaseBatch } from "@/services/purchaseService";
 import { fetchSuppliers } from "@/services/supplierService";
 import { fetchFishTypes } from "@/services/productService";
 import { useToast } from "@/components/shared/toast-provider";
+import { usePermission } from "@/hooks/usePermission";
 
 const formatINR = (n) =>
   new Intl.NumberFormat("en-IN", {
@@ -27,6 +28,7 @@ export default function PurchasesPage() {
   const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const { push: toast } = useToast();
+  const { canViewFinancial, canDelete } = usePermission();
 
   // Form fields
   const [supplierId, setSupplierId] = useState("");
@@ -253,9 +255,13 @@ export default function PurchasesPage() {
                   <th className="pb-3 pr-4">Batch Info</th>
                   <th className="pb-3 pr-4">Vendor & Buying Place</th>
                   <th className="pb-3 pr-4">Weight & Vol</th>
-                  <th className="pb-3 pr-4 text-right">Actual Cost/Kg</th>
-                  <th className="pb-3 pr-4 text-right">Total Expense</th>
-                  <th className="pb-3 pr-4 text-right">Pending Pay</th>
+                  {canViewFinancial() && (
+                    <>
+                      <th className="pb-3 pr-4 text-right">Actual Cost/Kg</th>
+                      <th className="pb-3 pr-4 text-right">Total Expense</th>
+                      <th className="pb-3 pr-4 text-right">Pending Pay</th>
+                    </>
+                  )}
                   <th className="pb-3 text-center">Grade</th>
                   <th className="pb-3 text-center">Action</th>
                 </tr>
@@ -294,36 +300,38 @@ export default function PurchasesPage() {
                         <p className="text-textSecondary text-[10px]">{b.total_weight} kg ({b.package_weight}kg/pkg)</p>
                       </div>
                     </td>
-                    <td className="py-3.5 pr-4 text-right">
-                      <div>
-                        <p className="font-bold text-textPrimary">{formatINR(b.actual_cost_per_kg || b.price_per_kg)}/kg</p>
-                        <p className="text-[10px] text-textSecondary">Base: {formatINR(b.price_per_kg)}</p>
-                      </div>
-                    </td>
-                    <td className="py-3.5 pr-4 text-right">
-                      <div>
-                        <p className="font-bold text-textPrimary">{formatINR(Number(b.total_expense) || 0)}</p>
-                        <p className="text-[10px] text-textSecondary">Exp: {formatINR(Math.max(0, Number(b.total_expense || 0) - Number(b.fish_cost || 0)))}</p>
-                      </div>
-                    </td>
-                    <td className="py-3.5 pr-4 text-right">
-                      <span className={Number(b.pending_amount) > 0 ? "text-amber-500" : "text-success"}>
-                        {formatINR(b.pending_amount || 0)}
-                      </span>
-                    </td>
+                    {canViewFinancial() && (
+                      <>
+                        <td className="py-3.5 pr-4 text-right">
+                          <p className="font-bold text-textPrimary">{formatINR(b.actual_cost_per_kg || b.price_per_kg)}/kg</p>
+                          <p className="text-[10px] text-textSecondary">Base: {formatINR(b.price_per_kg)}</p>
+                        </td>
+                        <td className="py-3.5 pr-4 text-right">
+                          <p className="font-bold text-textPrimary">{formatINR(Number(b.total_expense) || 0)}</p>
+                          <p className="text-[10px] text-textSecondary">Exp: {formatINR(Math.max(0, Number(b.total_expense || 0) - Number(b.fish_cost || 0)))}</p>
+                        </td>
+                        <td className="py-3.5 pr-4 text-right">
+                          <span className={Number(b.pending_amount) > 0 ? "text-amber-500" : "text-success"}>
+                            {formatINR(b.pending_amount || 0)}
+                          </span>
+                        </td>
+                      </>
+                    )}
                     <td className="py-3.5 text-center">
                       <span className="inline-flex items-center gap-0.5 rounded px-2 py-0.5 text-xs font-bold bg-primary/10 text-primary border border-primary/20">
                         {b.quality_grade}
                       </span>
                     </td>
                     <td className="py-3.5 text-center">
-                      <button
-                        onClick={() => handleDelete(b.id)}
-                        className="rounded-lg p-1.5 text-danger hover:bg-danger/10 transition-colors cursor-pointer"
-                        title="Delete Batch"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                      {canDelete() && (
+                        <button
+                          onClick={() => handleDelete(b.id)}
+                          className="rounded-lg p-1.5 text-danger hover:bg-danger/10 transition-colors cursor-pointer"
+                          title="Delete Batch"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}

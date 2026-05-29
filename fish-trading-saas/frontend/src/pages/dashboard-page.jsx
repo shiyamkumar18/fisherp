@@ -33,14 +33,15 @@ import {
   Lock,
   Database
 } from "lucide-react";
-import { Card } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import Card from "@/components/ui/card";
+import Skeleton from "@/components/ui/skeleton";
+import Input from "@/components/ui/input";
+import Button from "@/components/ui/button";
 import { fetchDashboardOverview } from "@/services/dashboardService";
 import { platformService } from "@/services/platformService";
 import { useAuthStore } from "@/store/authStore";
 import { useToast } from "@/components/shared/toast-provider";
+import { usePermission } from "@/hooks/usePermission";
 
 const formatINR = (n) =>
   new Intl.NumberFormat("en-IN", {
@@ -1148,6 +1149,7 @@ function PlatformOperatorDashboard() {
 function BusinessDashboard() {
   const [overview, setOverview] = useState(null);
   const [error, setError] = useState("");
+  const { canViewFinancial } = usePermission();
 
   useEffect(() => {
     let alive = true;
@@ -1219,14 +1221,16 @@ function BusinessDashboard() {
 
       {/* KPI Cards Row */}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <KpiCard
-          label="Total Revenue"
-          value={formatINR(metrics.totalRevenue)}
-          icon={TrendingUp}
-          trend={metrics.revenueTrend}
-          trendLabel="vs last month"
-          accent="blue"
-        />
+        {canViewFinancial() && (
+          <KpiCard
+            label="Total Revenue"
+            value={formatINR(metrics.totalRevenue)}
+            icon={TrendingUp}
+            trend={metrics.revenueTrend}
+            trendLabel="vs last month"
+            accent="blue"
+          />
+        )}
         <KpiCard
           label="Active Orders"
           value={metrics.activeOrders}
@@ -1250,25 +1254,27 @@ function BusinessDashboard() {
       </div>
 
       {/* Charts Grid */}
-      <div className="grid gap-4 lg:grid-cols-3">
-        {/* Sales Trend Line Chart */}
-        <Card className="lg:col-span-2 flex flex-col justify-between">
-          <div>
-            <h3 className="text-base font-bold text-textPrimary">Sales Trend</h3>
-            <p className="text-xs text-textSecondary mb-4">Invoice volume over the past 6 months.</p>
-          </div>
-          <SalesTrendChart data={salesTrendData} />
-        </Card>
+      {canViewFinancial() && (
+        <div className="grid gap-4 lg:grid-cols-3">
+          {/* Sales Trend Line Chart */}
+          <Card className="lg:col-span-2 flex flex-col justify-between">
+            <div>
+              <h3 className="text-base font-bold text-textPrimary">Sales Trend</h3>
+              <p className="text-xs text-textSecondary mb-4">Invoice volume over the past 6 months.</p>
+            </div>
+            <SalesTrendChart data={salesTrendData} />
+          </Card>
 
-        {/* Finance Distribution Bar Chart */}
-        <Card className="flex flex-col justify-between">
-          <div>
-            <h3 className="text-base font-bold text-textPrimary">Revenue Allocation</h3>
-            <p className="text-xs text-textSecondary mb-4">Breakdown of total revenue billing.</p>
-          </div>
-          <DistributionBarChart data={distributionData} />
-        </Card>
-      </div>
+          {/* Finance Distribution Bar Chart */}
+          <Card className="flex flex-col justify-between">
+            <div>
+              <h3 className="text-base font-bold text-textPrimary">Revenue Allocation</h3>
+              <p className="text-xs text-textSecondary mb-4">Breakdown of total revenue billing.</p>
+            </div>
+            <DistributionBarChart data={distributionData} />
+          </Card>
+        </div>
+      )}
 
       {/* Lower Row: recent orders + top fish + alerts */}
       <div className="grid gap-4 lg:grid-cols-3">

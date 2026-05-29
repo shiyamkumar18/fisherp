@@ -3,14 +3,16 @@ import {
   TrendingUp, Plus, Search, Calendar, User, FileText, 
   Layers, DollarSign, Percent, AlertCircle, ShoppingCart, Truck, Trash2, Sparkles, CheckCircle2
 } from "lucide-react";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import Card from "@/components/ui/card";
+import Button from "@/components/ui/button";
+import Input from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { fetchSales, createSale, deleteSale } from "@/services/salesService";
 import { fetchCustomers } from "@/services/customerService";
 import { fetchPurchaseBatches } from "@/services/purchaseService";
 import { useToast } from "@/components/shared/toast-provider";
+import SaleDetailModal from "@/components/sales/sale-detail-modal";
+import { usePermission } from "@/hooks/usePermission";
 
 const formatINR = (n) =>
   new Intl.NumberFormat("en-IN", {
@@ -33,7 +35,10 @@ export default function SalesPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [selectedSale, setSelectedSale] = useState(null);
   const { push: toast } = useToast();
+  const { canViewFinancial, canDelete } = usePermission();
 
   // Invoice Form states
   const [buyerId, setBuyerId] = useState("");
@@ -218,14 +223,16 @@ export default function SalesPage() {
             <DollarSign className="h-5 w-5 text-amber-500 opacity-65" />
           </div>
         </Card>
-        <Card>
-          <p className="text-xs font-bold uppercase tracking-wider text-textSecondary mb-1">Estimated Profits</p>
-          <div className="flex items-center justify-between">
-            <span className="text-2xl font-extrabold text-textPrimary">
-              {formatINR(sales.reduce((sum, s) => sum + (s.profit || 0), 0))}
-            </span>
-          </div>
-        </Card>
+        {canViewFinancial() && (
+          <Card>
+            <p className="text-xs font-bold uppercase tracking-wider text-textSecondary mb-1">Estimated Profits</p>
+            <div className="flex items-center justify-between">
+              <span className="text-2xl font-extrabold text-textPrimary">
+                {formatINR(sales.reduce((sum, s) => sum + (s.profit || 0), 0))}
+              </span>
+            </div>
+          </Card>
+        )}
       </div>
 
       {/* Main Grid */}
@@ -268,7 +275,14 @@ export default function SalesPage() {
                   const pKey = (s.payment_status || "pending").toLowerCase();
                   const pCls = PAYMENT_CLS[pKey] || PAYMENT_CLS.pending;
                   return (
-                    <tr key={s.id} className="hover:bg-border/10 transition-colors">
+                    <tr 
+                      key={s.id} 
+                      className="hover:bg-border/10 transition-colors cursor-pointer"
+                      onClick={() => {
+                        setSelectedSale(s);
+                        setDetailModalOpen(true);
+                      }}
+                    >
                       <td className="py-3.5 pr-4">
                         <div>
                           <p className="font-bold text-textPrimary">{s.invoice_number}</p>
@@ -301,13 +315,18 @@ export default function SalesPage() {
                         </span>
                       </td>
                       <td className="py-3.5 text-center">
-                        <button
-                          onClick={() => handleDelete(s.id)}
-                          className="rounded-lg p-1.5 text-danger hover:bg-danger/10 transition-colors cursor-pointer"
-                          title="Void Invoice"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                        {canDelete() && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(s.id);
+                            }}
+                            className="rounded-lg p-1.5 text-danger hover:bg-danger/10 transition-colors cursor-pointer"
+                            title="Void Invoice"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
                       </td>
                     </tr>
                   );
@@ -478,6 +497,15 @@ export default function SalesPage() {
           </form>
         </DialogContent>
       </Dialog>
+      {/* Sale Detail Modal */}
+      <SaleDetailModal
+        sale={selectedSale}
+        open={detailModalOpen}
+        onOpenChange={setDetailModalOpen}
+        onUpdate={() => {
+          loadData();
+        }}
+      />
     </div>
   );
 }
