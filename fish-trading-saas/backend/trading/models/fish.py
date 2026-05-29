@@ -1,5 +1,5 @@
 from django.db import models
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ValidationError, ObjectDoesNotExist
 
 from .fish_category import FishCategory
 from services.base import CompanyManager
@@ -21,11 +21,15 @@ class Fish(models.Model):
     box_weight_kg = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True,
                                         help_text="Weight per box in kg (only if unit_type is 'box')")
     tenant = models.ForeignKey('accounts.User', on_delete=models.CASCADE, related_name='fish',
-                               db_index=True, help_text="Tenant/Owner of this fish record")
+                               db_index=True, null=True, blank=True,
+                               help_text="DEPRECATED: Tenant/Owner of this fish record")
     company = models.ForeignKey('companies.Company', on_delete=models.CASCADE,
                                 related_name='fish_records', db_index=True,
-                                null=True, blank=True,
                                 help_text="Company this fish belongs to")
+    created_by = models.ForeignKey('accounts.User', on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name='created_fish', help_text="User who created this record")
+    updated_by = models.ForeignKey('accounts.User', on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name='updated_fish', help_text="User who last updated this record")
     is_deleted = models.BooleanField(default=False, help_text="Soft delete flag")
     min_price_per_kg = models.DecimalField(max_digits=10, decimal_places=2, default=0,
                                            help_text="Minimum historical price per kg")
@@ -58,12 +62,8 @@ class Fish(models.Model):
             raise ValidationError({'box_weight_kg': 'Box weight is required when unit type is box.'})
 
     def save(self, *args, **kwargs):
-        if not self.company_id and self.tenant_id and self.tenant.company_id:
-            self.company = self.tenant.company
-        if not self.tenant_id and self.company_id and self.company.admin_id:
-            self.tenant = self.company.admin
-        if self.tenant_id and self.company_id and self.tenant.company_id and self.tenant.company_id != self.company_id:
-            raise ValidationError({'company': 'Company must match tenant owner company.'})
+        if not getattr(self, 'company_id', None):
+            raise ValidationError({'company': 'Company is required.'})
         self.full_clean()
         super().save(*args, **kwargs)
 

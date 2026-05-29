@@ -391,26 +391,25 @@ class Subscription(models.Model):
     tenant = models.ForeignKey('accounts.User', on_delete=models.CASCADE, related_name='subscriptions',
                                db_index=True,
                                null=True, blank=True,
-                               help_text="Tenant/Owner of this subscription record")
+                               help_text="DEPRECATED: Tenant/Owner of this subscription record")
     company = models.ForeignKey(
         'companies.Company',
         on_delete=models.CASCADE,
         related_name='subscriptions',
         db_index=True,
-        null=True,
-        blank=True,
         help_text="Company this subscription belongs to",
     )
+    created_by = models.ForeignKey('accounts.User', on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name='created_subscriptions', help_text="User who created this record")
+    updated_by = models.ForeignKey('accounts.User', on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name='updated_subscriptions', help_text="User who last updated this record")
     
     class Meta:
         ordering = ['-created_at']
 
     def save(self, *args, **kwargs):
-        # Keep company and tenant pointers aligned for backward compatibility.
-        if not self.company_id and self.tenant_id and self.tenant.company_id:
-            self.company = self.tenant.company
-        if not self.tenant_id and self.company_id and self.company.admin_id:
-            self.tenant = self.company.admin
+        if not getattr(self, 'company_id', None):
+            raise ValueError("Company is required for Subscription.")
         super().save(*args, **kwargs)
     
     def is_active(self):

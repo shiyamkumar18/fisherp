@@ -1,7 +1,7 @@
 import time
 from decimal import Decimal
 from django.db import models
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from django.db import transaction
 from django.db.utils import OperationalError
 from django.utils import timezone
@@ -46,11 +46,14 @@ class Inventory(models.Model):
     last_moved_by = models.CharField(max_length=150, blank=True, null=True)
     tenant = models.ForeignKey('accounts.User', on_delete=models.CASCADE, related_name='inventories',
                                db_index=True, null=True, blank=True,
-                               help_text="Tenant/Owner of this inventory record")
+                               help_text="DEPRECATED: Tenant/Owner of this inventory record")
     company = models.ForeignKey('companies.Company', on_delete=models.CASCADE,
                                 related_name='inventory_records', db_index=True,
-                                null=True, blank=True,
                                 help_text="Company this inventory belongs to")
+    created_by = models.ForeignKey('accounts.User', on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name='created_inventories', help_text="User who created this record")
+    updated_by = models.ForeignKey('accounts.User', on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name='updated_inventories', help_text="User who last updated this record")
     is_deleted = models.BooleanField(default=False, help_text="Soft delete flag")
 
     objects = CompanyManager()
@@ -67,15 +70,17 @@ class Inventory(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.fish.name} - {self.remaining_packages} packages remaining"
+        fish_name = "Unknown"
+        try:
+            if self.fish:
+                fish_name = self.fish.name
+        except (AttributeError, ObjectDoesNotExist):
+            pass
+        return f"{fish_name} - {self.remaining_packages} packages remaining"
 
     def save(self, *args, **kwargs):
-        if not self.company_id and self.tenant_id and self.tenant.company_id:
-            self.company = self.tenant.company
-        if not self.tenant_id and self.company_id and self.company.admin_id:
-            self.tenant = self.company.admin
-        if self.tenant_id and self.company_id and self.tenant.company_id and self.tenant.company_id != self.company_id:
-            raise ValidationError({'company': 'Company must match tenant owner company.'})
+        if not getattr(self, 'company_id', None):
+            raise ValidationError({'company': 'Company is required.'})
         super().save(*args, **kwargs)
 
     def _apply_stock_delta(self, packages_sold):
@@ -178,5 +183,6 @@ class Inventory(models.Model):
         return self.remaining_packages <= self.reorder_level
 
     def get_stock_value(self):
-        price_per_kg = self.purchase_batch.price_per_kg if self.purchase_batch else Decimal("0.00")
-        return self.remaining_weight_kg * price_per_kg
+        price_per_kg = self.purchase_batch.price_per_kg if self.purchase_batch and self.purchase_batch.price_per_kg is not None else Decimal("0.00")
+        remaining_weight = self.remaining_weight_kg or Decimal("0.00")
+        return remaining_weight * price_per_kg

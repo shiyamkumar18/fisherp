@@ -1,7 +1,7 @@
 from decimal import Decimal
 from django.db import models
 from django.utils import timezone
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ValidationError, ObjectDoesNotExist
 
 from services.base import CompanyManager
 
@@ -52,11 +52,14 @@ class Supplier(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     tenant = models.ForeignKey('accounts.User', on_delete=models.CASCADE, related_name='suppliers',
                                db_index=True, null=True, blank=True,
-                               help_text="Tenant/Owner of this supplier record")
+                               help_text="DEPRECATED: Tenant/Owner of this supplier record")
     company = models.ForeignKey('companies.Company', on_delete=models.CASCADE,
                                 related_name='supplier_records', db_index=True,
-                                null=True, blank=True,
                                 help_text="Company this supplier belongs to")
+    created_by = models.ForeignKey('accounts.User', on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name='created_suppliers', help_text="User who created this record")
+    updated_by = models.ForeignKey('accounts.User', on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name='updated_suppliers', help_text="User who last updated this record")
     is_deleted = models.BooleanField(default=False, help_text="Soft delete flag")
     payment_terms = models.CharField(max_length=15, choices=PAYMENT_TERM_CHOICES, default='immediate',
                                      help_text="Payment terms for this supplier")
@@ -92,16 +95,14 @@ class Supplier(models.Model):
         return self.name
 
     def save(self, *args, **kwargs):
-        if not self.company_id and self.tenant_id and self.tenant.company_id:
-            self.company = self.tenant.company
-        if not self.tenant_id and self.company_id and self.company.admin_id:
-            self.tenant = self.company.admin
-        if self.tenant_id and self.company_id and self.tenant.company_id and self.tenant.company_id != self.company_id:
-            raise ValidationError({'company': 'Company must match tenant owner company.'})
+        if not getattr(self, 'company_id', None):
+            raise ValidationError({'company': 'Company is required.'})
         super().save(*args, **kwargs)
 
     def update_credit_balance(self):
-        self.current_credit_balance = self.total_credit_given - self.total_credit_repaid
+        total_given = self.total_credit_given or Decimal('0.00')
+        total_repaid = self.total_credit_repaid or Decimal('0.00')
+        self.current_credit_balance = total_given - total_repaid
         self.save(update_fields=['current_credit_balance'])
 
     def update_outstanding(self):

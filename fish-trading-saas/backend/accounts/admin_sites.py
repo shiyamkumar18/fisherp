@@ -143,7 +143,7 @@ class TenantAdminMixin:
         if request.user.role == 'tenant_admin' and request.user.company:
             if 'company' in [f.name for f in qs.model._meta.get_fields()]:
                 return qs.filter(company=request.user.company)
-            return qs.filter(tenant=request.user)
+            return qs.none()
         return qs.none()
 
     def has_view_permission(self, request, obj=None):
@@ -181,7 +181,7 @@ class StaffAdminMixin:
         if request.user.company:
             if 'company' in [f.name for f in qs.model._meta.get_fields()]:
                 return qs.filter(company=request.user.company)
-            return qs.filter(tenant=request.user)
+            return qs.none()
         return qs.none()
 
     def has_view_permission(self, request, obj=None):

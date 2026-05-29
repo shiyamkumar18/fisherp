@@ -1,4 +1,5 @@
 from django.db import models
+from django.core.exceptions import ObjectDoesNotExist
 from services.base import CompanyManager
 
 class WhatsAppConfig(models.Model):
@@ -14,7 +15,13 @@ class WhatsAppConfig(models.Model):
     all_objects = models.Manager()
 
     def __str__(self):
-        return f"WhatsApp Config for {self.company.name}"
+        company_name = "Unknown"
+        try:
+            if self.company:
+                company_name = self.company.name
+        except (AttributeError, ObjectDoesNotExist):
+            pass
+        return f"WhatsApp Config for {company_name}"
 
 
 class WhatsAppMessageLog(models.Model):

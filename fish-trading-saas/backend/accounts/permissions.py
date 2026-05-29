@@ -17,6 +17,88 @@ Security Principles:
 
 from rest_framework import permissions
 from django.utils import timezone
+from django.core.exceptions import ImproperlyConfigured
+
+
+def check_role_permission(user, permission_name):
+    """
+    Dynamically check sales permission based on user's role and company-specific config.
+    """
+    if not user or not user.is_authenticated:
+        return False
+    
+    # Platform users with active impersonation get tenant admin rights
+    if user.is_platform_user:
+        return True
+
+    # Tenant Admin has full access to everything
+    if user.is_tenant_admin:
+        return True
+
+    # Get the role string matching SalesPermissionConfig.ROLE_CHOICES
+    role = None
+    if user.is_accountant:
+        role = 'accountant'
+    elif user.is_sales_staff: # Trader/Sales manager
+        role = 'trader'
+    elif user.is_store_accounts: # Store
+        role = 'store'
+        
+    if not role:
+        return False
+
+    # Dynamic lookup
+    from trading.models.sales_permission import SalesPermissionConfig
+    company = getattr(user, 'company', None)
+    if not company:
+        # Fallback to defaults if no company assigned
+        return _get_role_defaults(role, permission_name)
+
+    try:
+        config = SalesPermissionConfig.objects.get(company=company, role=role)
+        return getattr(config, permission_name, False)
+    except SalesPermissionConfig.DoesNotExist:
+        return _get_role_defaults(role, permission_name)
+
+def _get_role_defaults(role, permission_name):
+    """Fallback default permissions for roles."""
+    defaults = {
+        'accountant': {
+            'can_create_sale': False,
+            'can_edit_sale': False,
+            'can_cancel_sale': False,
+            'can_approve_sale': False,
+            'can_view_profit': True,
+            'can_payment_access': True,
+            'can_export_invoice': True,
+            'can_print_invoice': True,
+            'can_report_access': True,
+        },
+        'trader': {
+            'can_create_sale': True,
+            'can_edit_sale': True,
+            'can_cancel_sale': False,
+            'can_approve_sale': False,
+            'can_view_profit': False,
+            'can_payment_access': False,
+            'can_export_invoice': True,
+            'can_print_invoice': True,
+            'can_report_access': False,
+        },
+        'store': {
+            'can_create_sale': False,
+            'can_edit_sale': False,
+            'can_cancel_sale': False,
+            'can_approve_sale': False,
+            'can_view_profit': False,
+            'can_payment_access': False,
+            'can_export_invoice': False,
+            'can_print_invoice': True,
+            'can_report_access': False,
+        }
+    }
+    return defaults.get(role, {}).get(permission_name, False)
+
 
 
 # =====================
@@ -216,12 +298,11 @@ class CanViewFinancials(permissions.BasePermission):
 
 class CanViewProfit(permissions.BasePermission):
     """Permission to view profit margins and calculations."""
-    message = "Profit data access restricted to Tenant Admin and Accountant."
+    message = "Profit data access restricted."
 
     def has_permission(self, request, view):
-        if not request.user or not request.user.is_authenticated:
-            return False
-        return request.user.is_tenant_admin or request.user.is_accountant
+        return check_role_permission(request.user, 'can_view_profit')
+
 
 
 class CanManageUsers(permissions.BasePermission):
@@ -245,9 +326,8 @@ class CanCreateSale(permissions.BasePermission):
     message = "Sales creation access required."
 
     def has_permission(self, request, view):
-        if not request.user or not request.user.is_authenticated:
-            return False
-        return request.user.is_tenant_admin or request.user.is_accountant or request.user.is_sales_staff
+        return check_role_permission(request.user, 'can_create_sale')
+
 
 
 class CanCreatePurchase(permissions.BasePermission):
@@ -265,12 +345,8 @@ class CanRecordPayment(permissions.BasePermission):
     message = "Payment recording access required."
 
     def has_permission(self, request, view):
-        if not request.user or not request.user.is_authenticated:
-            return False
-        return (request.user.is_tenant_admin or  # noqa: W504
-                request.user.is_accountant or  # noqa: W504
-                request.user.is_sales_staff or  # noqa: W504
-                request.user.is_store_accounts)
+        return check_role_permission(request.user, 'can_payment_access')
+
 
 
 class CanDeleteRecord(permissions.BasePermission):
@@ -292,33 +368,63 @@ class CanDeleteRecord(permissions.BasePermission):
 
 class CanEditSale(permissions.BasePermission):
     """
-    Permission to edit sales based on time constraints.
+    Permission to edit sales based on time constraints and status.
     """
     message = "You do not have permission to edit this sale."
 
     def has_permission(self, request, view):
-        if not request.user or not request.user.is_authenticated:
-            return False
-        if request.user.is_tenant_admin:
-            return True
-        if request.user.is_accountant:
-            return True
-        if request.user.is_sales_staff:
-            return True
-        return False
+        return check_role_permission(request.user, 'can_edit_sale')
 
     def has_object_permission(self, request, view, obj):
         if not request.user or not request.user.is_authenticated:
             return False
         if request.user.is_tenant_admin:
             return True
-        if request.user.is_accountant:
-            return obj.delivery_status != 'delivered'
-        if request.user.is_sales_staff:
-            from django.utils import timezone
-            today = timezone.now().date()
-            return obj.date == today
-        return False
+        # Prevent updates to approved, paid, overdue, cancelled, or returned invoices.
+        if obj.status not in ['draft', 'pending']:
+            return False
+        return check_role_permission(request.user, 'can_edit_sale')
+
+
+class CanCancelSale(permissions.BasePermission):
+    """Permission to cancel sales."""
+    message = "Sales cancellation access required."
+
+    def has_permission(self, request, view):
+        return check_role_permission(request.user, 'can_cancel_sale')
+
+
+class CanApproveSale(permissions.BasePermission):
+    """Permission to approve sales."""
+    message = "Sales approval access required."
+
+    def has_permission(self, request, view):
+        return check_role_permission(request.user, 'can_approve_sale')
+
+
+class CanExportInvoice(permissions.BasePermission):
+    """Permission to export invoices."""
+    message = "Invoice export access required."
+
+    def has_permission(self, request, view):
+        return check_role_permission(request.user, 'can_export_invoice')
+
+
+class CanPrintInvoice(permissions.BasePermission):
+    """Permission to print invoices."""
+    message = "Invoice printing access required."
+
+    def has_permission(self, request, view):
+        return check_role_permission(request.user, 'can_print_invoice')
+
+
+class CanViewReports(permissions.BasePermission):
+    """Permission to access sales reports."""
+    message = "Report access required."
+
+    def has_permission(self, request, view):
+        return check_role_permission(request.user, 'can_report_access')
+
 
 
 class CanEditPurchase(permissions.BasePermission):
@@ -403,19 +509,52 @@ class CanViewPurchaseCost(permissions.BasePermission):
 
 class QuerysetProtectionMixin:
     """
-    Enhanced queryset mixin using CompanyManager.
-    """
-    def get_queryset(self):
-        user = self.request.user
-        if user.is_superuser or user.is_platform_user:
-            session = getattr(self.request, 'session', None)
-            if session:
-                impersonating_id = session.get('impersonating_company_id') or session.get('impersonating_tenant_id')
-                if impersonating_id:
-                    return self.queryset.filter(company_id=impersonating_id)
-            return self.queryset.none()
-        return self.queryset.for_user(user)
+    Production-grade queryset protection mixin.
 
+    Enforces tenant isolation and platform impersonation.
+    Requires:
+    - self.request
+    - self.queryset
+    - queryset.for_user(user)
+    """
+
+    queryset = None
+
+    def get_queryset(self):
+        if self.queryset is None:
+            raise ImproperlyConfigured(
+                f"{self.__class__.__name__} "
+                "must define 'queryset'."
+            )
+
+        if not hasattr(self, "request"):
+            raise ImproperlyConfigured(
+                f"{self.__class__.__name__} "
+                "requires DRF request object."
+            )
+
+        user = self.request.user
+
+        # Platform users require impersonation
+        if user.is_superuser or user.is_platform_user:
+            impersonating_id = (
+                self.request.session.get(
+                    "impersonating_company_id"
+                )
+                or self.request.session.get(
+                    "impersonating_tenant_id"
+                )
+            )
+
+            if impersonating_id:
+                return self.queryset.filter(
+                    company_id=impersonating_id
+                )
+
+            return self.queryset.none()
+
+        # Tenant users
+        return self.queryset.for_user(user)
 
 # =====================
 # NEW: TenantObjectPermission
@@ -549,7 +688,7 @@ def check_feature_access(user, feature_name):
     if user.company_id:
         subscription_qs = subscription_qs.filter(company=user.company)
     else:
-        subscription_qs = subscription_qs.filter(tenant=user)
+        subscription_qs = subscription_qs.none()
     subscription = subscription_qs.order_by('-created_at').first()
     if not subscription:
         return (False, "No active subscription")

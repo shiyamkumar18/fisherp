@@ -2,7 +2,7 @@ from decimal import Decimal
 import uuid
 from django.db import models
 from django.utils import timezone
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ValidationError, ObjectDoesNotExist
 
 from .purchase_batch import PurchaseBatch
 from .buyer import Buyer
@@ -22,6 +22,17 @@ class Sale(models.Model):
         ('paid', 'Fully Paid'),
         ('overdue', 'Overdue'),
     ]
+    STATUS_CHOICES = [
+        ('draft', 'Draft'),
+        ('pending', 'Pending Approval'),
+        ('approved', 'Approved'),
+        ('paid', 'Paid'),
+        ('partial', 'Partially Paid'),
+        ('overdue', 'Overdue'),
+        ('cancelled', 'Cancelled'),
+        ('returned', 'Returned'),
+    ]
+
 
     batch = models.ForeignKey(PurchaseBatch, on_delete=models.PROTECT, related_name='sales')
     buyer = models.ForeignKey(Buyer, on_delete=models.PROTECT, related_name='sales')
@@ -41,6 +52,7 @@ class Sale(models.Model):
     amount_received = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     pending_amount = models.DecimalField(max_digits=10, decimal_places=2, editable=False)
     payment_status = models.CharField(max_length=15, choices=PAYMENT_STATUS_CHOICES, default='pending')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
     due_date = models.DateField(null=True, blank=True, help_text="Payment due date")
     delivery_address = models.TextField(blank=True, null=True)
     delivery_status = models.CharField(max_length=20, blank=True, null=True,
@@ -65,11 +77,14 @@ class Sale(models.Model):
     final_amount = models.DecimalField(max_digits=10, decimal_places=2, editable=False, default=0)
     tenant = models.ForeignKey('accounts.User', on_delete=models.CASCADE, related_name='sales',
                                db_index=True, null=True, blank=True,
-                               help_text="Tenant/Owner of this sale record")
+                               help_text="DEPRECATED: Tenant/Owner of this sale record")
     company = models.ForeignKey('companies.Company', on_delete=models.CASCADE,
                                 related_name='sale_records', db_index=True,
-                                null=True, blank=True,
                                 help_text="Company this sale belongs to")
+    created_by = models.ForeignKey('accounts.User', on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name='created_sales', help_text="User who created this record")
+    updated_by = models.ForeignKey('accounts.User', on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name='updated_sales', help_text="User who last updated this record")
     is_deleted = models.BooleanField(default=False, help_text="Soft delete flag")
 
     objects = CompanyManager()
@@ -90,49 +105,64 @@ class Sale(models.Model):
             raise ValidationError({'discount_percent': 'Discount percent must be between 0 and 100.'})
         if self.tax_percent is not None and not Decimal("0.00") <= self.tax_percent <= Decimal("100.00"):
             raise ValidationError({'tax_percent': 'Tax percent must be between 0 and 100.'})
-        if (self.discount_amount or Decimal("0.00")) > 0 and (self.discount_percent or Decimal("0.00")) > 0:
+        
+        discount_amount = self.discount_amount or Decimal("0.00")
+        discount_percent = self.discount_percent or Decimal("0.00")
+        amount_received = self.amount_received or Decimal("0.00")
+
+        if discount_amount > 0 and discount_percent > 0:
             raise ValidationError({'discount_percent': 'Use either a flat discount or a percent discount, not both.'})
+        
         self.calculate_fields()
-        if self.discount_amount > self.total_revenue:
+        
+        if discount_amount > (self.total_revenue or Decimal("0.00")):
             raise ValidationError({'discount_amount': 'Discount amount cannot exceed total revenue.'})
-        if self.amount_received > self.final_amount:
+        if amount_received > (self.final_amount or Decimal("0.00")):
             raise ValidationError({'amount_received': 'Amount received cannot exceed the final invoice amount.'})
-        if self.batch:
-            remaining = self.batch.get_remaining_packages()
-            if self.pk:
-                old_sale = Sale.objects.get(pk=self.pk)
-                remaining += old_sale.number_of_packages_sold
-            if self.number_of_packages_sold > remaining:
-                raise ValidationError({
-                    'number_of_packages_sold': f'Cannot sell {self.number_of_packages_sold} packages. Only {remaining} packages remaining in this batch.'
-                })
-        if self.tenant_id and self.company_id and self.tenant.company_id and self.tenant.company_id != self.company_id:
-            raise ValidationError({'company': 'Company must match tenant owner company.'})
+        
+        batch_id = getattr(self, 'batch_id', None)
+        if batch_id:
+            try:
+                remaining = self.batch.get_remaining_packages()
+                if self.pk:
+                    old_sale = Sale.objects.get(pk=self.pk)
+                    remaining += (old_sale.number_of_packages_sold or 0)
+                
+                num_sold = self.number_of_packages_sold or 0
+                if num_sold > remaining:
+                    raise ValidationError({
+                        'number_of_packages_sold': f'Cannot sell {num_sold} packages. Only {remaining} packages remaining in this batch.'
+                    })
+            except (ObjectDoesNotExist, AttributeError):
+                pass
 
     def calculate_fields(self):
         number_of_packages_sold = self.number_of_packages_sold or 0
         selling_weight_per_package = self.selling_weight_per_package or Decimal("0.00")
         selling_price_per_kg = self.selling_price_per_kg or Decimal("0.00")
         amount_received = self.amount_received or Decimal("0.00")
+        discount_amount = self.discount_amount or Decimal("0.00")
+        discount_percent = self.discount_percent or Decimal("0.00")
+        tax_percent = self.tax_percent or Decimal("0.00")
 
-        self.total_revenue = (number_of_packages_sold
-                              * selling_weight_per_package
-                              * selling_price_per_kg)
+        self.total_revenue = Decimal(str(number_of_packages_sold)) * selling_weight_per_package * selling_price_per_kg
 
         batch_buy_price = self.batch.price_per_kg if self.batch and self.batch.price_per_kg is not None else Decimal("0.00")
-        self.total_cost = number_of_packages_sold * selling_weight_per_package * batch_buy_price
+        self.total_cost = Decimal(str(number_of_packages_sold)) * selling_weight_per_package * batch_buy_price
 
         self.profit = self.total_revenue - self.total_cost
         if self.total_revenue > 0:
             self.profit_margin_percent = (self.profit / self.total_revenue) * 100
+        else:
+            self.profit_margin_percent = Decimal("0.00")
 
         discounted_amount = self.total_revenue
-        if (self.discount_amount or Decimal("0.00")) > 0:
-            discounted_amount -= self.discount_amount
-        elif (self.discount_percent or Decimal("0.00")) > 0:
-            discounted_amount -= self.total_revenue * self.discount_percent / Decimal("100.00")
+        if discount_amount > 0:
+            discounted_amount -= discount_amount
+        elif discount_percent > 0:
+            discounted_amount -= self.total_revenue * discount_percent / Decimal("100.00")
 
-        self.tax_amount = discounted_amount * self.tax_percent / Decimal("100.00")
+        self.tax_amount = discounted_amount * tax_percent / Decimal("100.00")
         self.final_amount = discounted_amount + self.tax_amount
         self.pending_amount = self.final_amount - amount_received
 
@@ -141,25 +171,62 @@ class Sale(models.Model):
             timestamp = timezone.now().strftime('%Y%m%d%H%M%S%f')
             self.invoice_number = f"INV-{timestamp}-{uuid.uuid4().hex[:6]}"
 
-        if not self.company_id and self.tenant_id and self.tenant.company_id:
-            self.company = self.tenant.company
-        if not self.tenant_id and self.company_id and self.company.admin_id:
-            self.tenant = self.company.admin
+        if not getattr(self, 'company_id', None):
+            raise ValidationError({'company': 'Company is required.'})
 
         self.full_clean()
         self.calculate_fields()
 
-        if self.final_amount <= 0 or self.pending_amount <= 0:
-            self.payment_status = 'paid'
-        elif self.amount_received > 0:
-            self.payment_status = 'partial'
+        # Handle returned flag mapping
+        if self.is_returned:
+            self.status = 'returned'
+
+        # Synchronize status and payment_status based on payments
+        if self.status not in ['draft', 'pending', 'cancelled', 'returned']:
+            final_amount = self.final_amount or Decimal("0.00")
+            pending_amount = self.pending_amount or Decimal("0.00")
+            amount_received = self.amount_received or Decimal("0.00")
+
+            if final_amount <= 0 or pending_amount <= 0:
+                self.status = 'paid'
+                self.payment_status = 'paid'
+            elif amount_received > 0:
+                self.status = 'partial'
+                self.payment_status = 'partial'
+            else:
+                today = timezone.localdate()
+                due_date = self.due_date
+                if due_date and due_date < today:
+                    self.status = 'overdue'
+                    self.payment_status = 'overdue'
+                else:
+                    self.status = 'approved'
+                    self.payment_status = 'pending'
         else:
-            self.payment_status = 'pending'
+            # For draft, pending, cancelled, returned
+            if self.status == 'draft' or self.status == 'pending':
+                self.payment_status = 'pending'
+            elif self.status == 'cancelled':
+                # payment status can remain pending
+                self.payment_status = 'pending'
+            elif self.status == 'returned':
+                amount_received = self.amount_received or Decimal("0.00")
+                if amount_received > 0:
+                    self.payment_status = 'partial'
+                else:
+                    self.payment_status = 'pending'
 
         super().save(*args, **kwargs)
 
+
     def __str__(self):
-        return f"Sale #{self.invoice_number or self.id} - {self.buyer.name} - {self.date}"
+        buyer_name = "Unknown"
+        try:
+            if self.buyer:
+                buyer_name = self.buyer.name
+        except (AttributeError, ObjectDoesNotExist):
+            pass
+        return f"Sale #{self.invoice_number or self.id} - {buyer_name} - {self.date}"
 
     def get_profit_per_kg(self):
         total_weight = self.number_of_packages_sold * self.selling_weight_per_package

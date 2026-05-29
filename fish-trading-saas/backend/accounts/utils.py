@@ -104,7 +104,7 @@ def get_subscription_for_user(user):
     qs = Subscription.objects.all().order_by("-created_at")
     if getattr(user, "company_id", None):
         return qs.filter(company=user.company).first()
-    return qs.filter(tenant=user).first()
+    return qs.none().first()
 
 
 def check_failed_login_attempts(email):

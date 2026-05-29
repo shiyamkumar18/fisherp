@@ -1,5 +1,6 @@
 from django.db import models
 from django.utils import timezone
+from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from .fish import Fish
 from .purchase_batch import PurchaseBatch
 from .inventory import Inventory
@@ -24,7 +25,11 @@ class StockMovement(models.Model):
     notes = models.TextField(blank=True, null=True)
     timestamp = models.DateTimeField(default=timezone.now)
     company = models.ForeignKey('companies.Company', on_delete=models.CASCADE, related_name='stock_movements')
-    tenant = models.ForeignKey('accounts.User', on_delete=models.CASCADE, related_name='stock_movements')
+    tenant = models.ForeignKey('accounts.User', on_delete=models.CASCADE, related_name='stock_movements', null=True, blank=True, help_text="DEPRECATED: Tenant/Owner of this record")
+    created_by = models.ForeignKey('accounts.User', on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name='created_stock_movements', help_text="User who created this record")
+    updated_by = models.ForeignKey('accounts.User', on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name='updated_stock_movements', help_text="User who last updated this record")
 
     objects = CompanyManager()
     all_objects = models.Manager()
@@ -37,4 +42,14 @@ class StockMovement(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.get_movement_type_display()} - {self.quantity_packages} pkg ({self.weight_kg} kg) of {self.fish.name} at {self.timestamp}"
+        fish_name = "Unknown"
+        try:
+            if self.fish:
+                fish_name = self.fish.name
+        except (AttributeError, ObjectDoesNotExist):
+            pass
+        return f"{self.get_movement_type_display()} - {self.quantity_packages} pkg ({self.weight_kg} kg) of {fish_name} at {self.timestamp}"
+
+    def save(self, *args, **kwargs):
+        if not getattr(self, 'company_id', None):
+            raise ValidationError({'company': 'Company is required.'})

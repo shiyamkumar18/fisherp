@@ -1,12 +1,18 @@
 # Deferred imports to avoid circular import
-def is_impersonating(user):
+def is_impersonating(user_or_request):
     from accounts.permissions import is_impersonating
-    return is_impersonating(user)
+    # If it's a request, use the original function
+    if hasattr(user_or_request, 'user'):
+        return is_impersonating(user_or_request)
+    # If it's a user, we can't easily know impersonation status without the request/session
+    return False
 
 
-def get_impersonated_tenant(user):
+def get_impersonated_tenant(user_or_request):
     from accounts.permissions import get_impersonated_tenant
-    return get_impersonated_tenant(user)
+    if hasattr(user_or_request, 'user'):
+        return get_impersonated_tenant(user_or_request)
+    return None
 
 
 from trading.helpers import _user_company  # noqa: E402
@@ -33,8 +39,8 @@ class CompanyManager(models.Manager):
             return self.get_queryset().none()
         company = _user_company(user)
         if company is None:
-            return self.get_queryset().filter(tenant=user)
-        return self.get_queryset().filter(Q(company=company) | Q(tenant=user))
+            return self.get_queryset().none()
+        return self.get_queryset().filter(company=company)
 
 class BaseService:
     """Base class for services with tenant scoping."""

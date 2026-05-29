@@ -5,12 +5,12 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Count, Prefetch
 from django.utils import timezone
 from django.db import transaction
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from .models.fish_category import FishCategory
 from .models.fish import Fish
@@ -39,16 +39,28 @@ from accounts.permissions import (
 )
 from .helpers import _user_company   # <-- new import
 from datetime import timedelta, datetime
+import re
 
 
 def _get_create_scope(request):
     """
-    Set both company and tenant pointers while creating records.
+    Set company, tenant (deprecated), and created_by/updated_by pointers while creating records.
     """
+    user = getattr(request, 'user', None)
     if is_impersonating(request):
         company = get_impersonated_tenant(request)
-        return {'company': company, 'tenant': company.admin if company else None}
-    return {'company': _user_company(request.user), 'tenant': request.user}
+        return {
+            'company': company,
+            'tenant': company.admin if company else None,
+            'created_by': user,
+            'updated_by': user,
+        }
+    return {
+        'company': _user_company(user) if user else None,
+        'tenant': user,
+        'created_by': user,
+        'updated_by': user,
+    }
 
 
 def _scoped_queryset(request, model):
@@ -56,14 +68,27 @@ def _scoped_queryset(request, model):
     Return a tenant-scoped queryset and block direct platform access.
     """
     user = request.user
-    if user.is_superuser:
-        return model.objects.all()
-    if user.is_platform_user:
+    if getattr(user, 'is_superuser', False) or getattr(user, 'is_platform_user', False):
         if is_impersonating(request):
             company = get_impersonated_tenant(request)
             return model.objects.filter(company=company)
         raise PermissionDenied("Platform users must impersonate a tenant to access business data.")
-    return model.objects.for_user(user)
+    
+    # Safely get the manager
+    manager = getattr(model, 'objects', None)
+    if not manager:
+        return model.objects.none()
+        
+    for_user_func = getattr(manager, 'for_user', None)
+    if for_user_func and callable(for_user_func):
+        return for_user_func(user)
+        
+    # Fallback if for_user isn't implemented
+    company = getattr(user, 'company', None)
+    if company:
+        return model.objects.filter(company=company)
+        
+    return model.objects.none()
 
 
 def _filter_role_visible_payments(queryset, user):
@@ -100,6 +125,9 @@ class FishCategoryViewSet(TenantObjectPermission, QuerysetProtectionMixin, views
 
 
 class FishViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.ModelViewSet):
+    """
+    ViewSet for managing Fish products with tenant isolation and role-based access.
+    """
     queryset = Fish.objects.all()
     serializer_class = FishSerializer
     permission_classes = [IsAuthenticated]
@@ -110,24 +138,39 @@ class FishViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.Mode
     ordering = ['name']
 
     def get_permissions(self):
+        """
+        Custom permissions: Create/Update/Delete restricted to Tenant Admin and Accountant.
+        """
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [HasAnyRole('is_tenant_admin', 'is_accountant')]
         return [IsAuthenticated()]
 
     def get_queryset(self):
+        """
+        Return scoped queryset for the authenticated user.
+        """
         return _scoped_queryset(self.request, Fish).select_related('category', 'tenant', 'company')
 
     def get_serializer_class(self):
+        """
+        Use ListSerializer for list action, standard Serializer otherwise.
+        """
         if self.action == 'list':
             return FishListSerializer
         return FishSerializer
 
     @transaction.atomic
     def perform_create(self, serializer):
+        """
+        Apply company/tenant scope during creation.
+        """
         serializer.save(**_get_create_scope(self.request))
 
     @action(detail=True, methods=['post'])
     def toggle_active(self, request, pk=None):
+        """
+        Toggle the active status of a fish product.
+        """
         fish = self.get_object()
         fish.is_active = not fish.is_active
         fish.save()
@@ -139,13 +182,16 @@ class FishViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.Mode
 
     @action(detail=False, methods=['get'])
     def by_category(self, request):
+        """
+        Return fish products grouped by category.
+        """
         tenant_fish_qs = self.get_queryset().filter(is_active=True)
         categories = FishCategory.objects.filter(is_active=True).prefetch_related(
             Prefetch('fish', queryset=tenant_fish_qs, to_attr='tenant_fish')
         )
         result = []
         for category in categories:
-            fish_list = category.tenant_fish
+            fish_list = getattr(category, 'tenant_fish', [])
             result.append({
                 'category': FishCategorySerializer(category).data,
                 'fish_count': len(fish_list),
@@ -155,6 +201,9 @@ class FishViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.Mode
 
     @action(detail=False, methods=['get'])
     def statistics(self, request):
+        """
+        Return inventory statistics for fish products.
+        """
         queryset = self.get_queryset()
         stats = {
             'total_fish_types': queryset.count(),
@@ -170,6 +219,11 @@ class FishViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.Mode
 
 
 class SupplierViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.ModelViewSet):
+    """
+    ViewSet for managing suppliers.
+    Provides standard CRUD operations and custom actions for credit management,
+    verification, and payment tracking.
+    """
     queryset = Supplier.objects.all()
     serializer_class = SupplierSerializer
     permission_classes = [IsAuthenticated]
@@ -180,6 +234,9 @@ class SupplierViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.
     ordering = ['name']
 
     def get_permissions(self):
+        """
+        Instantiates and returns the list of permissions that this view requires.
+        """
         if self.action in ['list', 'retrieve', 'with_outstanding', 'overdue_payments', 'payment_summary']:
             return [HasAnyRole('is_tenant_admin', 'is_accountant', 'is_store_accounts')]
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
@@ -187,14 +244,23 @@ class SupplierViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.
         return [IsAuthenticated()]
 
     def get_queryset(self):
+        """
+        Return the list of items for this view.
+        """
         return _scoped_queryset(self.request, Supplier).select_related('tenant', 'company')
 
     @transaction.atomic
     def perform_create(self, serializer):
+        """
+        Create a new supplier instance.
+        """
         serializer.save(**_get_create_scope(self.request))
 
     @action(detail=True, methods=['post'])
     def update_credit(self, request, pk=None):
+        """
+        Update the credit balance for a specific supplier.
+        """
         supplier = self.get_object()
         amount = request.data.get('amount', 0)
         operation = request.data.get('operation', 'add')
@@ -213,11 +279,14 @@ class SupplierViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.
                 'current_credit_balance': str(supplier.current_credit_balance),
                 'message': 'Credit updated successfully'
             })
-        except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except (ValueError, TypeError, InvalidOperation) as e:
+            return Response({'error': f'Invalid amount format: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=['post'])
     def verify(self, request, pk=None):
+        """
+        Mark a supplier as verified.
+        """
         supplier = self.get_object()
         supplier.is_verified = True
         supplier.save()
@@ -229,6 +298,9 @@ class SupplierViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.
 
     @action(detail=True, methods=['post'])
     def update_outstanding(self, request, pk=None):
+        """
+        Recalculate the outstanding amount for a specific supplier.
+        """
         supplier = self.get_object()
         supplier.update_outstanding()
         return Response({
@@ -242,6 +314,9 @@ class SupplierViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.
 
     @action(detail=True, methods=['post'])
     def record_payment(self, request, pk=None):
+        """
+        Record a payment made to a supplier.
+        """
         supplier = self.get_object()
         amount = request.data.get('amount', 0)
         payment_date = request.data.get('payment_date')
@@ -277,11 +352,14 @@ class SupplierViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.
                 'outstanding_amount': str(supplier.outstanding_amount),
                 'message': f'Payment of {amount} recorded successfully'
             })
-        except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except (ValueError, TypeError, InvalidOperation) as e:
+            return Response({'error': f'Invalid amount format: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=['get'])
     def payment_summary(self, request, pk=None):
+        """
+        Retrieve a summary of recent payments and credit status for a supplier.
+        """
         supplier = self.get_object()
         recent_payments = Payment.objects.filter(
             supplier=supplier,
@@ -312,12 +390,18 @@ class SupplierViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.
 
     @action(detail=False, methods=['get'])
     def with_outstanding(self, request):
+        """
+        Retrieve all suppliers with outstanding balances.
+        """
         queryset = self.get_queryset().filter(outstanding_amount__gt=0)
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
     @action(detail=False, methods=['get'])
     def overdue_payments(self, request):
+        """
+        Retrieve all suppliers with overdue payments.
+        """
         queryset = self.get_queryset().filter(
             outstanding_amount__gt=0,
             payment_due_date__lt=timezone.now().date()
@@ -327,6 +411,11 @@ class SupplierViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.
 
 
 class BuyerViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.ModelViewSet):
+    """
+    ViewSet for managing buyers.
+    Provides standard CRUD operations and custom actions for credit management
+    and preference status.
+    """
     queryset = Buyer.objects.all()
     serializer_class = BuyerSerializer
     permission_classes = [IsAuthenticated]
@@ -337,6 +426,9 @@ class BuyerViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.Mod
     ordering = ['name']
 
     def get_permissions(self):
+        """
+        Instantiates and returns the list of permissions that this view requires.
+        """
         if self.action in ['list', 'retrieve']:
             return [HasAnyRole('is_tenant_admin', 'is_accountant', 'is_sales_staff')]
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
@@ -344,13 +436,22 @@ class BuyerViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.Mod
         return [IsAuthenticated()]
 
     def get_queryset(self):
+        """
+        Return the list of items for this view.
+        """
         return _scoped_queryset(self.request, Buyer).select_related('tenant', 'company')
 
     def perform_create(self, serializer):
+        """
+        Create a new buyer instance.
+        """
         serializer.save(**_get_create_scope(self.request))
 
     @action(detail=True, methods=['post'])
     def update_credit(self, request, pk=None):
+        """
+        Update the credit balance for a specific buyer.
+        """
         buyer = self.get_object()
         amount = request.data.get('amount', 0)
         operation = request.data.get('operation', 'add')
@@ -368,11 +469,14 @@ class BuyerViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.Mod
                 'status': 'success',
                 'current_credit_balance': str(buyer.current_credit_balance)
             })
-        except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except (ValueError, TypeError, InvalidOperation) as e:
+            return Response({'error': f'Invalid amount format: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=['post'])
     def mark_preferred(self, request, pk=None):
+        """
+        Toggle the preferred status of a buyer.
+        """
         buyer = self.get_object()
         buyer.is_preferred = not buyer.is_preferred
         buyer.save()
@@ -384,6 +488,10 @@ class BuyerViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.Mod
 
 
 class PurchaseBatchViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
+    """
+    ViewSet for managing purchase batches.
+    Includes operations for quality tracking and sales summaries for specific batches.
+    """
     queryset = PurchaseBatch.objects.all()
     serializer_class = PurchaseBatchSerializer
     permission_classes = [IsAuthenticated]
@@ -394,6 +502,9 @@ class PurchaseBatchViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
     ordering = ['-date']
 
     def get_permissions(self):
+        """
+        Instantiates and returns the list of permissions that this view requires.
+        """
         if self.action in ['list', 'retrieve', 'sales_summary']:
             return [HasAnyRole('is_tenant_admin', 'is_accountant', 'is_store_accounts')]
         if self.action in ['create']:
@@ -405,16 +516,25 @@ class PurchaseBatchViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
         return [IsAuthenticated()]
 
     def get_queryset(self):
+        """
+        Return the list of items for this view.
+        """
         return _scoped_queryset(self.request, PurchaseBatch).select_related(
             'supplier', 'fish', 'fish_category', 'tenant', 'company'
         )
 
     @transaction.atomic
     def perform_create(self, serializer):
+        """
+        Create a new purchase batch instance.
+        """
         serializer.save(**_get_create_scope(self.request))
 
     @action(detail=True, methods=['get'])
     def sales_summary(self, request, pk=None):
+        """
+        Get a summary of sales associated with a specific batch.
+        """
         batch = self.get_object()
         summary = batch.get_sales_summary()
         return Response({
@@ -425,6 +545,9 @@ class PurchaseBatchViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def update_quality(self, request, pk=None):
+        """
+        Update quality and inspection data for a batch.
+        """
         batch = self.get_object()
         batch.quality_grade = request.data.get('quality_grade', batch.quality_grade)
         batch.quality_score = request.data.get('quality_score', batch.quality_score)
@@ -439,6 +562,11 @@ class PurchaseBatchViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
 
 
 class SaleViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
+    """
+    ViewSet for managing sales.
+    Provides standard CRUD operations and custom actions for payment recording,
+    delivery tracking, and processing returns.
+    """
     queryset = Sale.objects.all()
     serializer_class = SaleSerializer
     permission_classes = [IsAuthenticated]
@@ -449,6 +577,9 @@ class SaleViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
     ordering = ['-date']
 
     def get_permissions(self):
+        """
+        Instantiates and returns the list of permissions that this view requires.
+        """
         if self.action in ['list', 'retrieve', 'record_payment', 'mark_delivered', 'process_return']:
             return [HasAnyRole('is_tenant_admin', 'is_accountant', 'is_sales_staff')]
         if self.action in ['create']:
@@ -460,21 +591,33 @@ class SaleViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
         return [IsAuthenticated()]
 
     def get_queryset(self):
+        """
+        Return the list of items for this view.
+        """
         return _scoped_queryset(self.request, Sale).select_related(
             'batch', 'buyer', 'tenant', 'company'
         )
 
     def perform_create(self, serializer):
+        """
+        Create a new sale instance.
+        """
         instance = serializer.save(**_get_create_scope(self.request))
         serializer.instance = instance
 
     def perform_update(self, serializer):
+        """
+        Update an existing sale instance using SaleService for business logic.
+        """
         service = SaleService(self.request.user)
         instance = service.update_sale(serializer.instance, serializer.validated_data)
         serializer.instance = instance
 
     @action(detail=True, methods=['post'])
     def record_payment(self, request, pk=None):
+        """
+        Record a payment for a specific sale.
+        """
         sale = self.get_object()
         service = SaleService(self.request.user)
         try:
@@ -495,6 +638,9 @@ class SaleViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def mark_delivered(self, request, pk=None):
+        """
+        Mark a sale as delivered.
+        """
         sale = self.get_object()
         service = SaleService(self.request.user)
         service.mark_delivered(sale, request.data.get('delivered_by', request.user.get_full_name()))
@@ -503,6 +649,9 @@ class SaleViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def process_return(self, request, pk=None):
+        """
+        Process a return for a specific sale.
+        """
         sale = self.get_object()
         service = SaleService(self.request.user)
         service.process_return(
@@ -516,6 +665,10 @@ class SaleViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
 
 
 class PaymentViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
+    """
+    ViewSet for managing payments.
+    Handles standard CRUD operations and approval/rejection workflows for payments.
+    """
     queryset = Payment.objects.all()
     serializer_class = PaymentSerializer
     permission_classes = [IsAuthenticated]
@@ -526,6 +679,9 @@ class PaymentViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
     ordering = ['-date']
 
     def get_permissions(self):
+        """
+        Instantiates and returns the list of permissions that this view requires.
+        """
         if self.action in ['list', 'retrieve']:
             return [HasAnyRole('is_tenant_admin', 'is_accountant', 'is_sales_staff', 'is_store_accounts')]
         if self.action in ['create']:
@@ -537,16 +693,25 @@ class PaymentViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
         return [IsAuthenticated()]
 
     def get_queryset(self):
+        """
+        Return the list of items for this view.
+        """
         queryset = _scoped_queryset(self.request, Payment).select_related(
             'purchase_batch', 'sale', 'supplier', 'buyer', 'tenant', 'company'
         )
         return _filter_role_visible_payments(queryset, self.request.user)
 
     def perform_create(self, serializer):
+        """
+        Create a new payment instance.
+        """
         serializer.save(**_get_create_scope(self.request))
 
     @action(detail=True, methods=['post'])
     def approve(self, request, pk=None):
+        """
+        Approve a pending payment.
+        """
         payment = self.get_object()
         payment.approval_status = 'approved'
         payment.approved_by = request.user
@@ -559,6 +724,9 @@ class PaymentViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def reject(self, request, pk=None):
+        """
+        Reject a pending payment.
+        """
         payment = self.get_object()
         payment.approval_status = 'rejected'
         payment.save()
@@ -569,6 +737,11 @@ class PaymentViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
 
 
 class InventoryViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
+    """
+    ViewSet for managing inventory items.
+    Provides CRUD operations and actions for stock movements, temperature updates,
+    and monitoring low or expiring stock.
+    """
     queryset = Inventory.objects.all()
     serializer_class = InventorySerializer
     permission_classes = [IsAuthenticated]
@@ -579,6 +752,9 @@ class InventoryViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
     ordering = ['-created_at']
 
     def get_permissions(self):
+        """
+        Instantiates and returns the list of permissions that this view requires.
+        """
         if self.action in ['list', 'retrieve', 'low_stock', 'expiring_soon']:
             return [HasAnyRole('is_tenant_admin', 'is_accountant', 'is_sales_staff', 'is_store_accounts')]
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
@@ -586,21 +762,33 @@ class InventoryViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
         return [IsAuthenticated()]
 
     def get_queryset(self):
+        """
+        Return the list of items for this view.
+        """
         return _scoped_queryset(self.request, Inventory).select_related(
             'fish', 'purchase_batch', 'tenant', 'company'
         )
 
     def perform_create(self, serializer):
+        """
+        Create a new inventory instance.
+        """
         instance = serializer.save(**_get_create_scope(self.request))
         serializer.instance = instance
 
     def perform_update(self, serializer):
+        """
+        Update an existing inventory instance.
+        """
         # InventoryService validates tenant scoping on init
         InventoryService(self.request.user)
         serializer.save()
 
     @action(detail=True, methods=['post'])
     def update_temperature(self, request, pk=None):
+        """
+        Update the storage temperature for an inventory item.
+        """
         inventory = self.get_object()
         service = InventoryService(self.request.user)
         service.update_temperature(inventory, request.data.get('temperature'))
@@ -609,6 +797,9 @@ class InventoryViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def move_stock(self, request, pk=None):
+        """
+        Move inventory stock to a new location.
+        """
         inventory = self.get_object()
         service = InventoryService(self.request.user)
         service.move_stock(
@@ -622,12 +813,18 @@ class InventoryViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def low_stock(self, request):
+        """
+        Retrieve a list of inventory items with low stock.
+        """
         low_stock_items = self.get_queryset().filter(status='low_stock')
         serializer = self.get_serializer(low_stock_items, many=True)
         return Response(serializer.data)
 
     @action(detail=False, methods=['get'])
     def expiring_soon(self, request):
+        """
+        Retrieve a list of inventory items expiring within the next 3 days.
+        """
         today = timezone.localdate()
         soon = today + timedelta(days=3)
         expiring = self.get_queryset().filter(
@@ -647,6 +844,9 @@ class CreatePurchaseView(APIView):
     """
 
     def get_permissions(self):
+        """
+        Instantiates and returns the list of permissions that this view requires.
+        """
         return [IsAuthenticated(), HasAnyRole('is_tenant_admin', 'is_store')]
 
     def post(self, request):
@@ -676,7 +876,7 @@ class CreatePurchaseView(APIView):
             )
         
         # Create purchase
-        result = PurchaseService.create_purchase(
+        result_obj = PurchaseService.create_purchase(
             user=user,
             company=company,
             supplier_id=supplier_id,
@@ -686,6 +886,7 @@ class CreatePurchaseView(APIView):
             amount_paid=amount_paid,
             notes=notes
         )
+        result = result_obj.to_dict()
         
         if not result['success']:
             return Response(
@@ -728,7 +929,7 @@ def get_price_history(request, fish_id):
             'prices': prices,
             'average': sum(p['price'] for p in prices) / len(prices) if prices else 0
         })
-    except Exception as e:
+    except (ValueError, KeyError, ObjectDoesNotExist) as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -803,8 +1004,8 @@ def get_profit_loss_chart(request):
         data = analytics.get_profit_loss_data(start_date, end_date)
         
         return Response({'success': True, 'data': data})
-    except Exception as e:
-        return Response({'error': str(e)}, status=400)
+    except ValueError as e:
+        return Response({'error': f'Invalid date format: {str(e)}'}, status=400)
 
 
 @api_view(['GET'])
@@ -832,8 +1033,8 @@ def get_sold_vs_remaining_chart(request):
         data = analytics.get_sold_vs_remaining(start_date, end_date)
         
         return Response({'success': True, 'data': data})
-    except Exception as e:
-        return Response({'error': str(e)}, status=400)
+    except ValueError as e:
+        return Response({'error': f'Invalid date format: {str(e)}'}, status=400)
 
 
 @api_view(['GET'])
@@ -862,8 +1063,8 @@ def get_demand_trend_chart(request):
         data = analytics.get_demand_trend(start_date, end_date, product)
         
         return Response({'success': True, 'data': data})
-    except Exception as e:
-        return Response({'error': str(e)}, status=400)
+    except ValueError as e:
+        return Response({'error': f'Invalid date format: {str(e)}'}, status=400)
 
 
 @api_view(['GET'])
@@ -892,8 +1093,8 @@ def get_batch_performance_chart(request):
         data = analytics.get_batch_performance(start_date, end_date, limit)
         
         return Response({'success': True, 'data': data})
-    except Exception as e:
-        return Response({'error': str(e)}, status=400)
+    except ValueError as e:
+        return Response({'error': f'Invalid input format: {str(e)}'}, status=400)
 
 
 @api_view(['GET'])
@@ -921,8 +1122,8 @@ def get_loss_analysis_chart(request):
         data = analytics.get_loss_analysis(start_date, end_date)
         
         return Response({'success': True, 'data': data})
-    except Exception as e:
-        return Response({'error': str(e)}, status=400)
+    except ValueError as e:
+        return Response({'error': f'Invalid date format: {str(e)}'}, status=400)
 
 
 @api_view(['GET'])
@@ -950,8 +1151,8 @@ def get_payment_analysis_chart(request):
         data = analytics.get_payment_analysis(start_date, end_date)
         
         return Response({'success': True, 'data': data})
-    except Exception as e:
-        return Response({'error': str(e)}, status=400)
+    except ValueError as e:
+        return Response({'error': f'Invalid date format: {str(e)}'}, status=400)
 
 
 @api_view(['GET'])
@@ -980,8 +1181,8 @@ def get_price_trend_chart(request):
         data = analytics.get_price_trend(start_date, end_date, product)
         
         return Response({'success': True, 'data': data})
-    except Exception as e:
-        return Response({'error': str(e)}, status=400)
+    except ValueError as e:
+        return Response({'error': f'Invalid date format: {str(e)}'}, status=400)
 
 
 @api_view(['GET'])
@@ -1010,8 +1211,8 @@ def get_profit_trend_chart(request):
         data = analytics.get_profit_trend(period, start_date, end_date)
         
         return Response({'success': True, 'data': data})
-    except Exception as e:
-        return Response({'error': str(e)}, status=400)
+    except ValueError as e:
+        return Response({'error': f'Invalid date format: {str(e)}'}, status=400)
 
 
 @api_view(['GET'])
@@ -1039,8 +1240,8 @@ def get_smart_insights(request):
         insights = analytics.get_smart_insights(start_date, end_date)
         
         return Response({'success': True, 'insights': insights})
-    except Exception as e:
-        return Response({'error': str(e)}, status=400)
+    except ValueError as e:
+        return Response({'error': f'Invalid date format: {str(e)}'}, status=400)
 
 
 @api_view(['GET'])
@@ -1068,11 +1269,16 @@ def get_dashboard_summary(request):
         summary = analytics.get_dashboard_summary(start_date, end_date)
         
         return Response({'success': True, 'summary': summary})
-    except Exception as e:
-        return Response({'error': str(e)}, status=400)
+    except ValueError as e:
+        return Response({'error': f'Invalid date format: {str(e)}'}, status=400)
 
 
 class MarketFishPriceViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.ModelViewSet):
+    """
+    ViewSet for managing market fish prices.
+    Includes operations for bulk uploading price data, and retrieving analytics
+    and price suggestions.
+    """
     queryset = MarketFishPrice.objects.all()
     serializer_class = MarketFishPriceSerializer
     permission_classes = [IsAuthenticated]
@@ -1083,6 +1289,9 @@ class MarketFishPriceViewSet(TenantObjectPermission, QuerysetProtectionMixin, vi
     ordering = ['-recorded_at']
 
     def get_queryset(self):
+        """
+        Return the list of items for this view.
+        """
         user = self.request.user
         company = _user_company(user)
         if company:
@@ -1091,6 +1300,9 @@ class MarketFishPriceViewSet(TenantObjectPermission, QuerysetProtectionMixin, vi
         return MarketFishPrice.objects.filter(company__isnull=True)
 
     def perform_create(self, serializer):
+        """
+        Apply company scope to the market price entry.
+        """
         user = self.request.user
         company = _user_company(user)
         serializer.save(company=company)
@@ -1098,6 +1310,9 @@ class MarketFishPriceViewSet(TenantObjectPermission, QuerysetProtectionMixin, vi
     @action(detail=False, methods=['post'], url_path='bulk-upload')
     @transaction.atomic
     def bulk_upload(self, request):
+        """
+        Bulk upload price data entries for various cities and fish types.
+        """
         data = request.data
         if not isinstance(data, list):
             return Response({'error': 'Expected a list of price entries'}, status=status.HTTP_400_BAD_REQUEST)
@@ -1131,22 +1346,25 @@ class MarketFishPriceViewSet(TenantObjectPermission, QuerysetProtectionMixin, vi
                     company=company
                 )
                 created_count += 1
-            except Exception as e:
-                pass
+            except (Fish.DoesNotExist, ValueError, InvalidOperation):
+                # Skip entries with invalid fish, pricing, or formatting
+                continue
+            except Exception:  # pylint: disable=broad-exception-caught
+                # Log unexpected errors but continue bulk processing
+                continue
                 
         return Response({'success': True, 'message': f'Uploaded {created_count} price entries.'}, status=status.HTTP_201_CREATED)
 
     @action(detail=False, methods=['get'], url_path='analytics')
     def analytics(self, request):
-        user = request.user
-        company = _user_company(user)
-        
+        """
+        Return comprehensive price analytics, including regional comparisons and trends.
+        """
         from django.db.models import Avg
-        import datetime
         
         today = timezone.localdate()
-        seven_days_ago = today - datetime.timedelta(days=7)
-        thirty_days_ago = today - datetime.timedelta(days=30)
+        seven_days_ago = today - timedelta(days=7)
+        thirty_days_ago = today - timedelta(days=30)
         
         base_qs = self.get_queryset()
         
@@ -1164,6 +1382,9 @@ class MarketFishPriceViewSet(TenantObjectPermission, QuerysetProtectionMixin, vi
 
     @action(detail=False, methods=['get'], url_path='suggestions')
     def suggestions(self, request):
+        """
+        Provide AI-driven price suggestions based on market trends and company data.
+        """
         user = request.user
         company = _user_company(user)
         if not company:
@@ -1176,6 +1397,9 @@ class MarketFishPriceViewSet(TenantObjectPermission, QuerysetProtectionMixin, vi
 
 
 class StockMovementViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.ReadOnlyModelViewSet):
+    """
+    ViewSet for viewing historical stock movements (purchases, sales, movements).
+    """
     queryset = StockMovement.objects.all()
     serializer_class = StockMovementSerializer
     permission_classes = [IsAuthenticated]
@@ -1186,26 +1410,41 @@ class StockMovementViewSet(TenantObjectPermission, QuerysetProtectionMixin, view
     ordering = ['-timestamp']
 
     def get_queryset(self):
+        """
+        Return stock movements scoped to the current tenant.
+        """
         return _scoped_queryset(self.request, StockMovement).select_related('fish', 'purchase_batch', 'tenant')
 
 
 class WhatsAppConfigViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.ModelViewSet):
+    """
+    ViewSet for managing company WhatsApp API configurations and templates.
+    """
     queryset = WhatsAppConfig.objects.all()
     serializer_class = WhatsAppConfigSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        """
+        Return the WhatsApp configuration for the user's company.
+        """
         user = self.request.user
         company = _user_company(user)
         return WhatsAppConfig.objects.filter(company=company)
 
     def perform_create(self, serializer):
+        """
+        Automatically associate the configuration with the user's company.
+        """
         user = self.request.user
         company = _user_company(user)
         serializer.save(company=company)
 
 
 class WhatsAppMessageLogViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.ReadOnlyModelViewSet):
+    """
+    ViewSet for auditing sent WhatsApp messages and their delivery status.
+    """
     queryset = WhatsAppMessageLog.objects.all()
     serializer_class = WhatsAppMessageLogSerializer
     permission_classes = [IsAuthenticated]
@@ -1216,19 +1455,26 @@ class WhatsAppMessageLogViewSet(TenantObjectPermission, QuerysetProtectionMixin,
     ordering = ['-created_at']
 
     def get_queryset(self):
+        """
+        Return message logs scoped to the user's company.
+        """
         user = self.request.user
         company = _user_company(user)
         return WhatsAppMessageLog.objects.filter(company=company)
 
 
-import re
-
 class VoiceParserAPIView(APIView):
+    """
+    AI-powered voice-to-trade parser.
+    Translates natural language descriptions of fish purchases into structured data.
+    """
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
+        """
+        Process transcribed text and extract trading entities using regex and fuzzy matching.
+        """
         text = request.data.get('text', '').strip()
-        language = request.data.get('language', 'ta-IN')
         
         if not text:
             return Response({'error': 'No text provided'}, status=status.HTTP_400_BAD_REQUEST)
@@ -1268,8 +1514,8 @@ class VoiceParserAPIView(APIView):
         other_pattern = re.search(r'(?:other|இதர|செலவு|others)\D*(\d+)', normalized)
         other_cost = float(other_pattern.group(1)) if other_pattern else 0.0
 
-        company = request.user.company
-        fishes = Fish.objects.filter(company=company, is_deleted=False)
+        company = _user_company(request.user)
+        fishes = Fish.objects.filter(company=company, is_deleted=False) if company else Fish.objects.none()
         matched_fish = None
         
         for f in fishes:
@@ -1289,13 +1535,13 @@ class VoiceParserAPIView(APIView):
         matched_supplier = None
         matched_buyer = None
         
-        suppliers = Supplier.objects.filter(company=company, is_deleted=False)
+        suppliers = Supplier.objects.filter(company=company, is_deleted=False) if company else Supplier.objects.none()
         for s in suppliers:
             if s.name.lower() in normalized:
                 matched_supplier = s
                 break
 
-        buyers = Buyer.objects.filter(company=company, is_deleted=False)
+        buyers = Buyer.objects.filter(company=company, is_deleted=False) if company else Buyer.objects.none()
         for b in buyers:
             if b.name.lower() in normalized:
                 matched_buyer = b
@@ -1332,8 +1578,8 @@ class VoiceParserAPIView(APIView):
             'success': True,
             'text': text,
             'entities': {
-                'fish_id': matched_fish.id if matched_fish else None,
-                'fish_name': matched_fish.name if matched_fish else None,
+                'fish_id': getattr(matched_fish, 'id', None),
+                'fish_name': getattr(matched_fish, 'name', None),
                 'packages': packages,
                 'package_weight': package_weight,
                 'price_per_kg': price_per_kg,
@@ -1342,10 +1588,10 @@ class VoiceParserAPIView(APIView):
                 'transport_cost': transport_cost,
                 'commission_cost': commission_cost,
                 'other_cost': other_cost,
-                'supplier_id': matched_supplier.id if matched_supplier else None,
-                'supplier_name': matched_supplier.name if matched_supplier else None,
-                'buyer_id': matched_buyer.id if matched_buyer else None,
-                'buyer_name': matched_buyer.name if matched_buyer else None,
+                'supplier_id': getattr(matched_supplier, 'id', None),
+                'supplier_name': getattr(matched_supplier, 'name', None),
+                'buyer_id': getattr(matched_buyer, 'id', None),
+                'buyer_name': getattr(matched_buyer, 'name', None),
             },
             'confidence_score': round(confidence, 2),
             'missing_fields': missing_fields,

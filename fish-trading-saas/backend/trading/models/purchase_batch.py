@@ -2,7 +2,7 @@ from decimal import Decimal
 import uuid
 from django.db import models
 from django.utils import timezone
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from django.core.validators import FileExtensionValidator, MinValueValidator
 
 from .fish import Fish
@@ -107,11 +107,14 @@ class PurchaseBatch(models.Model):
     estimated_expiry_date = models.DateField(null=True, blank=True)
     tenant = models.ForeignKey('accounts.User', on_delete=models.CASCADE, related_name='purchase_batches',
                                db_index=True, null=True, blank=True,
-                               help_text="Tenant/Owner of this purchase batch record")
+                               help_text="DEPRECATED: Tenant/Owner of this purchase batch record")
     company = models.ForeignKey('companies.Company', on_delete=models.CASCADE,
                                 related_name='purchase_batch_records', db_index=True,
-                                null=True, blank=True,
                                 help_text="Company this purchase batch belongs to")
+    created_by = models.ForeignKey('accounts.User', on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name='created_purchases', help_text="User who created this record")
+    updated_by = models.ForeignKey('accounts.User', on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name='updated_purchases', help_text="User who last updated this record")
     is_deleted = models.BooleanField(default=False)
     deleted_at = models.DateTimeField(null=True, blank=True)
 
@@ -153,10 +156,9 @@ class PurchaseBatch(models.Model):
         if not self.batch_number:
             timestamp = timezone.now().strftime('%Y%m%d%H%M%S%f')
             self.batch_number = f"BATCH-{timestamp}-{uuid.uuid4().hex[:6]}"
-        if not self.company_id and self.tenant_id and self.tenant.company_id:
-            self.company = self.tenant.company
-        if not self.tenant_id and self.company_id and self.company.admin_id:
-            self.tenant = self.company.admin
+        
+        if not getattr(self, 'company_id', None):
+            raise ValidationError({'company': 'Company is required.'})
 
         explicit_pending = self.pending_amount
         self.full_clean()
@@ -164,11 +166,11 @@ class PurchaseBatch(models.Model):
 
         if explicit_pending is not None and explicit_pending >= 0:
             self.pending_amount = explicit_pending
-            self.amount_paid = self.total_expense - explicit_pending
+            self.amount_paid = (self.total_expense or Decimal("0.00")) - explicit_pending
 
-        if self.pending_amount <= 0 and self.total_expense > 0:
+        if (self.pending_amount or Decimal("0.00")) <= 0 and (self.total_expense or Decimal("0.00")) > 0:
             self.status = 'paid'
-        elif self.amount_paid > 0:
+        elif (self.amount_paid or Decimal("0.00")) > 0:
             self.status = 'partial'
         else:
             self.status = 'pending'
@@ -192,11 +194,14 @@ class PurchaseBatch(models.Model):
                 raise ValidationError({field: f'{field.replace("_", " ").title()} cannot be negative.'})
         if self.amount_paid is not None and self.amount_paid < 0:
             raise ValidationError({'amount_paid': 'Amount paid cannot be negative.'})
+        
         self.calculate_fields()
-        if self.amount_paid > self.total_expense:
+        
+        amount_paid = self.amount_paid or Decimal("0.00")
+        total_expense = self.total_expense or Decimal("0.00")
+        
+        if amount_paid > total_expense:
             raise ValidationError({'amount_paid': 'Amount paid cannot exceed total expense.'})
-        if self.tenant_id and self.company_id and self.tenant.company_id and self.tenant.company_id != self.company_id:
-            raise ValidationError({'company': 'Company must match tenant owner company.'})
 
     def get_remaining_packages(self):
         from django.db.models import Sum

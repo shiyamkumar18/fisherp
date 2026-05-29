@@ -14,3 +14,4 @@ from .inventory import Inventory  # noqa: F401
 from .market_price import MarketFishPrice  # noqa: F401
 from .stock_movement import StockMovement  # noqa: F401
 from .whatsapp import WhatsAppConfig, WhatsAppMessageLog  # noqa: F401
+from .sales_permission import SalesPermissionConfig  # noqa: F401

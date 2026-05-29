@@ -1,8 +1,9 @@
+from decimal import Decimal
 import uuid
 from datetime import datetime
 from django.db import models
 from django.utils import timezone
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from django.core.validators import FileExtensionValidator
 
 from .purchase_batch import PurchaseBatch
@@ -61,11 +62,14 @@ class Payment(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     tenant = models.ForeignKey('accounts.User', on_delete=models.CASCADE, related_name='payments',
                                db_index=True, null=True, blank=True,
-                               help_text="Tenant/Owner of this payment record")
+                               help_text="DEPRECATED: Tenant/Owner of this payment record")
     company = models.ForeignKey('companies.Company', on_delete=models.CASCADE,
                                 related_name='payment_records', db_index=True,
-                                null=True, blank=True,
                                 help_text="Company this payment belongs to")
+    created_by = models.ForeignKey('accounts.User', on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name='created_payments', help_text="User who created this record")
+    updated_by = models.ForeignKey('accounts.User', on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name='updated_payments', help_text="User who last updated this record")
     is_deleted = models.BooleanField(default=False, help_text="Soft delete flag")
 
     objects = CompanyManager()
@@ -83,15 +87,12 @@ class Payment(models.Model):
             self.receipt_number = f"RCP-{timestamp}-{uuid.uuid4().hex[:6]}"
 
         # Validate amount is positive
-        if self.amount is not None and self.amount <= 0:
+        amount = self.amount or Decimal("0.00")
+        if amount <= 0:
             raise ValidationError({'amount': 'Payment amount must be greater than 0.'})
 
-        if not self.company_id and self.tenant_id and self.tenant.company_id:
-            self.company = self.tenant.company
-        if not self.tenant_id and self.company_id and self.company.admin_id:
-            self.tenant = self.company.admin
-        if self.tenant_id and self.company_id and self.tenant.company_id and self.tenant.company_id != self.company_id:
-            raise ValidationError({'company': 'Company must match tenant owner company.'})
+        if not getattr(self, 'company_id', None):
+            raise ValidationError({'company': 'Company is required.'})
 
         if isinstance(self.date, datetime):
             self.date = self.date.date()

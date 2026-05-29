@@ -1,5 +1,6 @@
 from django.db import models
 from django.utils import timezone
+from django.core.exceptions import ObjectDoesNotExist
 from .fish import Fish
 from services.base import CompanyManager
 
@@ -35,4 +36,20 @@ class MarketFishPrice(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.fish.name} in {self.city} - {self.price_per_kg}/kg at {self.recorded_at.date()}"
+        fish_name = "Unknown"
+        try:
+            if self.fish:
+                fish_name = self.fish.name
+        except (AttributeError, ObjectDoesNotExist):
+            pass
+        return f"{fish_name} in {self.city} - {self.price_per_kg}/kg at {self.recorded_at.date()}"
+
+    def save(self, *args, **kwargs):
+        company_id = getattr(self, 'company_id', None)
+        if not company_id:
+            try:
+                if self.fish and getattr(self.fish, 'company_id', None):
+                    self.company = self.fish.company
+            except (AttributeError, ObjectDoesNotExist):
+                pass
+        super().save(*args, **kwargs)
