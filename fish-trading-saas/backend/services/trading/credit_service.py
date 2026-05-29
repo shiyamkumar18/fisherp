@@ -35,7 +35,11 @@ class CreditService:
         total_delay_days = 0
         payment_count = 0
         for payment in cleared_payments:
-            sale_date = payment.sale.date
+            sale = payment.sale
+            if not sale:
+                continue
+                
+            sale_date = sale.date
             payment_date = payment.date
             if payment_date > sale_date:
                 delay = (payment_date - sale_date).days
@@ -54,13 +58,17 @@ class CreditService:
         risk = 0
         risk += min(45, buyer.overdue_invoices_count * 15)
 
-        if buyer.credit_limit > 0:
-            utilization = buyer.current_credit_balance / buyer.credit_limit
+        credit_limit = buyer.credit_limit or Decimal('0.00')
+        current_balance = buyer.current_credit_balance or Decimal('0.00')
+        average_delay = buyer.average_payment_delay_days or Decimal('0.00')
+
+        if credit_limit > 0:
+            utilization = current_balance / credit_limit
             risk += min(30, int(utilization * 30))
-        elif buyer.current_credit_balance > 0:
+        elif current_balance > 0:
             risk += 15
 
-        risk += min(25, int(buyer.average_payment_delay_days * 2))
+        risk += min(25, int(average_delay * 2))
 
         buyer.risk_score = min(100, risk)
         buyer.save()

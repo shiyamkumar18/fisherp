@@ -22,13 +22,26 @@ class AISuggestionEngine:
             created_at__lt=four_days_ago
         )
         for item in slow_stock:
+            fish_name = "Unknown"
+            fish_id = None
+            batch_id = None
+            batch_number = "Unknown"
+            
+            if item.fish:
+                fish_name = item.fish.name
+                fish_id = item.fish.id
+            
+            if item.purchase_batch:
+                batch_number = item.purchase_batch.batch_number
+                batch_id = item.purchase_batch.id
+
             suggestions.append({
                 'category': 'pricing',
-                'title': f'{item.fish.name} stock moving slowly',
-                'description': f'Batch {item.purchase_batch.batch_number} has {item.remaining_packages} packages remaining after 4 days. Suggestion: Reduce price by ₹20/kg to accelerate sales.',
+                'title': f'{fish_name} stock moving slowly',
+                'description': f'Batch {batch_number} has {item.remaining_packages} packages remaining after 4 days. Suggestion: Reduce price by ₹20/kg to accelerate sales.',
                 'action_type': 'markdown',
-                'fish_id': item.fish.id,
-                'batch_id': item.purchase_batch.id,
+                'fish_id': fish_id,
+                'batch_id': batch_id,
                 'value': 20.00
             })
 
@@ -40,15 +53,29 @@ class AISuggestionEngine:
             remaining_packages__gt=0,
             expiry_date__lte=two_days_from_now,
             expiry_date__gte=today
-        )
+        ).select_related('fish', 'purchase_batch')
+        
         for item in expiring_stock:
+            fish_name = "Unknown"
+            fish_id = None
+            batch_id = None
+            batch_number = "Unknown"
+            
+            if item.fish:
+                fish_name = item.fish.name
+                fish_id = item.fish.id
+            
+            if item.purchase_batch:
+                batch_number = item.purchase_batch.batch_number
+                batch_id = item.purchase_batch.id
+
             suggestions.append({
                 'category': 'expiry',
                 'title': 'Sell fast — expiry near',
-                'description': f'Batch {item.purchase_batch.batch_number} of {item.fish.name} expires on {item.expiry_date}. Sell immediately to prevent wastage.',
+                'description': f'Batch {batch_number} of {fish_name} expires on {item.expiry_date}. Sell immediately to prevent wastage.',
                 'action_type': 'clearance',
-                'fish_id': item.fish.id,
-                'batch_id': item.purchase_batch.id
+                'fish_id': fish_id,
+                'batch_id': batch_id
             })
 
         # 3. Supplier Margin suggestions
@@ -94,15 +121,15 @@ class AISuggestionEngine:
         for fish in fishes:
             recent_prices = MarketFishPrice.objects.filter(fish=fish, recorded_at__date=today)
             if recent_prices.exists():
-                today_avg = recent_prices.aggregate(Avg('price_per_kg'))['price_per_kg__avg']
+                today_avg = recent_prices.aggregate(Avg('price_per_kg'))['price_per_kg__avg'] or Decimal('0.00')
                 seven_days_ago = today - datetime.timedelta(days=7)
                 weekly_avg = MarketFishPrice.objects.filter(
                     fish=fish, 
                     recorded_at__date__gte=seven_days_ago, 
                     recorded_at__date__lt=today
-                ).aggregate(Avg('price_per_kg'))['price_per_kg__avg']
+                ).aggregate(Avg('price_per_kg'))['price_per_kg__avg'] or Decimal('0.00')
                 
-                if today_avg and weekly_avg and today_avg > weekly_avg * Decimal('1.05'):
+                if today_avg > 0 and weekly_avg > 0 and today_avg > weekly_avg * Decimal('1.05'):
                     suggestions.append({
                         'category': 'market',
                         'title': "Today's market trend shows demand increase",

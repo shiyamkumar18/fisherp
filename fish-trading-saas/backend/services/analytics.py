@@ -195,7 +195,7 @@ class AnalyticsService:
         result = []
         for batch in batches[:limit]:
             # Calculate total revenue from sales
-            sales = batch.sales.filter(is_deleted=False)
+            sales = Sale.objects.filter(batch=batch, is_deleted=False)
             total_revenue = sum(float(s.total_revenue or 0) for s in sales)
             total_cost = float(batch.fish_cost or 0) + float(batch.total_expense or 0)
             profit = total_revenue - total_cost
@@ -240,7 +240,7 @@ class AnalyticsService:
         
         result = []
         for batch in batches:
-            sales = batch.sales.filter(is_deleted=False)
+            sales = Sale.objects.filter(batch=batch, is_deleted=False)
             total_revenue = sum(float(s.total_revenue or 0) for s in sales)
             total_cost = float(batch.fish_cost or 0) + float(batch.total_expense or 0)
             
@@ -338,7 +338,7 @@ class AnalyticsService:
         result = []
         for batch in batches_qs.order_by('date'):
             # Get sales for this batch to calculate selling price
-            sales = batch.sales.filter(is_deleted=False)
+            sales = Sale.objects.filter(batch=batch, is_deleted=False)
             avg_selling_price = 0
             if sales.exists():
                 avg_selling = sales.aggregate(

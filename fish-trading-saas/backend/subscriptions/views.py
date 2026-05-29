@@ -6,6 +6,7 @@ from django.utils import timezone
 from .models import SubscriptionTier, Subscription, SubscriptionAddOn, SubscriptionAddOnPurchase
 from accounts.permissions import IsTenantAdmin
 from .serializers import SubscriptionSerializer, SubscriptionTierSerializer
+from services.subscriptions.entitlement_service import SubscriptionService
 
 
 def _subscription_queryset_for_user(user, *, platform_all=False):
@@ -494,20 +495,37 @@ class CheckFeatureAccessView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        try:
-            subscription = _subscription_queryset_for_user(request.user).first()
-            if not subscription:
-                raise Subscription.DoesNotExist
-            can_access = subscription.can_access_feature(feature_name)
+        company = getattr(request.user, 'company', None)
+        can_access = SubscriptionService.has_feature(company, feature_name, user=request.user)
+        
+        # Try to fetch tier name for legacy frontend expectations
+        tier_name = 'unknown'
+        subscription = SubscriptionService.get_active_subscription(company)
+        if subscription:
+            tier_name = subscription.tier.name
             
-            return Response({
-                'feature_name': feature_name,
-                'can_access': can_access,
-                'subscription_tier': subscription.tier.name,
-            })
-        except Subscription.DoesNotExist:
-            return Response({
-                'feature_name': feature_name,
-                'can_access': False,
-                'reason': 'No subscription found',
-            })
+        return Response({
+            'feature_name': feature_name,
+            'can_access': can_access,
+            'subscription_tier': tier_name,
+        })
+
+
+class MyEntitlementsView(APIView):
+    """
+    Get all active entitlements for the current tenant's subscription.
+    Used by the frontend to dynamically render features, hide buttons, and gating.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get(self, request):
+        company = getattr(request.user, 'company', None)
+        entitlements = SubscriptionService.get_entitlements(company)
+        
+        subscription = SubscriptionService.get_active_subscription(company)
+        status_value = subscription.status if subscription else 'inactive'
+        
+        return Response({
+            'entitlements': entitlements,
+            'status': status_value,
+        })

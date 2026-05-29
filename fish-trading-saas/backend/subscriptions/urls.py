@@ -9,6 +9,7 @@ from .views import (
     PurchaseAddOnView,
     CancelAddOnView,
     CheckFeatureAccessView,
+    MyEntitlementsView,
     SubscriptionViewSet,
     SubscriptionTierViewSet,
 )
@@ -35,6 +36,8 @@ urlpatterns = [
     
     # Feature access
     path("subscriptions/check-feature/", CheckFeatureAccessView.as_view(), name="check-feature"),
+    path("subscriptions/my-entitlements/", MyEntitlementsView.as_view(), name="my-entitlements"),
+    
     # Backward-compatible CRUD endpoints
     path("", include(router.urls)),
 ]
