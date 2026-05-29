@@ -54,13 +54,8 @@ const supplierMockData = [
 
 export const fetchSuppliers = async () => {
   if (config.useMocks) return supplierMockData;
-  try {
-    const response = await apiClient.get("/suppliers/");
+  const response = await apiClient.get("/suppliers/");
     return response.data?.results || response.data || [];
-  } catch (error) {
-    console.error("Failed to fetch suppliers, falling back to mock", error);
-    return supplierMockData;
-  }
 };
 
 export const createSupplier = async (data) => {

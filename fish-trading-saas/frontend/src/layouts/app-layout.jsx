@@ -28,7 +28,7 @@ import {
 import VoiceAssistant from "@/components/shared/voice-assistant";
 
 export default function AppLayout() {
-  const { user, logout } = useAuthStore();
+  const { user, logout, entitlements = [] } = useAuthStore();
   const { sidebarOpen, toggleSidebar, closeSidebar, theme, toggleTheme } = useUiStore();
   const location = useLocation();
   const navigate = useNavigate();
@@ -49,7 +49,7 @@ export default function AppLayout() {
       title: "Core",
       items: [
         { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-        { path: "/dashboard/reports", label: "Reports & Analytics", icon: BarChart3 }
+        ...(entitlements.includes("advanced_analytics") ? [{ path: "/dashboard/reports", label: "Reports & Analytics", icon: BarChart3 }] : [])
       ]
     },
     {
@@ -323,7 +323,7 @@ export default function AppLayout() {
             <Outlet />
           </motion.div>
         </main>
-        <VoiceAssistant />
+        {entitlements.includes("ai_assistant") && <VoiceAssistant />}
       </div>
     </div>
   );

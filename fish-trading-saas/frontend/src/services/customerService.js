@@ -44,13 +44,8 @@ const customerMockData = [
 
 export const fetchCustomers = async () => {
   if (config.useMocks) return customerMockData;
-  try {
-    const response = await apiClient.get("/buyers/");
+  const response = await apiClient.get("/buyers/");
     return response.data?.results || response.data || [];
-  } catch (error) {
-    console.error("Failed to fetch buyers, falling back to mock", error);
-    return customerMockData;
-  }
 };
 
 export const createCustomer = async (data) => {

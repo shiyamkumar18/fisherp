@@ -64,13 +64,8 @@ const salesMockData = [
 
 export const fetchSales = async () => {
   if (config.useMocks) return salesMockData;
-  try {
-    const response = await apiClient.get("/sales/");
-    return response.data?.results || response.data || [];
-  } catch (error) {
-    console.error("Failed to fetch sales, falling back to mock", error);
-    return salesMockData;
-  }
+  const response = await apiClient.get("/sales/");
+  return response.data?.results || response.data || [];
 };
 
 export const createSale = async (data) => {

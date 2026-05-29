@@ -54,13 +54,8 @@ const paymentMockData = [
 
 export const fetchPayments = async () => {
   if (config.useMocks) return paymentMockData;
-  try {
-    const response = await apiClient.get("/payments/");
+  const response = await apiClient.get("/payments/");
     return response.data?.results || response.data || [];
-  } catch (error) {
-    console.error("Failed to fetch payments, falling back to mock", error);
-    return paymentMockData;
-  }
 };
 
 export const createPayment = async (data) => {

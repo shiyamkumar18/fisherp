@@ -72,13 +72,8 @@ const inventoryMockData = [
 
 export const fetchInventory = async () => {
   if (config.useMocks) return inventoryMockData;
-  try {
-    const response = await apiClient.get("/inventory/");
+  const response = await apiClient.get("/inventory/");
     return response.data?.results || response.data || [];
-  } catch (error) {
-    console.error("Failed to fetch inventory, falling back to mock", error);
-    return inventoryMockData;
-  }
 };
 
 export const updateInventoryItem = async (id, data) => {

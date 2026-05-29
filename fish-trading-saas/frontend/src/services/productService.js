@@ -5,13 +5,8 @@ import { productsMock } from "@/services/mocks/productMock";
 // Fetches inventory items (remaining stock per fish batch).
 export const fetchProducts = async () => {
   if (config.useMocks) return productsMock;
-  try {
-    const response = await apiClient.get("/inventory/");
-    return response.data.results || response.data || [];
-  } catch (error) {
-    console.error("Failed to fetch inventory, falling back to mock", error);
-    return productsMock;
-  }
+  const response = await apiClient.get("/inventory/");
+  return response.data.results || response.data || [];
 };
 
 // Soft-delete a fish type by ID.
@@ -31,13 +26,8 @@ export const fetchFishTypes = async () => {
     { id: 6, name: "Rohu", category: 3, category_name: "Freshwater", unit_type: "kg", box_weight_kg: 1 }
   ];
   if (config.useMocks) return mockFish;
-  try {
-    const response = await apiClient.get("/fish/");
-    return response.data.results || response.data || [];
-  } catch (error) {
-    console.error("Failed to fetch fish types, falling back to mock", error);
-    return mockFish;
-  }
+  const response = await apiClient.get("/fish/");
+  return response.data.results || response.data || [];
 };
 
 // Create a new fish definition

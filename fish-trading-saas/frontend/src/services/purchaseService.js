@@ -75,13 +75,8 @@ const purchaseMockData = [
 
 export const fetchPurchaseBatches = async () => {
   if (config.useMocks) return purchaseMockData;
-  try {
-    const response = await apiClient.get("/purchase-batches/");
-    return response.data?.results || response.data || [];
-  } catch (error) {
-    console.error("Failed to fetch purchase batches, falling back to mock", error);
-    return purchaseMockData;
-  }
+  const response = await apiClient.get("/purchase-batches/");
+  return response.data?.results || response.data || [];
 };
 
 export const createPurchaseBatch = async (data) => {
