@@ -291,7 +291,11 @@ class PurchaseBatchSerializer(serializers.ModelSerializer):
             )
             validated_data['supplier'] = resolved_supplier
             
-        return super().create(validated_data)
+        request = self.context.get('request')
+        user = request.user if request else None
+        from services.trading.purchase_service import PurchaseBatchService
+        service = PurchaseBatchService(user)
+        return service.create_purchase_batch(validated_data)
 
     def update(self, instance, validated_data):
         from trading.services.supplier_resolution import SupplierResolutionService
@@ -308,7 +312,11 @@ class PurchaseBatchSerializer(serializers.ModelSerializer):
             )
             validated_data['supplier'] = resolved_supplier
             
-        return super().update(instance, validated_data)
+        request = self.context.get('request')
+        user = request.user if request else None
+        from services.trading.purchase_service import PurchaseBatchService
+        service = PurchaseBatchService(user)
+        return service.update_purchase_batch(instance, validated_data)
 
     def validate(self, data):
         request = self.context.get('request')
