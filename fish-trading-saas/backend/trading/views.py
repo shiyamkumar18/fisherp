@@ -1296,16 +1296,30 @@ class MarketFishPriceViewSet(TenantObjectPermission, QuerysetProtectionMixin, vi
         company = _user_company(user)
         if company:
             from django.db.models import Q
-            return MarketFishPrice.objects.filter(Q(company=company) | Q(company__isnull=True))
-        return MarketFishPrice.objects.filter(company__isnull=True)
+            return MarketFishPrice.objects.filter(Q(company=company) | Q(company__isnull=True, is_global=True))
+        return MarketFishPrice.objects.filter(company__isnull=True, is_global=True)
+
+    def check_object_permissions(self, request, obj):
+        super().check_object_permissions(request, obj)
+        # Block tenant mutations on global objects
+        if request.method in ['PUT', 'PATCH', 'DELETE']:
+            if obj.is_global and not request.user.is_superuser:
+                self.permission_denied(
+                    request,
+                    message="You do not have permission to modify global market prices."
+                )
 
     def perform_create(self, serializer):
         """
-        Apply company scope to the market price entry.
+        Apply company scope to the market price entry unless platform admin creates a global one.
         """
         user = self.request.user
         company = _user_company(user)
-        serializer.save(company=company)
+        # Check if platform user is creating a global record
+        if user.is_superuser and self.request.data.get('is_global') is True:
+            serializer.save(company=None, is_global=True)
+        else:
+            serializer.save(company=company, is_global=False)
 
     @action(detail=False, methods=['post'], url_path='bulk-upload')
     @transaction.atomic
@@ -1335,6 +1349,12 @@ class MarketFishPriceViewSet(TenantObjectPermission, QuerysetProtectionMixin, vi
                 if fish.company != company and not user.is_superuser:
                     continue
                 
+                is_global = False
+                company_to_use = company
+                if user.is_superuser and entry.get('is_global') is True:
+                    is_global = True
+                    company_to_use = None
+                    
                 MarketFishPrice.objects.create(
                     fish=fish,
                     city=city,
@@ -1343,7 +1363,8 @@ class MarketFishPriceViewSet(TenantObjectPermission, QuerysetProtectionMixin, vi
                     source=source,
                     recorded_at=recorded_at,
                     confidence_score=Decimal(str(confidence_score)),
-                    company=company
+                    company=company_to_use,
+                    is_global=is_global
                 )
                 created_count += 1
             except (Fish.DoesNotExist, ValueError, InvalidOperation):

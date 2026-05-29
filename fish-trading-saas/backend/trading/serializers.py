@@ -614,14 +614,18 @@ class MarketFishPriceSerializer(serializers.ModelSerializer):
         model = MarketFishPrice
         fields = [
             'id', 'fish', 'fish_name', 'city', 'city_display', 'market_name',
-            'price_per_kg', 'source', 'confidence_score', 'recorded_at', 'company'
+            'price_per_kg', 'source', 'confidence_score', 'recorded_at', 'company', 'is_global'
         ]
         read_only_fields = ['id', 'company']
 
     def validate(self, data):
         request = self.context.get('request')
         if request and request.user:
-            data['company'] = request.user.company
+            # If platform admin is forcing a global record, leave company None
+            if request.user.is_superuser and self.initial_data.get('is_global') is True:
+                data['company'] = None
+            else:
+                data['company'] = request.user.company
         return data
 
 
