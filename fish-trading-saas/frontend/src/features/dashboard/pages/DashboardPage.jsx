@@ -1,5 +1,5 @@
 
-import Card from "@/components/ui/Card";
+import Card from "@/components/ui/card";
 import FinancialCards from "../components/FinancialCards";
 import RevenueChart from "../components/RevenueChart";
 import ProfitChart from "../components/ProfitChart";

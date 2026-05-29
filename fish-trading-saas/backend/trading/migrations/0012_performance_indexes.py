@@ -27,7 +27,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name='purchasebatch',
-            index=models.Index(fields=['company', 'payment_status'], name='trading_pur_company_db3a8f_idx'),
+            index=models.Index(fields=['company', 'status'], name='trading_pur_company_db3a8f_idx'),
         ),
         migrations.AddIndex(
             model_name='purchasebatch',

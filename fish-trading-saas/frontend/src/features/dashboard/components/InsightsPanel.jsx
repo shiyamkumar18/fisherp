@@ -1,7 +1,7 @@
 // Smart insights panel for dashboard
 import { useSmartInsights } from "../hooks/useAnalytics";
 
-import Card from "@/components/ui/Card";
+import Card from "@/components/ui/card";
 
 export default function InsightsPanel() {
 	const { data, isLoading, isError, error } = useSmartInsights?.() ?? {};

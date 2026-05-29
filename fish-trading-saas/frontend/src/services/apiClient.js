@@ -42,7 +42,13 @@ apiClient.interceptors.response.use(
     const status = error?.response?.status;
 
     // Attempt a silent token refresh on the first 401.
-    if (status === 401 && !originalRequest._retry) {
+    if (
+      status === 401 && 
+      !originalRequest._retry &&
+      originalRequest.url &&
+      !originalRequest.url.includes('/auth/login') &&
+      !originalRequest.url.includes('/auth/token')
+    ) {
       const { session, updateAccessToken, logout } = useAuthStore.getState();
 
       if (!session?.refresh) {

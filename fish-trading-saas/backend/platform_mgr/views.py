@@ -341,21 +341,25 @@ class TenantManagementView(APIView):
     
     def get(self, request):
         """List all tenants"""
-        tenants = Company.objects.all().order_by('-created_at')
+        tenants = Company.objects.all().prefetch_related(
+            'subscription'
+        ).annotate(
+            user_count=Count('users')
+        ).order_by('-created_at')
         
         tenant_data = []
         for tenant in tenants:
-            # Get subscription status
-            try:
-                subscription = Subscription.objects.get(company=tenant)
+            # Get subscription status using prefetched relation
+            subscription = getattr(tenant, 'subscription', None)
+            if hasattr(subscription, 'all'): # if it's a RelatedManager, which shouldn't be if it's OneToOne but let's be safe
+                subscription = subscription.first()
+                
+            if subscription:
                 sub_status = subscription.status
-                tier = subscription.tier.name
-            except Subscription.DoesNotExist:
+                tier = subscription.tier.name if getattr(subscription, 'tier', None) else 'none'
+            else:
                 sub_status = 'none'
                 tier = 'none'
-            
-            # Get user count
-            user_count = User.objects.filter(company=tenant).count()
             
             tenant_data.append({
                 'id': tenant.id,
@@ -365,7 +369,7 @@ class TenantManagementView(APIView):
                 'is_verified': tenant.is_verified,
                 'subscription_status': sub_status,
                 'tier': tier,
-                'user_count': user_count,
+                'user_count': tenant.user_count,
                 'created_at': tenant.created_at,
             })
         

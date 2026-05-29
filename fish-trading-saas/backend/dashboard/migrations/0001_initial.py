@@ -9,7 +9,7 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('companies', '0002_initial_roles_and_permissions'),
+        ('companies', '0001_initial'),
     ]
 
     operations = [

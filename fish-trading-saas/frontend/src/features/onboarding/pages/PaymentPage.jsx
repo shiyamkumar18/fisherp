@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import Card from "../../../components/ui/Card";
-import Button from "../../../components/ui/Button";
+import Card from "../../../components/ui/card";
+import Button from "../../../components/ui/button";
 import toast from "react-hot-toast";
 
 export default function PaymentPage() {

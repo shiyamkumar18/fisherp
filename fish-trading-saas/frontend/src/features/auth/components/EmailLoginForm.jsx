@@ -2,8 +2,8 @@
 import { useState } from "react";
 import { useLogin } from "../hooks/useAuth";
 import { useNavigate } from "react-router-dom";
-import Input from "@/components/ui/Input";
-import Button from "@/components/ui/Button";
+import Input from "@/components/ui/input";
+import Button from "@/components/ui/button";
 
 export default function EmailLoginForm() {
   const [form, setForm] = useState({ email: "", password: "" });

@@ -3,11 +3,30 @@ Django settings for config project.
 Phase 0 – SaaS Multi-Tenant Foundation
 """
 
-from pathlib import Path
-from dotenv import load_dotenv
-from datetime import timedelta
 import os
+from pathlib import Path
+from datetime import timedelta
+import enum
+import datetime
+from dotenv import load_dotenv
 import sys
+
+# --- Python 3.11+ Polyfills for Django 6.0 on Python 3.10 ---
+if not hasattr(enum, 'EnumType'):
+    enum.EnumType = type(enum.Enum)
+if not hasattr(enum, 'StrEnum'):
+    class StrEnum(str, enum.Enum): pass
+    enum.StrEnum = StrEnum
+if not hasattr(enum, 'property'):
+    enum.property = property
+if not hasattr(enum, 'nonmember'):
+    class nonmember:
+        def __init__(self, value): self.value = value
+        def __get__(self, instance, owner): return self.value
+    enum.nonmember = nonmember
+if not hasattr(datetime, 'UTC'):
+    datetime.UTC = datetime.timezone.utc
+# -----------------------------------------------------------
 
 # Use custom allauth adapter for Google login
 SOCIALACCOUNT_ADAPTER = "accounts.adapters.CustomSocialAccountAdapter"
@@ -220,6 +239,17 @@ if not DEBUG and not _testing:
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
     SECURE_SSL_REDIRECT = True
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# =========================
+# CACHING
+# =========================
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'LOCATION': os.getenv('REDIS_URL', 'redis://localhost:6379/1'),
+    }
+}
 
 # Secure Cookies
 SESSION_COOKIE_SECURE = not DEBUG

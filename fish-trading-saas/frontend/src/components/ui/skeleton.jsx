@@ -1,5 +1,10 @@
-import { cn } from "@/utils/cn";
+import React from "react";
 
-export function Skeleton({ className }) {
-  return <div className={cn("animate-pulse rounded-xl bg-slate-200", className)} />;
+export default function Skeleton({ className = "", ...props }) {
+  return (
+    <div
+      className={`animate-pulse bg-gray-200 dark:bg-gray-700 rounded ${className}`}
+      {...props}
+    />
+  );
 }

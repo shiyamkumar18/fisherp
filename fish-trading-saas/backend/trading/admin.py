@@ -21,78 +21,60 @@ class TenantIsolationAdminMixin:
         if request.user.is_platform_operator:
             return qs
         
-        # For tenant users, filter by company
-        if request.user.company:
-            if 'company' in [f.name for f in qs.model._meta.get_fields()]:
-                return qs.filter(company=request.user.company)
-            return qs.filter(tenant__company=request.user.company)
+        company = getattr(request.user, 'company', None)
         
-        # Users without company can only see their own tenant records
-        return qs.filter(tenant=request.user)
+        # For tenant users, filter by company
+        if company:
+            if 'company' in [f.name for f in qs.model._meta.get_fields()]:
+                return qs.filter(company=company)
+            # Check if model has tenant field
+            if 'tenant' in [f.name for f in qs.model._meta.get_fields()]:
+                return qs.filter(tenant__company=company)
+        
+        # Users without company can only see their own tenant records if field exists
+        if 'tenant' in [f.name for f in qs.model._meta.get_fields()]:
+            return qs.filter(tenant=request.user)
+            
+        return qs.none()
     
+    def _has_tenant_permission(self, request, obj):
+        if obj is None:
+            return True
+            
+        company = getattr(request.user, 'company', None)
+        
+        # Check if object belongs to user's company
+        obj_company = getattr(obj, 'company', None)
+        if obj_company and company:
+            return obj_company.id == company.id
+            
+        # Fallback to tenant check
+        obj_tenant = getattr(obj, 'tenant', None)
+        if obj_tenant:
+            obj_tenant_company = getattr(obj_tenant, 'company', None)
+            if obj_tenant_company and company:
+                return obj_tenant_company.id == company.id
+            return obj_tenant.id == request.user.id
+            
+        return False
+
     def has_view_permission(self, request, obj=None):
         """Check if user can view objects"""
-        if request.user.is_superuser:
+        if request.user.is_superuser or request.user.is_platform_operator:
             return True
-        
-        # Platform operators can view all
-        if request.user.is_platform_operator:
-            return True
-        
-        if obj is not None:
-            # Check if object belongs to user's company
-            if hasattr(obj, 'company') and obj.company and request.user.company:
-                return obj.company_id == request.user.company_id
-            if hasattr(obj, 'tenant') and obj.tenant:
-                if obj.tenant.company:
-                    return obj.tenant.company == request.user.company
-                return obj.tenant == request.user
-            return False
-        
-        # For list view, check if user has any view permission
-        return self.has_add_permission(request) or self.has_change_permission(request)
+        return self._has_tenant_permission(request, obj)
     
     def has_change_permission(self, request, obj=None):
         """Check if user can change objects"""
-        if request.user.is_superuser:
+        if request.user.is_superuser or request.user.is_platform_operator:
             return True
-        
-        # Platform operators can change all
-        if request.user.is_platform_operator:
-            return True
-        
-        if obj is not None:
-            # Check if object belongs to user's company
-            if hasattr(obj, 'company') and obj.company and request.user.company:
-                return obj.company_id == request.user.company_id
-            if hasattr(obj, 'tenant') and obj.tenant:
-                if obj.tenant.company:
-                    return obj.tenant.company == request.user.company
-                return obj.tenant == request.user
-            return False
-        
-        return True  # Allow access to changelist
+        return self._has_tenant_permission(request, obj)
     
     def has_delete_permission(self, request, obj=None):
         """Check if user can delete objects"""
-        if request.user.is_superuser:
+        if request.user.is_superuser or request.user.is_platform_operator:
             return True
-        
-        # Platform operators can delete all
-        if request.user.is_platform_operator:
-            return True
-        
-        if obj is not None:
-            # Check if object belongs to user's company
-            if hasattr(obj, 'company') and obj.company and request.user.company:
-                return obj.company_id == request.user.company_id
-            if hasattr(obj, 'tenant') and obj.tenant:
-                if obj.tenant.company:
-                    return obj.tenant.company == request.user.company
-                return obj.tenant == request.user
-            return False
-        
-        return True  # Allow access to changelist
+        return self._has_tenant_permission(request, obj)
     
     def has_add_permission(self, request):
         """Check if user can add objects"""

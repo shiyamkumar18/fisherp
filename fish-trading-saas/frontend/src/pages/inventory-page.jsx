@@ -3,9 +3,9 @@ import {
   Warehouse, Search, Edit2, Thermometer, ShieldAlert, 
   Layers, Package, AlertTriangle, Calendar, MapPin, ClipboardCheck
 } from "lucide-react";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import Card from "@/components/ui/card";
+import Button from "@/components/ui/button";
+import Input from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { fetchInventory, updateInventoryItem } from "@/services/inventoryService";
 import { useToast } from "@/components/shared/toast-provider";

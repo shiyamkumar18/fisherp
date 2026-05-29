@@ -3,9 +3,9 @@ import {
   Package, Plus, Search, Tag, Settings, 
   Layers, Info, AlertTriangle, Trash2, CheckCircle, HelpCircle 
 } from "lucide-react";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import Card from "@/components/ui/card";
+import Input from "@/components/ui/input";
+import Button from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { fetchFishTypes, createFishType, deleteProduct } from "@/services/productService";
 import { useToast } from "@/components/shared/toast-provider";

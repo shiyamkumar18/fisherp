@@ -124,7 +124,7 @@ class PurchaseBatch(models.Model):
     class Meta:
         indexes = [
             models.Index(fields=['company', 'date']),
-            models.Index(fields=['company', 'payment_status']),
+            models.Index(fields=['company', 'status']),
             models.Index(fields=['company', 'supplier']),
             models.Index(fields=['company', 'fish']),
         ]

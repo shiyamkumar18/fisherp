@@ -15,14 +15,7 @@ class Migration(migrations.Migration):
             name='is_global',
             field=models.BooleanField(default=False, help_text='True if this is a platform-managed global price.'),
         ),
-        migrations.RemoveIndex(
-            model_name='marketfishprice',
-            name='trading_mar_company_28cccd_idx',
-        ),
-        migrations.RemoveIndex(
-            model_name='marketfishprice',
-            name='trading_mar_city_6b00c9_idx',
-        ),
+
         migrations.AddIndex(
             model_name='marketfishprice',
             index=models.Index(fields=['company', 'fish', 'city', 'recorded_at'], name='trading_mar_company_3f972b_idx'),

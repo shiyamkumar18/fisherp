@@ -1,5 +1,5 @@
 import React from "react";
-import Card from "../../../components/ui/Card";
+import Card from "../../../components/ui/card";
 import ExportButton from "../../../components/ui/ExportButton";
 
 export default function InventoryReport({ data = [], exportUrl }) {

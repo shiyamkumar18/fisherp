@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import MoveStockModal from "./MoveStockModal";
 import TemperatureModal from "./TemperatureModal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
-import Toast from "@/components/ui/Toast";
+import Toast from "@/components/ui/toast";
 
 export default function InventoryActions({ item }) {
   const [moveOpen, setMoveOpen] = useState(false);

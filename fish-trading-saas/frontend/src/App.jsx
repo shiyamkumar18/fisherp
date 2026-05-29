@@ -2,10 +2,11 @@ import { Suspense, lazy, useEffect, useRef } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import AppLayout from "@/layouts/app-layout";
 import ProtectedRoute from "@/components/shared/protected-route";
+import { ErrorBoundary } from "@/components/shared/error-boundary";
 import { ToastProvider } from "@/components/shared/toast-provider";
 import { useAuthStore } from "@/store/authStore";
 import { useUiStore } from "@/store/uiStore";
-import { Skeleton } from "@/components/ui/skeleton";
+import Skeleton from "@/components/ui/skeleton";
 
 const LoginPage = lazy(() => import("@/pages/login-page"));
 const RegisterPage = lazy(() => import("@/pages/register-page"));
@@ -107,7 +108,9 @@ export default function App() {
             path="/dashboard"
             element={
               <ProtectedRoute>
-                <AppLayout />
+                <ErrorBoundary>
+                  <AppLayout />
+                </ErrorBoundary>
               </ProtectedRoute>
             }
           >

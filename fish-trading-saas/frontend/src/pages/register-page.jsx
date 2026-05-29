@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Eye, EyeOff, Building2, Mail, Lock, User, Phone, Sun, Moon, Monitor } from "lucide-react";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import Card from "@/components/ui/card";
+import Input from "@/components/ui/input";
+import Button from "@/components/ui/button";
 import { useToast } from "@/components/shared/toast-provider";
 import { useUiStore } from "@/store/uiStore";
 import { apiClient } from "@/services/apiClient";

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Card from "../../../components/ui/Card";
+import Card from "../../../components/ui/card";
 import PlanCard from "../../subscription/components/PlanCard";
 
 const plans = [

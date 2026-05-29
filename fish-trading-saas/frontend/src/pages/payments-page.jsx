@@ -3,9 +3,9 @@ import {
   CreditCard, Plus, Search, Calendar, User, DollarSign, 
   ArrowUpRight, ArrowDownLeft, CheckCircle, AlertCircle, FileText, Trash2
 } from "lucide-react";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import Card from "@/components/ui/card";
+import Button from "@/components/ui/button";
+import Input from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { fetchPayments, createPayment, deletePayment } from "@/services/paymentService";
 import { fetchSuppliers } from "@/services/supplierService";

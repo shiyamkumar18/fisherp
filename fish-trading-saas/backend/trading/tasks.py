@@ -1,9 +1,10 @@
 import logging
+import datetime
 
 from celery import shared_task
 from celery.exceptions import Retry
 from django.utils import timezone
-from .models import Inventory, Supplier
+from .models import Inventory, Supplier, Sale, WhatsAppConfig, WhatsAppMessageLog
 from companies.models import Company
 
 logger = logging.getLogger(__name__)
@@ -83,7 +84,6 @@ def subscription_expiry_reminder(self, subscription_id, company_id=None):
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
 def send_whatsapp_message_task(self, message_log_id):
-    from trading.models import WhatsAppMessageLog, WhatsAppConfig
     try:
         log = WhatsAppMessageLog.objects.select_related('company').get(id=message_log_id)
     except WhatsAppMessageLog.DoesNotExist:
@@ -119,7 +119,6 @@ def send_whatsapp_message_task(self, message_log_id):
 
 @shared_task
 def invoice_auto_send_task(sale_id):
-    from trading.models import Sale, WhatsAppConfig, WhatsAppMessageLog
     try:
         sale = Sale.objects.select_related('buyer', 'company').get(id=sale_id)
     except Sale.DoesNotExist:
@@ -132,9 +131,14 @@ def invoice_auto_send_task(sale_id):
         return 'No phone number'
 
     company = sale.company
+    if not company:
+        logger.info('Company missing for sale %s', sale_id)
+        return 'No company'
+
     config = WhatsAppConfig.objects.filter(company=company, is_enabled=True).first()
     if not config or not config.is_enabled:
-        logger.info('WhatsApp config not enabled for company %s', company.id)
+        company_id = company.id if company else 'unknown'
+        logger.info('WhatsApp config not enabled for company %s', company_id)
         return 'Config disabled'
 
     template = config.templates.get('invoice', "Sir, Invoice {invoice_number} generated successfully. Total: ₹{final_amount}, Due: ₹{pending_amount} on {due_date}. Thanks!")
@@ -159,10 +163,6 @@ def invoice_auto_send_task(sale_id):
 
 @shared_task
 def scheduled_payment_reminders_task():
-    from trading.models import Sale, WhatsAppConfig, WhatsAppMessageLog
-    from django.utils import timezone
-    import datetime
-
     today = timezone.localdate()
     sales = Sale.objects.filter(
         payment_status__in=['pending', 'partial'],
@@ -220,10 +220,6 @@ def scheduled_payment_reminders_task():
 
 @shared_task
 def supplier_payment_reminder_task():
-    from trading.models import Supplier, WhatsAppConfig, WhatsAppMessageLog
-    from django.utils import timezone
-    import datetime
-
     today = timezone.localdate()
     three_days_later = today + datetime.timedelta(days=3)
     suppliers = Supplier.objects.filter(
@@ -256,7 +252,6 @@ def supplier_payment_reminder_task():
 
 @shared_task
 def inventory_low_stock_whatsapp_task(inventory_id):
-    from trading.models import Inventory, WhatsAppConfig, WhatsAppMessageLog
     try:
         inv = Inventory.objects.select_related('fish', 'company', 'purchase_batch').get(id=inventory_id)
     except Inventory.DoesNotExist:

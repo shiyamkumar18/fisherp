@@ -3,9 +3,9 @@ import {
   BarChart3, Calendar, Download, FileSpreadsheet, 
   TrendingUp, ShoppingBag, Layers, Users, AlertCircle, CheckCircle2 
 } from "lucide-react";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import Card from "@/components/ui/card";
+import Button from "@/components/ui/button";
+import Input from "@/components/ui/input";
 import { fetchSales } from "@/services/salesService";
 import { fetchPurchaseBatches } from "@/services/purchaseService";
 import { fetchInventory } from "@/services/inventoryService";

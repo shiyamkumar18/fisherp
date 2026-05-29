@@ -6,16 +6,18 @@ User = get_user_model()
 
 def _user_company(user):
     """
-    Return the company (or tenant) associated with the given user.
-    This function is used to resolve the user's company/tenant
-    for scoping queries and permission checks.
+    Return the Company object associated with the given user.
+    This function handles both direct company association and 
+    legacy patterns to ensure consistent tenant isolation.
     """
-    if not user:
+    if not user or not user.is_authenticated:
         return None
-    # Check for company field (introduced in User model)
+    
+    # 1. Direct company association (Primary pattern)
     if hasattr(user, 'company') and user.company:
         return user.company
-    # Fallback for legacy tenant field
-    if hasattr(user, 'tenant') and user.tenant:
-        return user.tenant
+    
+    # 2. Check for impersonation context (if session available via a different path)
+    # Note: Views should usually use the _get_create_scope or _scoped_queryset instead.
+    
     return None

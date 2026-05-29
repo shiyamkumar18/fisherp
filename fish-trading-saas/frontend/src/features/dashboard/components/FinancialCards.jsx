@@ -1,6 +1,6 @@
 // Financial summary cards for dashboard
 import { useOverview } from "../hooks/useAnalytics";
-import Card from "@/components/ui/Card";
+import Card from "@/components/ui/card";
 import { TrendingUp, TrendingDown, DollarSign, PieChart } from "lucide-react";
 
 function formatCurrency(amount) {

@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Eye, EyeOff, Building2, Mail, Lock, Sun, Moon, Monitor } from "lucide-react";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import Card from "@/components/ui/card";
+import Input from "@/components/ui/input";
+import Button from "@/components/ui/button";
 import { loginUser } from "@/services/authService";
 import { useAuthStore } from "@/store/authStore";
 import { useUiStore } from "@/store/uiStore";

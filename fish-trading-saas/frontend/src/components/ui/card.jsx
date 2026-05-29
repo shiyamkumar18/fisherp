@@ -1,33 +1,9 @@
-import { cn } from "@/utils/cn";
+import React from "react";
 
-export function Card({ className, hoverEffect = true, ...props }) {
+export default function Card({ children, className = "", ...props }) {
   return (
-    <section 
-      className={cn(
-        hoverEffect ? "glass-card" : "glass-card-no-hover", 
-        className
-      )} 
-      {...props} 
-    />
+    <div className={`bg-surface border rounded-xl shadow-sm p-5 hover:shadow-md transition-all duration-200 hover:scale-[1.02] ${className}`} {...props}>
+      {children}
+    </div>
   );
-}
-
-export function CardHeader({ className, ...props }) {
-  return <div className={cn("mb-4 space-y-1.5", className)} {...props} />;
-}
-
-export function CardTitle({ className, ...props }) {
-  return <h3 className={cn("text-lg font-bold text-textPrimary", className)} {...props} />;
-}
-
-export function CardDescription({ className, ...props }) {
-  return <p className={cn("text-sm text-textSecondary", className)} {...props} />;
-}
-
-export function CardContent({ className, ...props }) {
-  return <div className={cn("space-y-4", className)} {...props} />;
-}
-
-export function CardFooter({ className, ...props }) {
-  return <div className={cn("mt-6 flex items-center justify-end gap-2", className)} {...props} />;
 }

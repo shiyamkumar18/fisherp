@@ -1,7 +1,7 @@
 import { ChevronDown, ChevronUp, ChevronsUpDown } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
+import Button from "@/components/ui/button";
+import Input from "@/components/ui/input";
+import Skeleton from "@/components/ui/skeleton";
 
 export function DataTable({
   columns,

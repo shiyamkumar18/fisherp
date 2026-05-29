@@ -3,9 +3,9 @@ import {
   Users, Plus, Search, Phone, Mail, MapPin, 
   Briefcase, Star, CreditCard, Trash2, Edit2, AlertCircle 
 } from "lucide-react";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import Card from "@/components/ui/card";
+import Button from "@/components/ui/button";
+import Input from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { fetchCustomers, createCustomer, updateCustomer, deleteCustomer } from "@/services/customerService";
 import { useToast } from "@/components/shared/toast-provider";

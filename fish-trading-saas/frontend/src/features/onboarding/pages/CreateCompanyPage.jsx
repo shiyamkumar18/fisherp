@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Card from "../../../components/ui/Card";
-import Input from "../../../components/ui/Input";
-import Button from "../../../components/ui/Button";
+import Card from "../../../components/ui/card";
+import Input from "../../../components/ui/input";
+import Button from "../../../components/ui/button";
 import toast from "react-hot-toast";
 
 export default function CreateCompanyPage() {

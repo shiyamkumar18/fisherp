@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { DataTable } from "@/components/shared/data-table";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import Card from "@/components/ui/card";
+import Button from "@/components/ui/button";
 import { fetchOrders } from "@/services/orderService";
 import { useDebounce } from "@/hooks/useDebounce";
 import { 
