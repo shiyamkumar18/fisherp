@@ -90,6 +90,13 @@ class Sale(models.Model):
     objects = CompanyManager()
     all_objects = models.Manager()
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['company', 'date']),
+            models.Index(fields=['company', 'payment_status']),
+            models.Index(fields=['company', 'buyer']),
+        ]
+
     def clean(self):
         if self.number_of_packages_sold is not None and self.number_of_packages_sold <= 0:
             raise ValidationError({'number_of_packages_sold': 'Number of packages sold must be greater than 0.'})

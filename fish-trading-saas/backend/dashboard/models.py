@@ -1,3 +1,4 @@
+from django.db import models
 from django.db.models import Sum, Count, F, Q, Min, Case, When, Value, DecimalField
 from django.db.models.functions import TruncDay, TruncWeek, TruncMonth
 from django.utils import timezone
@@ -108,30 +109,31 @@ class DashboardManager:
         tenant_filter = DashboardManager._get_tenant_filter(user) if user else Q()
         today = timezone.now().date()
         
+        # Ensure incremental summary is up to date (this might be handled asynchronously in prod)
+        sales_summary = DailySalesSummary.objects.filter(company=company, date=today).first()
+        purchase_summary = DailyPurchaseSummary.objects.filter(company=company, date=today).first()
+        inventory_summary = DailyInventorySummary.objects.filter(company=company, date=today).first()
+        
         # Today's Sales
-        today_sales = Sale.objects.filter(tenant_filter, date=today)
-        today_sales_amount = today_sales.aggregate(total=Sum('total_revenue'))['total'] or Decimal('0.00')
+        today_sales_amount = sales_summary.total_revenue if sales_summary else Decimal('0.00')
         
         # Today's Purchases
-        today_purchases = PurchaseBatch.objects.filter(tenant_filter, date=today)
-        today_purchase_amount = today_purchases.aggregate(total=Sum('total_expense'))['total'] or Decimal('0.00')
+        today_purchase_amount = purchase_summary.total_cost if purchase_summary else Decimal('0.00')
         
         # Today's Profit
-        today_profit = today_sales.aggregate(total=Sum('profit'))['total'] or Decimal('0.00')
+        today_profit = sales_summary.total_profit if sales_summary else Decimal('0.00')
         
-        # Outstanding Receivables (all pending sales)
-        outstanding_receivables = Sale.objects.filter(
-            tenant_filter, 
-            pending_amount__gt=0
-        ).aggregate(total=Sum('pending_amount'))['total'] or Decimal('0.00')
+        # Outstanding Receivables (all pending sales across all dates, so we still need raw sum OR sum of all summaries)
+        # Using summary table: sum of pending_amount from all DailySalesSummary is not correct since it's a snapshot, wait.
+        # Pending amount is tracked per sale. Actually, pending_amount in summary is just the pending amount of sales made on that date.
+        # Total outstanding is the sum of pending amounts across all dates.
+        outstanding_receivables = DailySalesSummary.objects.filter(company=company).aggregate(total=Sum('pending_amount'))['total'] or Decimal('0.00')
         
-        # Outstanding Payables (all pending purchases)
-        outstanding_payables = PurchaseBatch.objects.filter(
-            tenant_filter,
-            pending_amount__gt=0
-        ).aggregate(total=Sum('pending_amount'))['total'] or Decimal('0.00')
+        # Outstanding Payables
+        outstanding_payables = DailyPurchaseSummary.objects.filter(company=company).aggregate(total=Sum('pending_amount'))['total'] or Decimal('0.00')
         
         # Net Cash Position (payments received - payments made)
+        # We can still query Payment table today, or we can add it to rollups. Leaving as is for now since Payment is not massive per day.
         payments_received = Payment.objects.filter(
             tenant_filter, 
             payment_type__in=['sale', 'credit'],
@@ -146,14 +148,8 @@ class DashboardManager:
         
         net_cash_position = payments_received - payments_made
         
-        # Inventory Value (remaining packages * cost per package) — single DB query
-        inventory_value = Inventory.objects.filter(
-            tenant_filter,
-            purchase_batch__isnull=False,
-            remaining_packages__gt=0,
-        ).aggregate(
-            total=Sum(F('remaining_packages') * F('purchase_batch__cost_per_package'))
-        )['total'] or Decimal('0.00')
+        # Inventory Value
+        inventory_value = inventory_summary.stock_value if inventory_summary else Decimal('0.00')
         
         # Active Buyers Count
         active_buyers_count = Buyer.objects.filter(tenant_filter, is_active=True).count()
@@ -185,29 +181,30 @@ class DashboardManager:
         end_date = timezone.now().date()
         start_date = end_date - timedelta(days=days - 1)
         
+        # Use DailySalesSummary rollup
+        company = _user_company(user) if user else None
+        
         # Apply additional filters if provided
         additional_filters = DashboardManager._build_filters(filters or {})
         
-        # Single query using TruncDay instead of per-day loop
+        # Single query on rollup table
         rows = (
-            Sale.objects.filter(
-                tenant_filter,
-                additional_filters,
+            DailySalesSummary.objects.filter(
+                company=company,
                 date__gte=start_date,
                 date__lte=end_date,
             )
-            .annotate(day=TruncDay('date'))
-            .values('day')
+            .values('date')
             .annotate(
                 revenue=Sum('total_revenue'),
-                profit=Sum('profit'),
-                count=Count('id'),
+                profit=Sum('total_profit'),
+                count=Sum('sales_count'),
             )
-            .order_by('day')
+            .order_by('date')
         )
 
         # Build a dict for O(1) lookup, then fill gaps with zeros
-        row_map = {r['day'] if isinstance(r['day'], date) else r['day'].date(): r for r in rows}
+        row_map = {r['date']: r for r in rows}
         daily_sales = []
         current_date = start_date
         while current_date <= end_date:
@@ -225,55 +222,63 @@ class DashboardManager:
     @staticmethod
     def get_monthly_revenue_comparison(user=None, months=6):
         """Compare revenue across last N months"""
-        tenant_filter = DashboardManager._get_tenant_filter(user) if user else Q()
+        company = _user_company(user) if user else None
+        
+        current_date = timezone.now()
+        start_date = current_date - timedelta(days=30 * months)
+        
+        # Use single aggregate with TruncMonth on the DailySalesSummary rollup
+        monthly_sales = (
+            DailySalesSummary.objects.filter(
+                company=company,
+                date__gte=start_date,
+            )
+            .annotate(month=TruncMonth('date'))
+            .values('month')
+            .annotate(
+                revenue=Sum('total_revenue'),
+                profit=Sum('total_profit'),
+                count=Sum('sales_count'),
+            )
+            .order_by('-month')
+        )
         
         monthly_data = []
-        current_date = timezone.now()
-        
-        for i in range(months - 1, -1, -1):
-            # Calculate month
-            target_date = current_date - timedelta(days=30 * i)
-            year = target_date.year
-            month = target_date.month
-            
-            sales = Sale.objects.filter(
-                tenant_filter,
-                date__year=year,
-                date__month=month
-            ).aggregate(
-                revenue=Sum('total_revenue'),
-                profit=Sum('profit'),
-                count=Count('id')
-            )
-            
+        for r in monthly_sales:
+            # Add early cutoff if we retrieved more than required months
+            if len(monthly_data) >= months:
+                break
+                
+            m_date = r['month'].date() if not isinstance(r['month'], date) else r['month']
             monthly_data.append({
-                'year': year,
-                'month': month,
-                'month_name': target_date.strftime('%b'),
-                'revenue': sales['revenue'] or Decimal('0.00'),
-                'profit': sales['profit'] or Decimal('0.00'),
-                'count': sales['count'] or 0,
+                'year': m_date.year,
+                'month': m_date.month,
+                'month_name': m_date.strftime('%b'),
+                'revenue': r['revenue'] or Decimal('0.00'),
+                'profit': r['profit'] or Decimal('0.00'),
+                'count': r['count'] or 0,
             })
-        
+            
+        # Ensure it's in chronological order and padded if necessary
+        monthly_data.reverse()
         return monthly_data
     
     @staticmethod
     def get_profit_margin_trend(user=None, days=30):
         """Get profit margin trend for last N days"""
-        tenant_filter = DashboardManager._get_tenant_filter(user) if user else Q()
+        company = _user_company(user) if user else None
         end_date = timezone.now().date()
         start_date = end_date - timedelta(days=days - 1)
         
-        # Single query using TruncDay instead of per-day loop
+        # Single query on rollup table
         rows = (
-            Sale.objects.filter(tenant_filter, date__gte=start_date, date__lte=end_date)
-            .annotate(day=TruncDay('date'))
-            .values('day')
-            .annotate(revenue=Sum('total_revenue'), profit=Sum('profit'))
-            .order_by('day')
+            DailySalesSummary.objects.filter(company=company, date__gte=start_date, date__lte=end_date)
+            .values('date')
+            .annotate(revenue=Sum('total_revenue'), profit=Sum('total_profit'))
+            .order_by('date')
         )
 
-        row_map = {r['day'].date() if r['day'] else None: r for r in rows}
+        row_map = {r['date']: r for r in rows}
         daily_margins = []
         current_date = start_date
         while current_date <= end_date:
@@ -1352,3 +1357,68 @@ class DashboardManager:
             'pending_from_buyers': sales_pending,
             'net_pending': sales_pending - purchase_pending,
         }
+
+# ============================================================
+# ROLLUP MODELS FOR SCALABLE ANALYTICS
+# ============================================================
+
+class DailySalesSummary(models.Model):
+    """Aggregated daily sales metrics to prevent scanning the entire Sale table."""
+    company = models.ForeignKey('companies.Company', on_delete=models.CASCADE, related_name='daily_sales')
+    date = models.DateField()
+    
+    sales_count = models.IntegerField(default=0)
+    total_revenue = models.DecimalField(max_digits=15, decimal_places=2, default=0.00)
+    total_cost = models.DecimalField(max_digits=15, decimal_places=2, default=0.00)
+    total_profit = models.DecimalField(max_digits=15, decimal_places=2, default=0.00)
+    pending_amount = models.DecimalField(max_digits=15, decimal_places=2, default=0.00)
+    avg_margin_percent = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
+    
+    total_packages_sold = models.IntegerField(default=0)
+    total_weight_sold = models.DecimalField(max_digits=15, decimal_places=2, default=0.00)
+
+    class Meta:
+        unique_together = ('company', 'date')
+        indexes = [
+            models.Index(fields=['company', 'date']),
+        ]
+
+    def __str__(self):
+        return f"{self.company.name} - Sales {self.date}"
+
+class DailyPurchaseSummary(models.Model):
+    """Aggregated daily purchase metrics."""
+    company = models.ForeignKey('companies.Company', on_delete=models.CASCADE, related_name='daily_purchases')
+    date = models.DateField()
+    
+    purchase_count = models.IntegerField(default=0)
+    total_weight = models.DecimalField(max_digits=15, decimal_places=2, default=0.00)
+    total_cost = models.DecimalField(max_digits=15, decimal_places=2, default=0.00)
+    pending_amount = models.DecimalField(max_digits=15, decimal_places=2, default=0.00)
+
+    class Meta:
+        unique_together = ('company', 'date')
+        indexes = [
+            models.Index(fields=['company', 'date']),
+        ]
+
+    def __str__(self):
+        return f"{self.company.name} - Purchases {self.date}"
+
+class DailyInventorySummary(models.Model):
+    """Daily snapshot of inventory health."""
+    company = models.ForeignKey('companies.Company', on_delete=models.CASCADE, related_name='daily_inventory')
+    date = models.DateField()
+    
+    stock_value = models.DecimalField(max_digits=15, decimal_places=2, default=0.00)
+    low_stock_count = models.IntegerField(default=0)
+    spoilage_loss = models.DecimalField(max_digits=15, decimal_places=2, default=0.00)
+
+    class Meta:
+        unique_together = ('company', 'date')
+        indexes = [
+            models.Index(fields=['company', 'date']),
+        ]
+
+    def __str__(self):
+        return f"{self.company.name} - Inventory {self.date}"

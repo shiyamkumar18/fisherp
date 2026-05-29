@@ -13,6 +13,7 @@ from trading.models import Sale, Inventory, Fish, Buyer, Supplier, PurchaseBatch
 from accounts.permissions import (
     IsPlatformOperator, CanViewFinancials, IsTenantUser, HasAnyRole
 )
+from django.core.cache import cache
 
 
 # Simple API for /dashboard/ (SaaS frontend quick stats)
@@ -466,7 +467,17 @@ class TenantAdminDashboardView(APIView):
     def get(self, request):
         user = request.user
         scope = _tenant_scope_kwargs(user)
+        company_id = user.company_id if hasattr(user, 'company_id') else 'none'
         
+        # Build cache key based on tenant and filters
+        cache_key = f"dashboard_tenant_admin_{company_id}"
+        if request.META.get('QUERY_STRING'):
+            cache_key += f"_{hash(request.META.get('QUERY_STRING'))}"
+            
+        cached_data = cache.get(cache_key)
+        if cached_data:
+            return Response(cached_data)
+            
         # Extract filter parameters
         filters = {
             'date_from': request.query_params.get('date_from'),
@@ -485,24 +496,21 @@ class TenantAdminDashboardView(APIView):
         today = timezone.now().date()
         
         # KPI Cards
-        today_sales = Sale.objects.filter(date=today, **scope)
-        today_sales_amount = today_sales.aggregate(total=Sum('total_revenue'))['total'] or Decimal('0.00')
-        today_profit = today_sales.aggregate(total=Sum('profit'))['total'] or Decimal('0.00')
+        # Get from rollup for speed
+        from dashboard.models import DailySalesSummary, DailyPurchaseSummary, DailyInventorySummary
+        sales_summary = DailySalesSummary.objects.filter(company_id=user.company_id, date=today).first() if user.company_id else None
+        
+        today_sales_amount = sales_summary.total_revenue if sales_summary else Decimal('0.00')
+        today_profit = sales_summary.total_profit if sales_summary else Decimal('0.00')
         
         # Receivables (pending payments)
-        receivables = Sale.objects.filter(
-            **scope,
-            pending_amount__gt=0
-        ).aggregate(total=Sum('pending_amount'))['total'] or Decimal('0.00')
+        receivables = DailySalesSummary.objects.filter(
+            company_id=user.company_id
+        ).aggregate(total=Sum('pending_amount'))['total'] or Decimal('0.00') if user.company_id else Decimal('0.00')
         
-        # Inventory Value — single DB aggregation
-        inventory_value = Inventory.objects.filter(
-            remaining_packages__gt=0,
-            purchase_batch__isnull=False,
-            **scope,
-        ).aggregate(
-            total=Sum(F('remaining_packages') * F('purchase_batch__cost_per_package'))
-        )['total'] or Decimal('0.00')
+        # Inventory Value
+        inventory_summary = DailyInventorySummary.objects.filter(company_id=user.company_id, date=today).first() if user.company_id else None
+        inventory_value = inventory_summary.stock_value if inventory_summary else Decimal('0.00')
         
         # Pie Chart: Sales by Fish Type
         top_fish = DashboardManager.get_top_fish_by_sales(user, 10)
@@ -526,7 +534,7 @@ class TenantAdminDashboardView(APIView):
             remaining_packages__gt=0
         ).values('fish__name', 'purchase_batch__batch_number', 'expiry_date', 'remaining_packages')[:5]
         
-        return Response({
+        response_data = {
             'role': 'tenant_admin',
             'kpi': {
                 'today_sales': today_sales_amount,
@@ -555,7 +563,11 @@ class TenantAdminDashboardView(APIView):
                 'expiring_count': len(list(expiring_batches)),
             },
             'applied_filters': filters,
-        })
+        }
+        
+        # Cache for 5 minutes
+        cache.set(cache_key, response_data, 300)
+        return Response(response_data)
 
 
 class BatchSpecificDashboardView(APIView):

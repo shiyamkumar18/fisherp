@@ -122,7 +122,12 @@ class PurchaseBatch(models.Model):
     all_objects = models.Manager()
 
     class Meta:
-        pass
+        indexes = [
+            models.Index(fields=['company', 'date']),
+            models.Index(fields=['company', 'payment_status']),
+            models.Index(fields=['company', 'supplier']),
+            models.Index(fields=['company', 'fish']),
+        ]
 
     def calculate_fields(self, explicit_pending=None):
         from services.trading.calculation_service import CalculationService

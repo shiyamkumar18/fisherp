@@ -77,6 +77,9 @@ class Payment(models.Model):
 
     class Meta:
         ordering = ['-date', '-created_at']
+        indexes = [
+            models.Index(fields=['company', 'date', 'payment_type']),
+        ]
 
     def __str__(self):
         return f"{self.get_payment_type_display()} - {self.amount} - {self.date}"
