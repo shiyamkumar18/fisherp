@@ -31,8 +31,10 @@ import {
   MapPin,
   Calendar,
   Lock,
-  Database
+  Database,
+  Mic
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import Card from "@/components/ui/card";
 import Skeleton from "@/components/ui/skeleton";
 import Input from "@/components/ui/input";
@@ -1150,6 +1152,7 @@ function BusinessDashboard() {
   const [overview, setOverview] = useState(null);
   const [error, setError] = useState("");
   const { canViewFinancial } = usePermission();
+  const navigate = useNavigate();
 
   useEffect(() => {
     let alive = true;
@@ -1217,6 +1220,42 @@ function BusinessDashboard() {
         >
           Simple Mode / எளிய முறை
         </Button>
+      </div>
+
+      {/* Quick Actions (Mobile First) */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <button
+          onClick={() => navigate("/dashboard/purchases")}
+          className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-primary text-white shadow-lg shadow-primary/20 hover:bg-primary-hover active:scale-95 transition-all cursor-pointer min-h-[96px]"
+        >
+          <ShoppingBag size={28} />
+          <span className="font-bold text-sm">Buy Fish</span>
+        </button>
+        <button
+          onClick={() => navigate("/dashboard/sales")}
+          className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-surface border-2 border-primary text-primary shadow-sm hover:bg-primary/5 active:scale-95 transition-all cursor-pointer min-h-[96px]"
+        >
+          <TrendingUp size={28} />
+          <span className="font-bold text-sm">Sell Fish</span>
+        </button>
+        <button
+          onClick={() => navigate("/dashboard/payments")}
+          className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-surface border border-border text-textPrimary shadow-sm hover:bg-border/20 active:scale-95 transition-all cursor-pointer min-h-[96px]"
+        >
+          <DollarSign size={28} className="text-success" />
+          <span className="font-bold text-sm">Payments</span>
+        </button>
+        <button
+          onClick={() => {
+            // Trigger voice if ai_assistant available
+            const voiceBtn = document.querySelector('[aria-label="Voice Assistant"]');
+            if(voiceBtn) voiceBtn.click();
+          }}
+          className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-surface border border-border text-textPrimary shadow-sm hover:bg-border/20 active:scale-95 transition-all cursor-pointer min-h-[96px]"
+        >
+          <Mic size={28} className="text-info" />
+          <span className="font-bold text-sm">Voice Entry</span>
+        </button>
       </div>
 
       {/* KPI Cards Row */}

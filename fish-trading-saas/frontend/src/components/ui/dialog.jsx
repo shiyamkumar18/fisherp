@@ -33,7 +33,7 @@ export function DialogContent({ className, children, ...props }) {
   if (!open) return null;
 
   return ReactDOM.createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 pb-safe sm:pb-4">
       {/* Backdrop */}
       <motion.div
         initial={{ opacity: 0 }}
@@ -45,23 +45,24 @@ export function DialogContent({ className, children, ...props }) {
       
       {/* Modal Container */}
       <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 10 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 10 }}
+        initial={{ opacity: 0, y: "100%" }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: "100%" }}
         transition={{ type: "spring", damping: 25, stiffness: 350 }}
         className={cn(
-          "relative z-50 w-full max-w-lg overflow-hidden rounded-2xl border border-border bg-surface p-6 shadow-xl",
+          "relative z-50 w-full sm:max-w-lg max-h-[90vh] overflow-y-auto rounded-t-3xl sm:rounded-2xl border border-border bg-surface p-6 shadow-2xl",
           className
         )}
         {...props}
       >
+        <div className="mx-auto w-12 h-1.5 bg-border rounded-full mb-4 sm:hidden opacity-50" />
         {children}
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-4 top-4 rounded-lg p-1.5 text-textSecondary hover:bg-border/30 hover:text-textPrimary transition-colors cursor-pointer"
+          className="absolute right-3 top-3 flex h-12 w-12 items-center justify-center rounded-full text-textSecondary hover:bg-border/30 hover:text-textPrimary transition-colors cursor-pointer"
         >
-          <X className="h-4 w-4" />
+          <X className="h-6 w-6" />
           <span className="sr-only">Close</span>
         </button>
       </motion.div>

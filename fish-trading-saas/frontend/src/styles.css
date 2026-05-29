@@ -209,4 +209,9 @@
     background-color: rgba(15, 23, 42, 0.5);
     color: var(--primary);
   }
+
+  /* Mobile bottom navigation spacing */
+  .mobile-bottom-safe {
+    padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+  }
 }

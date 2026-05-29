@@ -23,7 +23,8 @@ import {
   ChevronRight,
   Fish,
   ShoppingBag,
-  BarChart3
+  BarChart3,
+  MoreHorizontal
 } from "lucide-react";
 import VoiceAssistant from "@/components/shared/voice-assistant";
 import { canAccessRoute } from "@/utils/permissions";
@@ -34,6 +35,7 @@ export default function AppLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -128,25 +130,23 @@ export default function AppLayout() {
             className="fixed inset-0 z-40 bg-black lg:hidden"
           />
         )}
-      </AnimatePresence>
-
-      {/* Sidebar Container */}
+      </AnimatePresence>      {/* Sidebar Navigation - Hidden on Mobile, Visible on Desktop */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-border bg-surface transition-transform duration-300 lg:static lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-40 w-64 transform transition-transform duration-300 hidden md:flex md:flex-col md:static md:translate-x-0 bg-surface border-r border-border ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         {/* Sidebar Header */}
-        <div className="flex h-16 items-center justify-between px-6 border-b border-border">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-primary to-cyan-400 text-white shadow-md shadow-primary/25">
+        <div className="flex h-16 shrink-0 items-center justify-between border-b border-border px-6">
+          <div className="flex items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary text-white shadow-md shadow-primary/20">
               <Fish className="h-5 w-5" />
             </div>
-            <div>
-              <span className="font-extrabold text-lg tracking-tight bg-gradient-to-r from-primary to-cyan-500 bg-clip-text text-transparent">
+            <div className="flex flex-col">
+              <span className="text-lg font-extrabold tracking-tight text-textPrimary leading-none">
                 FisherP
               </span>
-              <span className="block text-[9px] text-textSecondary uppercase tracking-widest font-extrabold">
+              <span className="text-[10px] font-bold text-primary uppercase tracking-wider">
                 SaaS Portal
               </span>
             </div>
@@ -154,7 +154,7 @@ export default function AppLayout() {
           <button
             type="button"
             onClick={closeSidebar}
-            className="rounded-lg p-1.5 hover:bg-border/30 lg:hidden cursor-pointer"
+            className="rounded-lg p-1.5 hover:bg-border/30 md:hidden cursor-pointer"
           >
             <X className="h-5 w-5" />
           </button>
@@ -216,17 +216,17 @@ export default function AppLayout() {
             <button
               type="button"
               onClick={toggleSidebar}
-              className="rounded-lg p-2 hover:bg-border/30 lg:hidden cursor-pointer"
+              className="rounded-lg p-2 hover:bg-border/30 hidden cursor-pointer"
             >
               <Menu className="h-5 w-5" />
             </button>
             
             {/* Breadcrumbs */}
-            <div className="hidden sm:flex items-center gap-2 text-sm">
-              <span className="text-textSecondary hover:text-textPrimary transition-colors cursor-pointer" onClick={() => navigate("/dashboard")}>
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-textSecondary hover:text-textPrimary transition-colors cursor-pointer hidden sm:block" onClick={() => navigate("/dashboard")}>
                 App
               </span>
-              <ChevronRight className="h-3.5 w-3.5 text-textSecondary/50" />
+              <ChevronRight className="h-3.5 w-3.5 text-textSecondary/50 hidden sm:block" />
               <span className="font-semibold text-textPrimary">{currentPageLabel}</span>
             </div>
           </div>
@@ -322,7 +322,7 @@ export default function AppLayout() {
         </header>
 
         {/* Content Area */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-8">
+        <main className="flex-1 overflow-y-auto p-4 md:p-8 mobile-bottom-safe">
           <motion.div
             key={location.pathname}
             initial={{ opacity: 0, y: 15 }}
@@ -333,6 +333,112 @@ export default function AppLayout() {
           </motion.div>
         </main>
         {entitlements.includes("ai_assistant") && <VoiceAssistant />}
+        
+        {/* Mobile Bottom Navigation */}
+        <div className="md:hidden fixed bottom-0 left-0 right-0 h-[64px] bg-surface/95 backdrop-blur-md border-t border-border z-40 flex items-center justify-around pb-safe">
+          <NavLink
+            to="/dashboard"
+            end
+            className={({ isActive }) => `flex flex-col items-center justify-center w-full h-full space-y-1 ${isActive ? "text-primary" : "text-textSecondary"}`}
+          >
+            <LayoutDashboard className="h-5 w-5" />
+            <span className="text-[10px] font-bold">Home</span>
+          </NavLink>
+          
+          <NavLink
+            to="/dashboard/purchases"
+            className={({ isActive }) => `flex flex-col items-center justify-center w-full h-full space-y-1 ${isActive ? "text-primary" : "text-textSecondary"}`}
+          >
+            <ShoppingBag className="h-5 w-5" />
+            <span className="text-[10px] font-bold">Buy</span>
+          </NavLink>
+
+          <NavLink
+            to="/dashboard/sales"
+            className={({ isActive }) => `flex flex-col items-center justify-center w-full h-full space-y-1 ${isActive ? "text-primary" : "text-textSecondary"}`}
+          >
+            <TrendingUp className="h-5 w-5" />
+            <span className="text-[10px] font-bold">Sell</span>
+          </NavLink>
+
+          <NavLink
+            to="/dashboard/inventory"
+            className={({ isActive }) => `flex flex-col items-center justify-center w-full h-full space-y-1 ${isActive ? "text-primary" : "text-textSecondary"}`}
+          >
+            <Layers className="h-5 w-5" />
+            <span className="text-[10px] font-bold">Stock</span>
+          </NavLink>
+
+          <button
+            type="button"
+            onClick={() => setMoreMenuOpen(true)}
+            className="flex flex-col items-center justify-center w-full h-full space-y-1 text-textSecondary"
+          >
+            <MoreHorizontal className="h-5 w-5" />
+            <span className="text-[10px] font-bold">More</span>
+          </button>
+        </div>
+
+        {/* Mobile "More" Bottom Sheet Modal */}
+        <AnimatePresence>
+          {moreMenuOpen && (
+            <>
+              <div className="md:hidden fixed inset-0 bg-secondary/50 z-50" onClick={() => setMoreMenuOpen(false)} />
+              <motion.div
+                initial={{ y: "100%" }}
+                animate={{ y: 0 }}
+                exit={{ y: "100%" }}
+                transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                className="md:hidden fixed bottom-0 left-0 right-0 bg-surface rounded-t-3xl border-t border-border z-50 p-6 shadow-2xl max-h-[85vh] overflow-y-auto"
+              >
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="text-lg font-bold text-textPrimary">More Options</h3>
+                  <button onClick={() => setMoreMenuOpen(false)} className="p-2 bg-border/20 rounded-full">
+                    <X size={20} />
+                  </button>
+                </div>
+                
+                <div className="space-y-6">
+                  {navGroups.map((group, idx) => (
+                    <div key={idx} className="space-y-2">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-textSecondary/70">
+                        {group.title}
+                      </span>
+                      <div className="grid grid-cols-2 gap-3">
+                        {group.items.map((item, itemIdx) => {
+                          const Icon = item.icon;
+                          return (
+                            <NavLink
+                              key={itemIdx}
+                              to={item.path}
+                              onClick={() => setMoreMenuOpen(false)}
+                              className={({ isActive }) =>
+                                `flex items-center gap-2 p-3 rounded-xl text-sm font-bold transition-colors ${
+                                  isActive ? "bg-primary/10 text-primary border border-primary/20" : "bg-surface border border-border text-textSecondary"
+                                }`
+                              }
+                            >
+                              <Icon className="h-4 w-4" />
+                              <span>{item.label}</span>
+                            </NavLink>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="w-full flex items-center justify-center gap-2 p-3 mt-4 rounded-xl text-sm font-bold bg-danger/10 text-danger border border-danger/20"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    <span>Sign Out</span>
+                  </button>
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

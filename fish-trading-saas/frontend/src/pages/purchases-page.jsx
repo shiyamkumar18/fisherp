@@ -248,8 +248,10 @@ export default function PurchasesPage() {
             No purchase records found.
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm text-left">
+          <div className="w-full">
+            {/* Desktop Table */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="min-w-full text-sm text-left">
               <thead>
                 <tr className="border-b border-border text-xs font-bold uppercase tracking-wider text-textSecondary/70">
                   <th className="pb-3 pr-4">Batch Info</th>
@@ -337,6 +339,71 @@ export default function PurchasesPage() {
                 ))}
               </tbody>
             </table>
+            </div>
+
+            {/* Mobile Card List */}
+            <div className="md:hidden flex flex-col gap-4">
+              {filteredBatches.map((b) => (
+                <div key={b.id} className="bg-surface border border-border rounded-xl p-4 shadow-sm space-y-3">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="font-extrabold text-textPrimary text-base">{b.batch_number}</p>
+                      <p className="text-sm font-bold text-primary">{b.fish_name}</p>
+                      <div className="flex items-center gap-1 text-[11px] text-textSecondary mt-1">
+                        <Calendar size={12} />
+                        <span>{b.date}</span>
+                      </div>
+                    </div>
+                    <span className="inline-flex items-center gap-0.5 rounded px-2 py-0.5 text-[10px] font-bold bg-primary/10 text-primary border border-primary/20">
+                      Grade {b.quality_grade}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border/50">
+                    <div>
+                      <p className="text-[10px] text-textSecondary uppercase tracking-wider font-bold">Supplier</p>
+                      <p className="text-sm font-bold text-textPrimary">{b.supplier_name}</p>
+                      {b.place_of_buying && (
+                        <p className="text-[11px] text-textSecondary flex items-center gap-0.5 mt-0.5">
+                          <MapPin size={10} /> {b.place_of_buying}
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-textSecondary uppercase tracking-wider font-bold">Stock</p>
+                      <p className="text-sm font-bold text-textPrimary">{b.remaining_packages} / {b.number_of_packages} pkg</p>
+                      <p className="text-[11px] text-textSecondary">{b.total_weight} kg total</p>
+                    </div>
+                  </div>
+
+                  {canViewFinancial() && (
+                    <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border/50">
+                      <div>
+                        <p className="text-[10px] text-textSecondary uppercase tracking-wider font-bold">Cost/Kg</p>
+                        <p className="text-sm font-bold text-textPrimary">{formatINR(b.actual_cost_per_kg || b.price_per_kg)}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-textSecondary uppercase tracking-wider font-bold">Pending Pay</p>
+                        <p className={`text-sm font-bold ${Number(b.pending_amount) > 0 ? "text-amber-500" : "text-success"}`}>
+                          {formatINR(b.pending_amount || 0)}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {canDelete() && (
+                    <div className="pt-3 border-t border-border/50 flex justify-end">
+                      <button
+                        onClick={() => handleDelete(b.id)}
+                        className="flex items-center gap-2 px-4 py-2 bg-danger/10 text-danger border border-danger/20 rounded-lg text-xs font-bold active:scale-95 transition-all"
+                      >
+                        <Trash2 size={14} /> Void Batch
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </Card>
@@ -354,7 +421,7 @@ export default function PurchasesPage() {
                 <select 
                   value={supplierId}
                   onChange={(e) => setSupplierId(e.target.value)}
-                  className="h-10 w-full rounded-xl border border-border bg-surface px-3 text-sm text-textPrimary outline-none focus:border-primary"
+                  className="h-12 w-full rounded-xl border border-border bg-surface px-3 text-sm text-textPrimary outline-none focus:border-primary"
                 >
                   {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
@@ -365,7 +432,7 @@ export default function PurchasesPage() {
                 <select 
                   value={fishId}
                   onChange={(e) => setFishId(e.target.value)}
-                  className="h-10 w-full rounded-xl border border-border bg-surface px-3 text-sm text-textPrimary outline-none focus:border-primary"
+                  className="h-12 w-full rounded-xl border border-border bg-surface px-3 text-sm text-textPrimary outline-none focus:border-primary"
                 >
                   {fishTypes.map(f => <option key={f.id} value={f.id}>{f.name} ({f.unit_type_display || f.unit_type})</option>)}
                 </select>
@@ -376,7 +443,7 @@ export default function PurchasesPage() {
                 <select 
                   value={purchaseType}
                   onChange={(e) => setPurchaseType(e.target.value)}
-                  className="h-10 w-full rounded-xl border border-border bg-surface px-3 text-sm text-textPrimary outline-none focus:border-primary"
+                  className="h-12 w-full rounded-xl border border-border bg-surface px-3 text-sm text-textPrimary outline-none focus:border-primary"
                 >
                   <option value="outright">Outright Purchase</option>
                   <option value="consignment">Consignment basis</option>
@@ -384,18 +451,18 @@ export default function PurchasesPage() {
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-bold text-textSecondary">Log Date</label>
-                <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+                <label className="text-xs font-bold text-textSecondary">Batch Date</label>
+                <Input className="h-12" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
               </div>
 
               <div className="space-y-1">
                 <label className="text-xs font-bold text-textSecondary">Fisherman Name</label>
-                <Input value={fishermanName} onChange={(e) => setFishermanName(e.target.value)} placeholder="e.g. Ramesh" />
+                <Input className="h-12" value={fishermanName} onChange={(e) => setFishermanName(e.target.value)} placeholder="e.g. Ramesh" />
               </div>
 
               <div className="space-y-1">
                 <label className="text-xs font-bold text-textSecondary">Place of Buying (Dock/Market)</label>
-                <Input value={placeOfBuying} onChange={(e) => setPlaceOfBuying(e.target.value)} placeholder="e.g. Mangalore Jetty" />
+                <Input className="h-12" value={placeOfBuying} onChange={(e) => setPlaceOfBuying(e.target.value)} placeholder="e.g. Mangalore Jetty" />
               </div>
             </div>
 
@@ -407,16 +474,16 @@ export default function PurchasesPage() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-1">
-                  <label className="text-[10px] font-extrabold text-textSecondary uppercase">No. of Packages *</label>
-                  <Input type="number" value={packages} onChange={(e) => setPackages(Math.max(0, parseInt(e.target.value) || 0))} required />
+                  <label className="text-[10px] font-bold text-textSecondary uppercase tracking-wider">Packages *</label>
+                  <Input className="h-12" type="number" value={packages} onChange={(e) => setPackages(Math.max(0, parseInt(e.target.value) || 0))} required />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-extrabold text-textSecondary uppercase">Kg per Package *</label>
-                  <Input type="number" step="0.01" value={packageWeight} onChange={(e) => setPackageWeight(Math.max(0, parseFloat(e.target.value) || 0))} required />
+                  <label className="text-[10px] font-bold text-textSecondary uppercase tracking-wider">Wt / Pkg (kg) *</label>
+                  <Input className="h-12" type="number" value={packageWeight} onChange={(e) => setPackageWeight(Math.max(0, parseFloat(e.target.value) || 0))} required />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-extrabold text-textSecondary uppercase">Price/Kg (INR) *</label>
-                  <Input type="number" step="0.01" value={pricePerKg} onChange={(e) => setPricePerKg(Math.max(0, parseFloat(e.target.value) || 0))} required />
+                  <label className="text-[10px] font-bold text-textSecondary uppercase tracking-wider">Base Rate/Kg (INR) *</label>
+                  <Input className="h-12" type="number" value={pricePerKg} onChange={(e) => setPricePerKg(Math.max(0, parseFloat(e.target.value) || 0))} required />
                 </div>
               </div>
               
@@ -432,23 +499,23 @@ export default function PurchasesPage() {
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-textSecondary">Labour</label>
-                  <Input type="number" value={labourCost} onChange={(e) => setLabourCost(Math.max(0, parseFloat(e.target.value) || 0))} />
+                  <Input className="h-12" type="number" value={labourCost} onChange={(e) => setLabourCost(Math.max(0, parseFloat(e.target.value) || 0))} />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-textSecondary">Ice Cost</label>
-                  <Input type="number" value={iceCost} onChange={(e) => setIceCost(Math.max(0, parseFloat(e.target.value) || 0))} />
+                  <label className="text-[10px] font-bold text-textSecondary">Ice</label>
+                  <Input className="h-12" type="number" value={iceCost} onChange={(e) => setIceCost(Math.max(0, parseFloat(e.target.value) || 0))} />
                 </div>
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-textSecondary">Transport</label>
-                  <Input type="number" value={transportCost} onChange={(e) => setTransportCost(Math.max(0, parseFloat(e.target.value) || 0))} />
+                  <Input className="h-12" type="number" value={transportCost} onChange={(e) => setTransportCost(Math.max(0, parseFloat(e.target.value) || 0))} />
                 </div>
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-textSecondary">Commission</label>
-                  <Input type="number" value={commissionCost} onChange={(e) => setCommissionCost(Math.max(0, parseFloat(e.target.value) || 0))} />
+                  <Input className="h-12" type="number" value={commissionCost} onChange={(e) => setCommissionCost(Math.max(0, parseFloat(e.target.value) || 0))} />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-textSecondary">Others</label>
-                  <Input type="number" value={otherCost} onChange={(e) => setOtherCost(Math.max(0, parseFloat(e.target.value) || 0))} />
+                  <label className="text-[10px] font-bold text-textSecondary">Other</label>
+                  <Input className="h-12" type="number" value={otherCost} onChange={(e) => setOtherCost(Math.max(0, parseFloat(e.target.value) || 0))} />
                 </div>
               </div>
               <div className="flex flex-wrap gap-4 mt-3 pt-3 border-t border-border/60 text-xs font-bold text-textSecondary">
@@ -464,8 +531,8 @@ export default function PurchasesPage() {
                 <p className="text-xs font-bold text-success mb-3">Billing & Payment</p>
                 <div className="space-y-3">
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-textSecondary">Amount Paid *</label>
-                    <Input type="number" value={amountPaid} onChange={(e) => setAmountPaid(Math.max(0, parseFloat(e.target.value) || 0))} />
+                    <label className="text-[10px] font-bold text-textSecondary">Advance Paid (INR)</label>
+                    <Input className="h-12" type="number" value={amountPaid} onChange={(e) => setAmountPaid(Math.max(0, parseFloat(e.target.value) || 0))} />
                   </div>
                   <div className="flex justify-between text-xs font-bold text-textSecondary pt-1">
                     <span>Remaining Balance:</span>
@@ -493,12 +560,12 @@ export default function PurchasesPage() {
                     </select>
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-textSecondary">Vehicle Number</label>
-                    <Input value={vehicleNo} onChange={(e) => setVehicleNo(e.target.value)} placeholder="KA-19-F-1234" />
+                    <label className="text-[10px] font-bold text-textSecondary">Vehicle Plate</label>
+                    <Input className="h-12" value={vehicleNo} onChange={(e) => setVehicleNo(e.target.value)} placeholder="TN-..." />
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-textSecondary">Driver Name</label>
-                    <Input value={driverName} onChange={(e) => setDriverName(e.target.value)} placeholder="Driver Name" />
+                    <Input className="h-12" value={driverName} onChange={(e) => setDriverName(e.target.value)} placeholder="Driver Name" />
                   </div>
                 </div>
               </div>
@@ -516,8 +583,8 @@ export default function PurchasesPage() {
             </div>
 
             <DialogFooter className="border-t border-border pt-4">
-              <Button type="button" variant="ghost" onClick={() => setModalOpen(false)}>Cancel</Button>
-              <Button type="submit">Complete Log</Button>
+              <Button type="button" variant="ghost" className="h-12 w-full sm:w-auto" onClick={() => setModalOpen(false)}>Cancel</Button>
+              <Button type="submit" className="h-12 w-full sm:w-auto">Save Purchase Batch</Button>
             </DialogFooter>
           </form>
         </DialogContent>

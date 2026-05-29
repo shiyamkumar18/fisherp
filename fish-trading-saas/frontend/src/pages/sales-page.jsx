@@ -256,8 +256,10 @@ export default function SalesPage() {
             No sales invoices created.
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm text-left">
+          <div className="w-full">
+            {/* Desktop Table */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="min-w-full text-sm text-left">
               <thead>
                 <tr className="border-b border-border text-xs font-bold uppercase tracking-wider text-textSecondary/70">
                   <th className="pb-3 pr-4">Invoice Details</th>
@@ -333,6 +335,78 @@ export default function SalesPage() {
                 })}
               </tbody>
             </table>
+            </div>
+
+            {/* Mobile Card List */}
+            <div className="md:hidden flex flex-col gap-4">
+              {filteredSales.map((s) => {
+                const pKey = (s.payment_status || "pending").toLowerCase();
+                const pCls = PAYMENT_CLS[pKey] || PAYMENT_CLS.pending;
+                return (
+                  <div 
+                    key={s.id} 
+                    className="bg-surface border border-border rounded-xl p-4 shadow-sm space-y-3 cursor-pointer hover:border-primary/50 transition-colors"
+                    onClick={() => {
+                      setSelectedSale(s);
+                      setDetailModalOpen(true);
+                    }}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="font-extrabold text-textPrimary text-base">{s.invoice_number}</p>
+                        <p className="text-[10px] text-textSecondary uppercase tracking-wider font-extrabold">{s.sale_type_display || s.sale_type}</p>
+                        <div className="flex items-center gap-1 text-[11px] text-textSecondary mt-1">
+                          <Calendar size={12} />
+                          <span>{s.date}</span>
+                        </div>
+                      </div>
+                      <span className={`inline-block rounded-full px-2.5 py-0.5 text-[10px] font-bold capitalize ${pCls}`}>
+                        {s.payment_status_display || s.payment_status}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border/50">
+                      <div>
+                        <p className="text-[10px] text-textSecondary uppercase tracking-wider font-bold">Buyer</p>
+                        <p className="text-sm font-bold text-textPrimary">{s.buyer_name}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-textSecondary uppercase tracking-wider font-bold">Volume</p>
+                        <p className="text-sm font-bold text-textPrimary">{s.number_of_packages_sold} pkg</p>
+                        <p className="text-[11px] text-textSecondary">{s.number_of_packages_sold * s.selling_weight_per_package} kg</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border/50">
+                      <div>
+                        <p className="text-[10px] text-textSecondary uppercase tracking-wider font-bold">Sell Price/Kg</p>
+                        <p className="text-sm font-bold text-textPrimary">{formatINR(s.selling_price_per_kg)}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-textSecondary uppercase tracking-wider font-bold">Grand Total</p>
+                        <p className="text-sm font-extrabold text-textPrimary">
+                          {formatINR(s.final_amount)}
+                        </p>
+                      </div>
+                    </div>
+
+                    {canDelete() && (
+                      <div className="pt-3 border-t border-border/50 flex justify-end">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(s.id);
+                          }}
+                          className="flex items-center gap-2 px-4 py-2 bg-danger/10 text-danger border border-danger/20 rounded-lg text-xs font-bold active:scale-95 transition-all"
+                        >
+                          <Trash2 size={14} /> Void Invoice
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
       </Card>
@@ -346,23 +420,23 @@ export default function SalesPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1">
-                <label className="text-xs font-bold text-textSecondary">Buyer / Customer *</label>
-                <select 
-                  value={buyerId}
-                  onChange={(e) => handleBuyerChange(e.target.value)}
-                  className="h-10 w-full rounded-xl border border-border bg-surface px-3 text-sm text-textPrimary outline-none focus:border-primary"
-                >
+                  <label className="text-xs font-bold text-textSecondary">Customer/Buyer</label>
+                  <select 
+                    value={buyerId}
+                    onChange={(e) => setBuyerId(e.target.value)}
+                    className="h-12 w-full rounded-xl border border-border bg-surface px-3 text-sm text-textPrimary outline-none focus:border-primary"
+                  >
                   {buyers.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                 </select>
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-bold text-textSecondary">Active Inventory Batch *</label>
-                <select 
-                  value={batchId}
-                  onChange={(e) => setBatchId(e.target.value)}
-                  className="h-10 w-full rounded-xl border border-border bg-surface px-3 text-sm text-textPrimary outline-none focus:border-primary"
-                >
+                  <label className="text-xs font-bold text-textSecondary">Batch</label>
+                  <select 
+                    value={batchId}
+                    onChange={(e) => setBatchId(e.target.value)}
+                    className="h-12 w-full rounded-xl border border-border bg-surface px-3 text-sm text-textPrimary outline-none focus:border-primary"
+                  >
                   {batches.filter(b => b.remaining_packages > 0).map(b => (
                     <option key={b.id} value={b.id}>
                       {b.batch_number} - {b.fish_name} ({b.remaining_packages} pkg remaining)
@@ -372,20 +446,20 @@ export default function SalesPage() {
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-bold text-textSecondary">Sale Type</label>
-                <select 
-                  value={saleType}
-                  onChange={(e) => setSaleType(e.target.value)}
-                  className="h-10 w-full rounded-xl border border-border bg-surface px-3 text-sm text-textPrimary outline-none focus:border-primary"
-                >
+                  <label className="text-xs font-bold text-textSecondary">Sale Type</label>
+                  <select 
+                    value={saleType}
+                    onChange={(e) => setSaleType(e.target.value)}
+                    className="h-12 w-full rounded-xl border border-border bg-surface px-3 text-sm text-textPrimary outline-none focus:border-primary"
+                  >
                   <option value="domestic">Domestic Sale</option>
                   <option value="export">International Export</option>
                 </select>
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-bold text-textSecondary">Invoice Date</label>
-                <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+                  <label className="text-xs font-bold text-textSecondary">Sale Date</label>
+                  <Input className="h-12" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
               </div>
             </div>
 
@@ -420,8 +494,8 @@ export default function SalesPage() {
                   )}
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-extrabold text-textSecondary uppercase">Selling Price/Kg (INR) *</label>
-                  <Input type="number" step="0.01" value={sellingPrice} onChange={(e) => setSellingPrice(Math.max(0, parseFloat(e.target.value) || 0))} required />
+                    <label className="text-[10px] font-extrabold text-textSecondary uppercase">Packages Sold *</label>
+                    <Input className="h-12" type="number" value={packagesSold} onChange={(e) => setPackagesSold(Math.max(0, parseInt(e.target.value) || 0))} required />
                 </div>
               </div>
               
@@ -458,8 +532,8 @@ export default function SalesPage() {
                 <p className="text-xs font-bold text-success mb-3">Payment Collection</p>
                 <div className="space-y-3">
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-textSecondary">Amount Collected (INR)</label>
-                    <Input type="number" value={amountReceived} onChange={(e) => setAmountReceived(Math.max(0, parseFloat(e.target.value) || 0))} />
+                    <label className="text-[10px] font-bold text-textSecondary">Commission %</label>
+                    <Input className="h-12" type="number" step="0.01" value={commissionRate} onChange={(e) => setCommissionRate(Math.max(0, parseFloat(e.target.value) || 0))} />
                   </div>
                   <div className="flex justify-between text-xs font-bold text-textSecondary pt-1">
                     <span>Outstanding Due:</span>
@@ -490,10 +564,10 @@ export default function SalesPage() {
               />
             </div>
 
-            <DialogFooter className="border-t border-border pt-4">
-              <Button type="button" variant="ghost" onClick={() => setModalOpen(false)}>Cancel</Button>
-              <Button type="submit" disabled={stockExceeded}>Generate Bill</Button>
-            </DialogFooter>
+              <DialogFooter className="border-t border-border pt-4">
+                <Button type="button" variant="ghost" className="h-12 w-full sm:w-auto" onClick={() => setModalOpen(false)}>Cancel</Button>
+                <Button type="submit" className="h-12 w-full sm:w-auto">Finalize Invoice</Button>
+              </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
