@@ -371,6 +371,20 @@ class SaleSerializer(serializers.ModelSerializer):
             'created_at', 'updated_at', 'tenant', 'company', 'pricing_warnings'
         ]
 
+    def create(self, validated_data):
+        request = self.context.get('request')
+        user = request.user if request else None
+        from services.trading.sale_service import SaleService
+        service = SaleService(user)
+        return service.create_sale(validated_data)
+
+    def update(self, instance, validated_data):
+        request = self.context.get('request')
+        user = request.user if request else None
+        from services.trading.sale_service import SaleService
+        service = SaleService(user)
+        return service.update_sale(instance, validated_data)
+
     def get_pricing_warnings(self, obj):
         warnings = []
         if obj.selling_price_per_kg and obj.batch and obj.batch.fish:

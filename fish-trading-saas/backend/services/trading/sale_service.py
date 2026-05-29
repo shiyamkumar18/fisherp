@@ -12,26 +12,21 @@ class SaleService(BaseService):
     
     @transaction.atomic
     def create_sale(self, data):
-        """Create sale with scoping and update inventory."""
-        data.update({
-            'tenant': self.user,
-            'company': _user_company(self.user),
-        })
-        sale = Sale.objects.create(**data)
+        """Create sale with scoping and atomic guarantees."""
+        company = data.get('company')
+        if not company:
+            from trading.helpers import _user_company
+            company = _user_company(self.user)
+            data['company'] = company
+            data['tenant'] = self.user
 
-        # BUSINESS INTEGRATION: update inventory stock (decrement)
-        from services.trading.inventory_service import InventoryService
-        inventory_service = InventoryService(self.user)
-        # Assumes 'inventory_id' and 'qty' are in data
-        inventory_id = data.get('inventory_id')
-        qty = data.get('qty')
-        if inventory_id and qty:
-            try:
-                inventory = Inventory.objects.get(id=inventory_id)
-                inventory_service.update_stock(inventory, -Decimal(str(qty)))
-            except Inventory.DoesNotExist:
-                pass  # Optionally log error
-
+        # Extract non-model fields if any
+        data.pop('inventory_id', None)
+        data.pop('qty', None)
+        
+        sale = Sale(**data)
+        sale.full_clean()
+        sale.save()
         return sale
     
     @transaction.atomic
@@ -39,6 +34,7 @@ class SaleService(BaseService):
         """Atomic update."""
         for field, value in data.items():
             setattr(instance, field, value)
+        instance.full_clean()
         instance.save()
         return instance
     
@@ -77,7 +73,16 @@ class SaleService(BaseService):
         """Mark as delivered."""
         sale.delivery_status = 'delivered'
         sale.delivery_confirmed_at = timezone.now()
-        sale.delivered_by = delivered_by or self.user.get_full_name()
+        
+        if not delivered_by:
+            delivered_by = "System"
+            if self.user:
+                try:
+                    delivered_by = self.user.get_full_name() or self.user.username
+                except AttributeError:
+                    pass
+        
+        sale.delivered_by = delivered_by
         sale.save()
     
     def process_return(self, sale, return_date, reason, refund_amount=0):
@@ -91,4 +96,5 @@ class SaleService(BaseService):
     def get_queryset(self):
         """Scoped sales for user."""
         from trading.models import Sale
-        return Sale.objects.for_user(self.user)
+        manager = getattr(Sale, 'objects')
+        return manager.for_user(self.user)
