@@ -137,34 +137,27 @@ class Sale(models.Model):
                 pass
 
     def calculate_fields(self):
-        number_of_packages_sold = self.number_of_packages_sold or 0
-        selling_weight_per_package = self.selling_weight_per_package or Decimal("0.00")
-        selling_price_per_kg = self.selling_price_per_kg or Decimal("0.00")
-        amount_received = self.amount_received or Decimal("0.00")
-        discount_amount = self.discount_amount or Decimal("0.00")
-        discount_percent = self.discount_percent or Decimal("0.00")
-        tax_percent = self.tax_percent or Decimal("0.00")
-
-        self.total_revenue = Decimal(str(number_of_packages_sold)) * selling_weight_per_package * selling_price_per_kg
-
+        from services.trading.calculation_service import CalculationService
         batch_buy_price = self.batch.price_per_kg if self.batch and self.batch.price_per_kg is not None else Decimal("0.00")
-        self.total_cost = Decimal(str(number_of_packages_sold)) * selling_weight_per_package * batch_buy_price
 
-        self.profit = self.total_revenue - self.total_cost
-        if self.total_revenue > 0:
-            self.profit_margin_percent = (self.profit / self.total_revenue) * 100
-        else:
-            self.profit_margin_percent = Decimal("0.00")
+        metrics = CalculationService.calculate_sale_metrics(
+            packages_sold=self.number_of_packages_sold,
+            selling_weight_per_package=self.selling_weight_per_package,
+            selling_price_per_kg=self.selling_price_per_kg,
+            batch_buy_price=batch_buy_price,
+            amount_received=self.amount_received,
+            discount_amount=self.discount_amount,
+            discount_percent=self.discount_percent,
+            tax_percent=self.tax_percent
+        )
 
-        discounted_amount = self.total_revenue
-        if discount_amount > 0:
-            discounted_amount -= discount_amount
-        elif discount_percent > 0:
-            discounted_amount -= self.total_revenue * discount_percent / Decimal("100.00")
-
-        self.tax_amount = discounted_amount * tax_percent / Decimal("100.00")
-        self.final_amount = discounted_amount + self.tax_amount
-        self.pending_amount = self.final_amount - amount_received
+        self.total_revenue = metrics['total_revenue']
+        self.total_cost = metrics['total_cost']
+        self.profit = metrics['profit']
+        self.profit_margin_percent = metrics['profit_margin_percent']
+        self.tax_amount = metrics['tax_amount']
+        self.final_amount = metrics['final_amount']
+        self.pending_amount = metrics['pending_amount']
 
     def save(self, *args, **kwargs):
         if not self.invoice_number:

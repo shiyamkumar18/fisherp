@@ -124,30 +124,31 @@ class PurchaseBatch(models.Model):
     class Meta:
         pass
 
-    def calculate_fields(self):
-        number_of_packages = self.number_of_packages or 0
-        package_weight = self.package_weight or Decimal("0.00")
-        price_per_kg = self.price_per_kg or Decimal("0.00")
-        labour_cost = self.labour_cost or Decimal("0.00")
-        ice_cost = self.ice_cost or Decimal("0.00")
-        transport_cost = self.transport_cost or Decimal("0.00")
-        commission_cost = self.commission_cost or Decimal("0.00")
-        other_cost = self.other_cost or Decimal("0.00")
-        amount_paid = self.amount_paid or Decimal("0.00")
-
-        self.total_weight = number_of_packages * package_weight
-        self.fish_cost = self.total_weight * price_per_kg
-
-        self.total_expense = (self.fish_cost + labour_cost + ice_cost
-                              + transport_cost + commission_cost + other_cost)
-
-        if self.total_weight > 0:
-            self.actual_cost_per_kg = self.total_expense / self.total_weight
-        else:
-            self.actual_cost_per_kg = Decimal("0.00")
-
-        self.cost_per_package = self.actual_cost_per_kg * package_weight
-        self.pending_amount = self.total_expense - amount_paid
+    def calculate_fields(self, explicit_pending=None):
+        from services.trading.calculation_service import CalculationService
+        metrics = CalculationService.calculate_purchase_metrics(
+            packages=self.number_of_packages,
+            package_weight=self.package_weight,
+            price_per_kg=self.price_per_kg,
+            labour_cost=self.labour_cost,
+            ice_cost=self.ice_cost,
+            transport_cost=self.transport_cost,
+            commission_cost=self.commission_cost,
+            other_cost=self.other_cost,
+            amount_paid=self.amount_paid,
+            explicit_pending=explicit_pending
+        )
+        
+        self.total_weight = metrics['total_weight']
+        self.fish_cost = metrics['fish_cost']
+        self.total_expense = metrics['total_expense']
+        self.actual_cost_per_kg = metrics['actual_cost_per_kg']
+        self.cost_per_package = metrics['cost_per_package']
+        self.pending_amount = metrics['pending_amount']
+        self.amount_paid = metrics['amount_paid']
+        
+        # We don't set status here; we let save() handle status logic
+        # or we could return it to save(). For now, let's just compute fields.
 
     def save(self, *args, **kwargs):
         if not self.purchase_number:
@@ -166,12 +167,11 @@ class PurchaseBatch(models.Model):
 
         explicit_pending = self.pending_amount
         self.full_clean()
-        self.calculate_fields()
+        
+        # We pass explicit_pending directly into calculate_fields which defers to CalculationService
+        self.calculate_fields(explicit_pending=explicit_pending)
 
-        if explicit_pending is not None and explicit_pending >= 0:
-            self.pending_amount = explicit_pending
-            self.amount_paid = (self.total_expense or Decimal("0.00")) - explicit_pending
-
+        # Status sync
         if (self.pending_amount or Decimal("0.00")) <= 0 and (self.total_expense or Decimal("0.00")) > 0:
             self.status = 'paid'
         elif (self.amount_paid or Decimal("0.00")) > 0:
