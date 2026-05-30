@@ -1842,7 +1842,7 @@ function BusinessDashboard() {
             if (voiceBtn) {
               voiceBtn.click();
             } else {
-              push({ title: "Not Available", description: "Voice Assistant is not enabled for your account.", type: "warning" });
+              push({ message: "Voice Assistant is not enabled for your account.", variant: "error" });
             }
           }}
           className="group relative flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-surface border border-border shadow-sm hover:border-info/50 hover:shadow-md hover:shadow-info/5 hover:-translate-y-1 active:scale-95 transition-all duration-200 cursor-pointer min-h-[104px] overflow-hidden"
