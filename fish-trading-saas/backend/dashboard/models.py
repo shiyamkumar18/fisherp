@@ -1,5 +1,5 @@
 from django.db import models
-from django.db.models import Sum, Count, F, Q, Min, Case, When, Value, DecimalField
+from django.db.models import Sum, Count, F, Q, Min, Avg, Case, When, Value, DecimalField
 from django.db.models.functions import TruncDay, TruncWeek, TruncMonth
 from django.utils import timezone
 from datetime import date, timedelta
@@ -107,12 +107,13 @@ class DashboardManager:
         Used for Main Dashboard (Owner View)
         """
         tenant_filter = DashboardManager._get_tenant_filter(user) if user else Q()
+        company = getattr(user, 'company', None) if user else None
         today = timezone.now().date()
         
         # Ensure incremental summary is up to date (this might be handled asynchronously in prod)
-        sales_summary = DailySalesSummary.objects.filter(company=company, date=today).first()
-        purchase_summary = DailyPurchaseSummary.objects.filter(company=company, date=today).first()
-        inventory_summary = DailyInventorySummary.objects.filter(company=company, date=today).first()
+        sales_summary = DailySalesSummary.objects.filter(company=company, date=today).first() if company else None
+        purchase_summary = DailyPurchaseSummary.objects.filter(company=company, date=today).first() if company else None
+        inventory_summary = DailyInventorySummary.objects.filter(company=company, date=today).first() if company else None
         
         # Today's Sales
         today_sales_amount = sales_summary.total_revenue if sales_summary else Decimal('0.00')
@@ -487,6 +488,57 @@ class DashboardManager:
             for row in rows
         ]
 
+    @staticmethod
+    def get_fish_sales_trend(user=None, days=14, limit=5):
+        """
+        Tier 1: Core Production Chart - Fish Sales Trend
+        Per-fish daily sales quantity (kg), revenue, and average price over the last N days.
+        """
+        tenant_filter = DashboardManager._get_tenant_filter(user) if user else Q()
+        end_date = timezone.now().date()
+        start_date = end_date - timedelta(days=days - 1)
+
+        # Find top N fish by revenue in the period to focus the chart
+        top_fish = (
+            Sale.objects.filter(tenant_filter, date__gte=start_date, date__lte=end_date)
+            .values('batch__fish__name')
+            .annotate(total_revenue=Sum('final_amount'))
+            .order_by('-total_revenue')[:limit]
+        )
+        top_fish_names = [f['batch__fish__name'] for f in top_fish if f['batch__fish__name']]
+
+        if not top_fish_names:
+            return []
+
+        # Get daily breakdown for those fish
+        # Calculate kg_sold = number_of_packages_sold * selling_weight_per_package
+        rows = (
+            Sale.objects.filter(
+                tenant_filter,
+                date__gte=start_date,
+                date__lte=end_date,
+                batch__fish__name__in=top_fish_names,
+            )
+            .values('date', 'batch__fish__name')
+            .annotate(
+                kg_sold=Sum(F('number_of_packages_sold') * F('selling_weight_per_package')),
+                revenue=Sum('final_amount'),
+                avg_price=Avg('selling_price_per_kg')
+            )
+            .order_by('date', 'batch__fish__name')
+        )
+
+        return [
+            {
+                'date': row['date'],
+                'product': row['batch__fish__name'],
+                'kg_sold': float(row['kg_sold'] or 0),
+                'revenue': float(row['revenue'] or 0),
+                'avg_price': float(row['avg_price'] or 0),
+            }
+            for row in rows
+        ]
+
     # ============================================================
     # INVENTORY OVERVIEW
     # ============================================================
@@ -779,16 +831,16 @@ class DashboardManager:
         ).count()
         
         # Recently added buyers (last 7 days)
-        week_ago = today - timedelta(days=7)
+        week_ago_dt = timezone.now() - timedelta(days=7)
         recent_buyers = Buyer.objects.filter(
             tenant_filter,
-            created_at__gte=week_ago
+            created_at__gte=week_ago_dt
         ).count()
         
         # Recently added suppliers (last 7 days)
         recent_suppliers = Supplier.objects.filter(
             tenant_filter,
-            created_at__gte=week_ago
+            created_at__gte=week_ago_dt
         ).count()
         
         return {

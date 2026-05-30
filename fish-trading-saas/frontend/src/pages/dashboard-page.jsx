@@ -32,14 +32,16 @@ import {
   Calendar,
   Lock,
   Database,
-  Mic
+  Mic,
+  ShoppingBag,
+  Fish
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Card from "@/components/ui/card";
 import Skeleton from "@/components/ui/skeleton";
 import Input from "@/components/ui/input";
 import Button from "@/components/ui/button";
-import { fetchDashboardOverview } from "@/services/dashboardService";
+import { fetchDashboardOverview, fetchFishSalesTrend } from "@/services/dashboardService";
 import { platformService } from "@/services/platformService";
 import { useAuthStore } from "@/store/authStore";
 import { useToast } from "@/components/shared/toast-provider";
@@ -62,45 +64,47 @@ const DELIVERY_CLS = {
 // ---- Interactive SVG Chart Components ----
 
 // 1. Line Chart Component
-function SalesTrendChart({ data = [] }) {
+function FishSalesTrendChart({ data = [] }) {
   const [hoveredPoint, setHoveredPoint] = useState(null);
-  
-  if (!data || data.length === 0) return null;
+
+  if (!data || data.length === 0) {
+    return (
+      <div className="w-full h-[180px] flex flex-col items-center justify-center text-textSecondary text-sm">
+        <p className="mb-2">No fish sales available</p>
+        <Button variant="outline" size="sm" onClick={() => window.location.href='/sales/new'}>Create Sale</Button>
+      </div>
+    );
+  }
 
   const width = 500;
   const height = 180;
   const paddingX = 40;
   const paddingY = 20;
 
-  const maxVal = Math.max(...data.map(d => d.value)) * 1.1;
+  // Group by date
+  const dateMap = {};
+  const products = new Set();
+  
+  data.forEach(d => {
+    products.add(d.product);
+    if (!dateMap[d.date]) dateMap[d.date] = { date: d.date, raw: {} };
+    dateMap[d.date][d.product] = d.kg_sold;
+    dateMap[d.date].raw[`${d.date}-${d.product}`] = d;
+  });
+
+  const dates = Object.keys(dateMap).sort();
+  const productArray = Array.from(products);
+  const colors = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"];
+
+  const maxVal = Math.max(...data.map(d => d.kg_sold)) * 1.1 || 10;
   const minVal = 0;
 
-  const getX = (idx) => paddingX + (idx / (data.length - 1)) * (width - paddingX * 2);
+  const getX = (idx) => paddingX + (idx / Math.max(1, dates.length - 1)) * (width - paddingX * 2);
   const getY = (val) => height - paddingY - ((val - minVal) / (maxVal - minVal)) * (height - paddingY * 2);
-
-  // Generate path points
-  const points = data.map((d, i) => ({ x: getX(i), y: getY(d.value), ...d }));
-  
-  // Line path
-  const linePath = points.reduce((acc, p, i) => 
-    i === 0 ? `M ${p.x} ${p.y}` : `${acc} L ${p.x} ${p.y}`, ""
-  );
-
-  // Gradient area path
-  const areaPath = points.length > 0 
-    ? `${linePath} L ${points[points.length - 1].x} ${height - paddingY} L ${points[0].x} ${height - paddingY} Z`
-    : "";
 
   return (
     <div className="relative w-full">
       <svg viewBox={`0 0 ${width} ${height}`} className="w-full overflow-visible">
-        <defs>
-          <linearGradient id="lineGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.25" />
-            <stop offset="100%" stopColor="var(--primary)" stopOpacity="0.0" />
-          </linearGradient>
-        </defs>
-
         {/* Grid lines */}
         {[0, 0.25, 0.5, 0.75, 1].map((p, i) => {
           const val = maxVal * p;
@@ -109,51 +113,82 @@ function SalesTrendChart({ data = [] }) {
             <g key={i} className="opacity-15">
               <line x1={paddingX} y1={y} x2={width - paddingX} y2={y} stroke="var(--text-secondary)" strokeWidth="1" strokeDasharray="3 3" />
               <text x={paddingX - 8} y={y + 4} textAnchor="end" className="text-[9px] fill-current font-bold">
-                {val > 100000 ? `${(val/100000).toFixed(0)}L` : val}
+                {val >= 1000 ? `${(val/1000).toFixed(1)}k` : Math.round(val)}
               </text>
             </g>
           );
         })}
 
-        {/* Chart Line Path */}
-        <path d={linePath} fill="none" stroke="var(--primary)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+        {/* Lines */}
+        {productArray.map((prod, pIdx) => {
+          const color = colors[pIdx % colors.length];
+          const pts = dates.map((d, i) => ({
+            x: getX(i),
+            y: getY(dateMap[d][prod] || 0),
+            val: dateMap[d][prod] || 0,
+            date: d,
+            prod,
+            raw: dateMap[d].raw[`${d}-${prod}`]
+          }));
+          
+          const linePath = pts.reduce((acc, p, i) => i === 0 ? `M ${p.x} ${p.y}` : `${acc} L ${p.x} ${p.y}`, "");
 
-        {/* Gradient Area */}
-        <path d={areaPath} fill="url(#lineGrad)" />
+          return (
+            <g key={prod}>
+              <path d={linePath} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-80 hover:opacity-100 hover:stroke-[3px] transition-all" />
+              {pts.map((p, i) => (
+                p.raw && (
+                  <g key={i} className="cursor-pointer"
+                     onMouseEnter={() => setHoveredPoint({ ...p, color, idx: i })}
+                     onMouseLeave={() => setHoveredPoint(null)}>
+                    <circle cx={p.x} cy={p.y} r={hoveredPoint?.date === p.date && hoveredPoint?.prod === p.prod ? "6" : "3"} fill="var(--surface)" stroke={color} strokeWidth="2" className="transition-all" />
+                    <circle cx={p.x} cy={p.y} r="10" fill="transparent" />
+                  </g>
+                )
+              ))}
+            </g>
+          );
+        })}
 
-        {/* Y Axis labels */}
-        {points.map((p, i) => (
-          <text key={i} x={p.x} y={height - 4} textAnchor="middle" className="text-[9px] fill-current opacity-70 font-bold">
-            {p.label}
-          </text>
-        ))}
-
-        {/* Interactive hover points */}
-        {points.map((p, i) => (
-          <g key={i} className="cursor-pointer" 
-             onMouseEnter={() => setHoveredPoint({ ...p, idx: i })}
-             onMouseLeave={() => setHoveredPoint(null)}>
-            <circle cx={p.x} cy={p.y} r={hoveredPoint?.idx === i ? "6" : "4"} fill="var(--surface)" stroke="var(--primary)" strokeWidth="2.5" className="transition-all" />
-            <circle cx={p.x} cy={p.y} r="14" fill="transparent" />
-          </g>
-        ))}
+        {/* X Axis labels */}
+        {dates.map((d, i) => {
+          if (dates.length > 7 && i % Math.ceil(dates.length / 5) !== 0 && i !== dates.length - 1) return null;
+          return (
+            <text key={i} x={getX(i)} y={height - 4} textAnchor="middle" className="text-[9px] fill-current opacity-70 font-bold">
+              {new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+            </text>
+          );
+        })}
       </svg>
 
       {/* Floating Tooltip */}
       {hoveredPoint && (
         <div 
-          className="absolute z-10 rounded-lg border border-border bg-surface px-2.5 py-1.5 shadow-md text-xs font-bold transition-all duration-75 min-w-[120px]"
+          className="absolute z-10 rounded-lg border border-border bg-surface px-3 py-2 shadow-md text-xs font-bold transition-all duration-75 min-w-[140px]"
           style={{ 
-            left: `${(hoveredPoint.idx / (data.length - 1)) * 75 + 5}%`,
-            top: `${(hoveredPoint.y / height) * 75 - 25}%` 
+            left: `${Math.min(80, Math.max(5, (hoveredPoint.idx / Math.max(1, dates.length - 1)) * 100))}%`,
+            top: `${(hoveredPoint.y / height) * 75 - 35}%`,
+            transform: 'translateX(-50%)'
           }}
         >
           <div className="flex justify-between items-center border-b border-border/50 pb-1 mb-1">
-            <p className="text-[9px] text-textSecondary uppercase tracking-wider">{hoveredPoint.label}</p>
-            <p className="text-[9px] text-textSecondary">{hoveredPoint.salesCount || Math.floor(Math.random() * 20 + 5)} sales</p>
+            <p className="text-[10px] text-textSecondary uppercase tracking-wider">{hoveredPoint.prod}</p>
+            <p className="text-[9px] text-textSecondary">{new Date(hoveredPoint.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
           </div>
-          <p className="text-primary text-sm">{formatINR(hoveredPoint.value)}</p>
-          <p className="text-[9px] font-semibold text-textSecondary mt-0.5">Top: {hoveredPoint.topFish || "Vanjaram"}</p>
+          <div className="space-y-1 mt-1">
+            <div className="flex justify-between items-center gap-4">
+              <span className="text-textSecondary font-medium">KG Sold</span>
+              <span style={{color: hoveredPoint.color}}>{hoveredPoint.raw.kg_sold?.toFixed(1)} kg</span>
+            </div>
+            <div className="flex justify-between items-center gap-4">
+              <span className="text-textSecondary font-medium">Revenue</span>
+              <span className="text-textPrimary">{formatINR(hoveredPoint.raw.revenue)}</span>
+            </div>
+            <div className="flex justify-between items-center gap-4">
+              <span className="text-textSecondary font-medium">Avg Price</span>
+              <span className="text-textPrimary">{formatINR(hoveredPoint.raw.avg_price)}/kg</span>
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -1182,6 +1217,8 @@ function BusinessDashboard() {
   const [orderSearch, setOrderSearch] = useState("");
   const [orderPage, setOrderPage] = useState(1);
   const ordersPerPage = 5;
+  const [salesDays, setSalesDays] = useState(14);
+  const [fishSalesTrend, setFishSalesTrend] = useState([]);
 
   useEffect(() => {
     let alive = true;
@@ -1192,6 +1229,16 @@ function BusinessDashboard() {
       alive = false;
     };
   }, []);
+
+  useEffect(() => {
+    let alive = true;
+    fetchFishSalesTrend(salesDays)
+      .then((data) => alive && setFishSalesTrend(data))
+      .catch(console.error);
+    return () => {
+      alive = false;
+    };
+  }, [salesDays]);
 
   if (error) {
     return (
@@ -1342,17 +1389,17 @@ function BusinessDashboard() {
           <Card className="lg:col-span-2 flex flex-col justify-between">
             <div className="flex items-start justify-between mb-4">
               <div>
-                <h3 className="text-base font-bold text-textPrimary">Sales Trend</h3>
-                <p className="text-xs text-textSecondary">Invoice volume over the past 6 months.</p>
+                <h3 className="text-base font-bold text-textPrimary">Fish Sales Trend</h3>
+                <p className="text-xs text-textSecondary">Volume and revenue by top fish.</p>
               </div>
               <div className="flex gap-2 text-[10px] font-bold">
-                <span className="text-textSecondary hover:text-textPrimary cursor-pointer px-2 py-1">Today</span>
-                <span className="text-textSecondary hover:text-textPrimary cursor-pointer px-2 py-1">Week</span>
-                <span className="text-textSecondary hover:text-textPrimary cursor-pointer px-2 py-1">Month</span>
-                <span className="text-primary bg-primary/10 rounded-lg px-2 py-1 cursor-pointer">6 Months</span>
+                <span onClick={() => setSalesDays(1)} className={`cursor-pointer px-2 py-1 transition-colors ${salesDays === 1 ? 'text-primary bg-primary/10 rounded-lg' : 'text-textSecondary hover:text-textPrimary'}`}>Today</span>
+                <span onClick={() => setSalesDays(7)} className={`cursor-pointer px-2 py-1 transition-colors ${salesDays === 7 ? 'text-primary bg-primary/10 rounded-lg' : 'text-textSecondary hover:text-textPrimary'}`}>7 Days</span>
+                <span onClick={() => setSalesDays(30)} className={`cursor-pointer px-2 py-1 transition-colors ${salesDays === 30 ? 'text-primary bg-primary/10 rounded-lg' : 'text-textSecondary hover:text-textPrimary'}`}>30 Days</span>
+                <span onClick={() => setSalesDays(90)} className={`cursor-pointer px-2 py-1 transition-colors ${salesDays === 90 ? 'text-primary bg-primary/10 rounded-lg' : 'text-textSecondary hover:text-textPrimary'}`}>90 Days</span>
               </div>
             </div>
-            <SalesTrendChart data={salesTrendData} />
+            <FishSalesTrendChart data={fishSalesTrend} />
           </Card>
 
           {/* Finance Distribution Bar Chart */}

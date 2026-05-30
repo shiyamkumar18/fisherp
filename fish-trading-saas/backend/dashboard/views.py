@@ -134,6 +134,17 @@ class SalesTrendView(RoleRestrictedAPIView):
         return Response(data)
 
 
+class FishSalesTrendView(RoleRestrictedAPIView):
+    """Tier 1: Core Production Chart - Fish Sales Trend"""
+    role_flags = ('is_tenant_admin', 'is_accountant', 'is_sales_staff', 'is_store_accounts')
+    
+    def get(self, request):
+        days = min(int(request.query_params.get('days', 14)), 90)
+        limit = min(int(request.query_params.get('limit', 5)), 10)
+        data = DashboardManager.get_fish_sales_trend(request.user, days, limit)
+        return Response(data)
+
+
 class MonthlyRevenueComparisonView(APIView):
     """Compare revenue across last N months"""
     permission_classes = [permissions.IsAuthenticated, CanViewFinancials]
