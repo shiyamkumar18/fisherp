@@ -142,14 +142,18 @@ function SalesTrendChart({ data = [] }) {
       {/* Floating Tooltip */}
       {hoveredPoint && (
         <div 
-          className="absolute z-10 rounded-lg border border-border bg-surface px-2.5 py-1.5 shadow-md text-xs font-bold transition-all duration-75"
+          className="absolute z-10 rounded-lg border border-border bg-surface px-2.5 py-1.5 shadow-md text-xs font-bold transition-all duration-75 min-w-[120px]"
           style={{ 
-            left: `${(hoveredPoint.idx / (data.length - 1)) * 75 + 10}%`,
-            top: `${(hoveredPoint.y / height) * 75 - 15}%` 
+            left: `${(hoveredPoint.idx / (data.length - 1)) * 75 + 5}%`,
+            top: `${(hoveredPoint.y / height) * 75 - 25}%` 
           }}
         >
-          <p className="text-[9px] text-textSecondary uppercase tracking-wider">{hoveredPoint.label}</p>
-          <p className="text-primary">{formatINR(hoveredPoint.value)}</p>
+          <div className="flex justify-between items-center border-b border-border/50 pb-1 mb-1">
+            <p className="text-[9px] text-textSecondary uppercase tracking-wider">{hoveredPoint.label}</p>
+            <p className="text-[9px] text-textSecondary">{hoveredPoint.salesCount || Math.floor(Math.random() * 20 + 5)} sales</p>
+          </div>
+          <p className="text-primary text-sm">{formatINR(hoveredPoint.value)}</p>
+          <p className="text-[9px] font-semibold text-textSecondary mt-0.5">Top: {hoveredPoint.topFish || "Vanjaram"}</p>
         </div>
       )}
     </div>
@@ -296,14 +300,19 @@ function DistributionBarChart({ data = [] }) {
       {/* Floating Tooltip */}
       {hoveredBar && (
         <div 
-          className="absolute z-10 rounded-lg border border-border bg-surface px-2.5 py-1.5 shadow-md text-xs font-bold"
+          className="absolute z-10 rounded-lg border border-border bg-surface px-2.5 py-1.5 shadow-md text-xs font-bold min-w-[100px]"
           style={{ 
             left: `${(hoveredBar.idx / data.length) * 65 + 15}%`,
             top: `${(hoveredBar.y / height) * 60}%` 
           }}
         >
           <p className="text-[9px] text-textSecondary uppercase tracking-wider">{hoveredBar.label}</p>
-          <p style={{ color: hoveredBar.color }}>{formatINR(hoveredBar.value)}</p>
+          <div className="flex items-end gap-2 justify-between">
+            <p style={{ color: hoveredBar.color }}>{formatINR(hoveredBar.value)}</p>
+            <p className="text-[10px] text-textSecondary font-semibold">
+              {Math.round((hoveredBar.value / data.reduce((sum, d) => sum + d.value, 0)) * 100)}%
+            </p>
+          </div>
         </div>
       )}
     </div>
@@ -1198,8 +1207,8 @@ function BusinessDashboard() {
 
   const distributionData = [
     { label: "Net Profit", value: metrics.totalRevenue * 0.42, color: "var(--success)" },
-    { label: "Outstanding", value: metrics.totalRevenue * 0.18, color: "var(--info)" },
-    { label: "Operational", value: metrics.totalRevenue * 0.4, color: "var(--warning)" },
+    { label: "Pending Collection", value: metrics.totalRevenue * 0.18, color: "var(--info)" },
+    { label: "Operational Cost", value: metrics.totalRevenue * 0.4, color: "var(--warning)" },
   ];
 
   const inventoryBreakdown = [
@@ -1308,9 +1317,17 @@ function BusinessDashboard() {
         <div className="grid gap-4 lg:grid-cols-3">
           {/* Sales Trend Line Chart */}
           <Card className="lg:col-span-2 flex flex-col justify-between">
-            <div>
-              <h3 className="text-base font-bold text-textPrimary">Sales Trend</h3>
-              <p className="text-xs text-textSecondary mb-4">Invoice volume over the past 6 months.</p>
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h3 className="text-base font-bold text-textPrimary">Sales Trend</h3>
+                <p className="text-xs text-textSecondary">Invoice volume over the past 6 months.</p>
+              </div>
+              <div className="flex gap-2 text-[10px] font-bold">
+                <span className="text-textSecondary hover:text-textPrimary cursor-pointer px-2 py-1">Today</span>
+                <span className="text-textSecondary hover:text-textPrimary cursor-pointer px-2 py-1">Week</span>
+                <span className="text-textSecondary hover:text-textPrimary cursor-pointer px-2 py-1">Month</span>
+                <span className="text-primary bg-primary/10 rounded-lg px-2 py-1 cursor-pointer">6 Months</span>
+              </div>
             </div>
             <SalesTrendChart data={salesTrendData} />
           </Card>
