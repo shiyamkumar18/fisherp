@@ -164,6 +164,16 @@ class InventoryHealthView(RoleRestrictedAPIView):
         return Response(data)
 
 
+class DailyPurchaseVsSalesView(RoleRestrictedAPIView):
+    """Tier 1: Core Production Chart - Daily Purchase vs Sales"""
+    role_flags = ('is_tenant_admin', 'is_store_accounts', 'is_sales_staff')
+    
+    def get(self, request):
+        days = min(int(request.query_params.get('days', 14)), 30)
+        data = DashboardManager.get_daily_purchase_vs_sales(request.user, days)
+        return Response(data)
+
+
 class MonthlyRevenueComparisonView(APIView):
     """Compare revenue across last N months"""
     permission_classes = [permissions.IsAuthenticated, CanViewFinancials]

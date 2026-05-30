@@ -645,6 +645,47 @@ class DashboardManager:
             {'status': 'Critical', **get_metrics(critical)},
         ]
 
+    @staticmethod
+    def get_daily_purchase_vs_sales(user=None, days=14):
+        """
+        Tier 1: Core Production Chart - Daily Purchase vs Sales
+        Aggregates purchase kg vs sales kg for the last N days.
+        """
+        tenant_filter = DashboardManager._get_tenant_filter(user) if user else Q()
+        end_date = timezone.now().date()
+        start_date = end_date - timedelta(days=days-1)
+
+        # 1. Purchase Aggregation
+        purchase_qs = PurchaseBatch.objects.filter(
+            tenant_filter,
+            date__range=[start_date, end_date],
+            is_deleted=False
+        ).values('date').annotate(
+            purchase_kg=Sum('total_weight')
+        )
+        purchase_map = {row['date']: float(row['purchase_kg'] or 0) for row in purchase_qs}
+
+        # 2. Sales Aggregation
+        sales_qs = Sale.objects.filter(
+            tenant_filter,
+            date__range=[start_date, end_date]
+        ).values('date').annotate(
+            sales_kg=Sum(F('number_of_packages_sold') * F('selling_weight_per_package'), output_field=DecimalField())
+        )
+        sales_map = {row['date']: float(row['sales_kg'] or 0) for row in sales_qs}
+
+        # Combine
+        data = []
+        for i in range(days):
+            d = start_date + timedelta(days=i)
+            data.append({
+                'date': d.isoformat(),
+                'purchase_kg': purchase_map.get(d, 0.0),
+                'sales_kg': sales_map.get(d, 0.0)
+            })
+
+        return data
+
     # ============================================================
     # INVENTORY OVERVIEW
     # ============================================================
