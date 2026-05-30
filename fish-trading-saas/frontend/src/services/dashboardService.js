@@ -86,6 +86,12 @@ export const fetchPaymentCollectionTrend = async (days = 30) => {
   return res.data || [];
 };
 
+export const fetchMarketPriceTrend = async (days = 14) => {
+  if (config.useMocks) return [];
+  const res = await apiClient.get("/dashboard/market-price-trend/", { params: { days } });
+  return res.data || [];
+};
+
 export const fetchERPDashboard = async () => {
   const [financial, operational, alerts, topFish, recentSales, inventory, creditCustomers] =
     await Promise.allSettled([

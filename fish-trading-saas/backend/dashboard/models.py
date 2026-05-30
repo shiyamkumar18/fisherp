@@ -721,6 +721,42 @@ class DashboardManager:
 
         return data
 
+    @staticmethod
+    def get_market_price_trend(user=None, days=14):
+        """
+        Tier 1: Core Production Chart - Market Price Trend
+        Aggregates average market price per day.
+        """
+        tenant_filter = DashboardManager._get_tenant_filter(user) if user else Q()
+        end_date = timezone.now().date()
+        start_date = end_date - timedelta(days=days-1)
+        
+        from trading.models.market_price import MarketFishPrice
+        
+        # In Django, date field extraction from DateTimeField for grouping
+        from django.db.models.functions import TruncDate
+        
+        qs = MarketFishPrice.objects.filter(
+            tenant_filter | Q(is_global=True),
+            recorded_at__date__range=[start_date, end_date]
+        ).annotate(
+            date=TruncDate('recorded_at')
+        ).values('date').annotate(
+            avg_price=Avg('price_per_kg')
+        )
+        
+        price_map = {row['date']: float(row['avg_price'] or 0) for row in qs if row['date']}
+        
+        data = []
+        for i in range(days):
+            d = start_date + timedelta(days=i)
+            data.append({
+                'date': d.isoformat(),
+                'avg_price': price_map.get(d, 0.0)
+            })
+
+        return data
+
     # ============================================================
     # INVENTORY OVERVIEW
     # ============================================================

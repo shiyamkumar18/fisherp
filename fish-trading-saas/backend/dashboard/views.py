@@ -184,6 +184,16 @@ class PaymentCollectionTrendView(RoleRestrictedAPIView):
         return Response(data)
 
 
+class MarketPriceTrendView(RoleRestrictedAPIView):
+    """Tier 1: Core Production Chart - Market Price Trend"""
+    role_flags = ('is_tenant_admin', 'is_sales_staff', 'is_store_accounts')
+    
+    def get(self, request):
+        days = min(int(request.query_params.get('days', 14)), 30)
+        data = DashboardManager.get_market_price_trend(request.user, days)
+        return Response(data)
+
+
 class MonthlyRevenueComparisonView(APIView):
     """Compare revenue across last N months"""
     permission_classes = [permissions.IsAuthenticated, CanViewFinancials]
