@@ -176,7 +176,7 @@ export default function AppLayout() {
                       to={item.path}
                       onClick={closeSidebar}
                       className={({ isActive }) =>
-                        isActive ? "sidebar-link sidebar-link-active" : "sidebar-link"
+                        isActive ? "sidebar-link sidebar-link-active shadow-sm" : "sidebar-link hover:-translate-y-0.5 hover:shadow-sm"
                       }
                       end={item.path === "/dashboard"}
                     >
@@ -261,7 +261,7 @@ export default function AppLayout() {
                 onClick={() => setDropdownOpen(!dropdownOpen)}
                 className="flex items-center gap-2 rounded-xl p-1.5 hover:bg-border/20 text-left transition-colors cursor-pointer"
               >
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-white font-bold text-xs shadow-sm shadow-primary/20">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-white font-extrabold text-sm shadow-sm shadow-primary/20 transition-transform group-hover:scale-105">
                   {user?.username?.[0]?.toUpperCase() || "U"}
                 </div>
                 <span className="hidden md:inline text-sm font-semibold text-textPrimary">
@@ -335,47 +335,47 @@ export default function AppLayout() {
         {entitlements.includes("ai_assistant") && <VoiceAssistant />}
         
         {/* Mobile Bottom Navigation */}
-        <div className="md:hidden fixed bottom-0 left-0 right-0 h-[64px] bg-surface/95 backdrop-blur-md border-t border-border z-40 flex items-center justify-around pb-safe">
+        <div className="md:hidden fixed bottom-0 left-0 right-0 min-h-[72px] bg-surface/95 backdrop-blur-xl border-t border-border z-40 flex items-center justify-around pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_24px_rgba(0,0,0,0.05)]">
           <NavLink
             to="/dashboard"
             end
-            className={({ isActive }) => `flex flex-col items-center justify-center w-full h-full space-y-1 ${isActive ? "text-primary" : "text-textSecondary"}`}
+            className={({ isActive }) => `flex flex-col items-center justify-center w-full h-full py-2 space-y-1 transition-all ${isActive ? "text-primary scale-110" : "text-textSecondary hover:text-textPrimary"}`}
           >
             <LayoutDashboard className="h-5 w-5" />
-            <span className="text-[10px] font-bold">Home</span>
+            <span className="text-[10px] font-extrabold tracking-wide">Home</span>
           </NavLink>
           
           <NavLink
             to="/dashboard/purchases"
-            className={({ isActive }) => `flex flex-col items-center justify-center w-full h-full space-y-1 ${isActive ? "text-primary" : "text-textSecondary"}`}
+            className={({ isActive }) => `flex flex-col items-center justify-center w-full h-full py-2 space-y-1 transition-all ${isActive ? "text-primary scale-110" : "text-textSecondary hover:text-textPrimary"}`}
           >
             <ShoppingBag className="h-5 w-5" />
-            <span className="text-[10px] font-bold">Buy</span>
+            <span className="text-[10px] font-extrabold tracking-wide">Buy</span>
           </NavLink>
 
           <NavLink
             to="/dashboard/sales"
-            className={({ isActive }) => `flex flex-col items-center justify-center w-full h-full space-y-1 ${isActive ? "text-primary" : "text-textSecondary"}`}
+            className={({ isActive }) => `flex flex-col items-center justify-center w-full h-full py-2 space-y-1 transition-all ${isActive ? "text-primary scale-110" : "text-textSecondary hover:text-textPrimary"}`}
           >
             <TrendingUp className="h-5 w-5" />
-            <span className="text-[10px] font-bold">Sell</span>
+            <span className="text-[10px] font-extrabold tracking-wide">Sell</span>
           </NavLink>
 
           <NavLink
             to="/dashboard/inventory"
-            className={({ isActive }) => `flex flex-col items-center justify-center w-full h-full space-y-1 ${isActive ? "text-primary" : "text-textSecondary"}`}
+            className={({ isActive }) => `flex flex-col items-center justify-center w-full h-full py-2 space-y-1 transition-all ${isActive ? "text-primary scale-110" : "text-textSecondary hover:text-textPrimary"}`}
           >
             <Layers className="h-5 w-5" />
-            <span className="text-[10px] font-bold">Stock</span>
+            <span className="text-[10px] font-extrabold tracking-wide">Stock</span>
           </NavLink>
 
           <button
             type="button"
             onClick={() => setMoreMenuOpen(true)}
-            className="flex flex-col items-center justify-center w-full h-full space-y-1 text-textSecondary"
+            className="flex flex-col items-center justify-center w-full h-full py-2 space-y-1 text-textSecondary hover:text-textPrimary transition-all active:scale-95"
           >
             <MoreHorizontal className="h-5 w-5" />
-            <span className="text-[10px] font-bold">More</span>
+            <span className="text-[10px] font-extrabold tracking-wide">More</span>
           </button>
         </div>
 
