@@ -4,6 +4,7 @@ from .views import (
     FinancialOverviewView,
     SalesTrendView,
     FishSalesTrendView,
+    OutstandingCollectionsTrendView,
     MonthlyRevenueComparisonView,
     ProfitMarginTrendView,
     TopBuyersView,
@@ -51,6 +52,7 @@ urlpatterns = [
     # Sales Analytics
     path("dashboard/sales-trend/", SalesTrendView.as_view(), name="dashboard-sales-trend"),
     path("dashboard/fish-sales-trend/", FishSalesTrendView.as_view(), name="dashboard-fish-sales-trend"),
+    path("dashboard/outstanding-collections/", OutstandingCollectionsTrendView.as_view(), name="dashboard-outstanding-collections"),
     path("dashboard/monthly-revenue/", MonthlyRevenueComparisonView.as_view(), name="dashboard-monthly-revenue"),
     path("dashboard/profit-margin-trend/", ProfitMarginTrendView.as_view(), name="dashboard-profit-margin-trend"),
     path("dashboard/top-buyers/", TopBuyersView.as_view(), name="dashboard-top-buyers"),

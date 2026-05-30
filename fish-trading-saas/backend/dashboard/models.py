@@ -539,6 +539,54 @@ class DashboardManager:
             for row in rows
         ]
 
+    @staticmethod
+    def get_outstanding_collections(user=None, limit=10):
+        """
+        Tier 1: Core Production Chart - Outstanding Collections Trend
+        Group pending_amount from Sales by overdue buckets (0-30, 31-60, 61-90, 90+) and buyer.
+        """
+        tenant_filter = DashboardManager._get_tenant_filter(user) if user else Q()
+        today = timezone.now().date()
+        
+        d30 = today - timedelta(days=30)
+        d60 = today - timedelta(days=60)
+        d90 = today - timedelta(days=90)
+
+        # Sales with pending amount > 0
+        qs = Sale.objects.filter(tenant_filter, pending_amount__gt=0)
+        
+        # We will use Coalesce to fallback to date if due_date is null, but for simplicity we can just use date.
+        # Actually due_date is best if available.
+        # To avoid complex Coalesce in Django 3/4 if not imported, we can just use date for ageing, which is standard in simple ERPs.
+        
+        data = qs.values('buyer__name').annotate(
+            bucket_0_30=Sum(
+                Case(When(date__gte=d30, then=F('pending_amount')), default=Value(0), output_field=DecimalField())
+            ),
+            bucket_31_60=Sum(
+                Case(When(date__lt=d30, date__gte=d60, then=F('pending_amount')), default=Value(0), output_field=DecimalField())
+            ),
+            bucket_61_90=Sum(
+                Case(When(date__lt=d60, date__gte=d90, then=F('pending_amount')), default=Value(0), output_field=DecimalField())
+            ),
+            bucket_90_plus=Sum(
+                Case(When(date__lt=d90, then=F('pending_amount')), default=Value(0), output_field=DecimalField())
+            ),
+            total_pending=Sum('pending_amount')
+        ).order_by('-total_pending')[:limit]
+
+        return [
+            {
+                'buyer_name': row['buyer__name'] or 'Walk-in',
+                '0_30_days': float(row['bucket_0_30'] or 0),
+                '31_60_days': float(row['bucket_31_60'] or 0),
+                '61_90_days': float(row['bucket_61_90'] or 0),
+                '90_plus_days': float(row['bucket_90_plus'] or 0),
+                'total_pending': float(row['total_pending'] or 0)
+            }
+            for row in data
+        ]
+
     # ============================================================
     # INVENTORY OVERVIEW
     # ============================================================

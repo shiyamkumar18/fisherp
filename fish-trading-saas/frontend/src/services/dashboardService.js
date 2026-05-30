@@ -62,6 +62,12 @@ export const fetchFishSalesTrend = async (days = 14) => {
   return res.data || [];
 };
 
+export const fetchOutstandingCollections = async (limit = 10) => {
+  if (config.useMocks) return [];
+  const res = await apiClient.get("/dashboard/outstanding-collections/", { params: { limit } });
+  return res.data || [];
+};
+
 export const fetchERPDashboard = async () => {
   const [financial, operational, alerts, topFish, recentSales, inventory, creditCustomers] =
     await Promise.allSettled([
