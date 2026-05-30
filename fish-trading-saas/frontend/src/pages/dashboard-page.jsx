@@ -164,29 +164,29 @@ function FishSalesTrendChart({ data = [] }) {
       {/* Floating Tooltip */}
       {hoveredPoint && (
         <div 
-          className="absolute z-10 rounded-lg border border-border bg-surface px-3 py-2 shadow-md text-xs font-bold transition-all duration-75 min-w-[140px]"
+          className="absolute z-10 rounded-xl border border-border/50 bg-surface/90 backdrop-blur-xl px-4 py-3 shadow-xl text-xs font-bold transition-all duration-75 min-w-[160px]"
           style={{ 
             left: `${Math.min(80, Math.max(5, (hoveredPoint.idx / Math.max(1, dates.length - 1)) * 100))}%`,
-            top: `${(hoveredPoint.y / height) * 75 - 35}%`,
+            top: `${(hoveredPoint.y / height) * 75 - 45}%`,
             transform: 'translateX(-50%)'
           }}
         >
-          <div className="flex justify-between items-center border-b border-border/50 pb-1 mb-1">
-            <p className="text-[10px] text-textSecondary uppercase tracking-wider">{hoveredPoint.prod}</p>
-            <p className="text-[9px] text-textSecondary">{new Date(hoveredPoint.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
+          <div className="flex justify-between items-center border-b border-border/50 pb-2 mb-2">
+            <p className="text-[11px] text-textPrimary uppercase tracking-wider font-extrabold">{hoveredPoint.prod}</p>
+            <p className="text-[10px] text-textSecondary">{new Date(hoveredPoint.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
           </div>
-          <div className="space-y-1 mt-1">
-            <div className="flex justify-between items-center gap-4">
-              <span className="text-textSecondary font-medium">KG Sold</span>
-              <span style={{color: hoveredPoint.color}}>{hoveredPoint.raw.kg_sold?.toFixed(1)} kg</span>
+          <div className="space-y-1.5 mt-1">
+            <div className="flex justify-between items-center gap-6">
+              <span className="text-textSecondary font-semibold">KG Sold</span>
+              <span style={{color: hoveredPoint.color}} className="font-extrabold">{hoveredPoint.raw.kg_sold?.toFixed(1)} kg</span>
             </div>
-            <div className="flex justify-between items-center gap-4">
-              <span className="text-textSecondary font-medium">Revenue</span>
-              <span className="text-textPrimary">{formatINR(hoveredPoint.raw.revenue)}</span>
+            <div className="flex justify-between items-center gap-6">
+              <span className="text-textSecondary font-semibold">Revenue</span>
+              <span className="text-textPrimary font-extrabold">{formatINR(hoveredPoint.raw.revenue)}</span>
             </div>
-            <div className="flex justify-between items-center gap-4">
-              <span className="text-textSecondary font-medium">Avg Price</span>
-              <span className="text-textPrimary">{formatINR(hoveredPoint.raw.avg_price)}/kg</span>
+            <div className="flex justify-between items-center gap-6">
+              <span className="text-textSecondary font-semibold">Avg Price</span>
+              <span className="text-textPrimary font-extrabold">{formatINR(hoveredPoint.raw.avg_price)}/kg</span>
             </div>
           </div>
         </div>
@@ -1880,11 +1880,11 @@ function BusinessDashboard() {
                 <h3 className="text-base font-bold text-textPrimary">Fish Sales Trend</h3>
                 <p className="text-xs text-textSecondary">Volume and revenue by top fish.</p>
               </div>
-              <div className="flex gap-2 text-[10px] font-bold">
-                <span onClick={() => setSalesDays(1)} className={`cursor-pointer px-2 py-1 transition-colors ${salesDays === 1 ? 'text-primary bg-primary/10 rounded-lg' : 'text-textSecondary hover:text-textPrimary'}`}>Today</span>
-                <span onClick={() => setSalesDays(7)} className={`cursor-pointer px-2 py-1 transition-colors ${salesDays === 7 ? 'text-primary bg-primary/10 rounded-lg' : 'text-textSecondary hover:text-textPrimary'}`}>7 Days</span>
-                <span onClick={() => setSalesDays(30)} className={`cursor-pointer px-2 py-1 transition-colors ${salesDays === 30 ? 'text-primary bg-primary/10 rounded-lg' : 'text-textSecondary hover:text-textPrimary'}`}>30 Days</span>
-                <span onClick={() => setSalesDays(90)} className={`cursor-pointer px-2 py-1 transition-colors ${salesDays === 90 ? 'text-primary bg-primary/10 rounded-lg' : 'text-textSecondary hover:text-textPrimary'}`}>90 Days</span>
+              <div className="flex bg-surface border border-border rounded-xl p-1 shadow-sm text-[11px] font-bold">
+                <span onClick={() => setSalesDays(1)} className={`cursor-pointer px-3 py-1.5 rounded-lg transition-all ${salesDays === 1 ? 'text-primary bg-primary/10 shadow-sm' : 'text-textSecondary hover:text-textPrimary hover:bg-border/30'}`}>Today</span>
+                <span onClick={() => setSalesDays(7)} className={`cursor-pointer px-3 py-1.5 rounded-lg transition-all ${salesDays === 7 ? 'text-primary bg-primary/10 shadow-sm' : 'text-textSecondary hover:text-textPrimary hover:bg-border/30'}`}>7 Days</span>
+                <span onClick={() => setSalesDays(30)} className={`cursor-pointer px-3 py-1.5 rounded-lg transition-all ${salesDays === 30 ? 'text-primary bg-primary/10 shadow-sm' : 'text-textSecondary hover:text-textPrimary hover:bg-border/30'}`}>30 Days</span>
+                <span onClick={() => setSalesDays(90)} className={`cursor-pointer px-3 py-1.5 rounded-lg transition-all ${salesDays === 90 ? 'text-primary bg-primary/10 shadow-sm' : 'text-textSecondary hover:text-textPrimary hover:bg-border/30'}`}>90 Days</span>
               </div>
             </div>
             <FishSalesTrendChart data={fishSalesTrend} />
