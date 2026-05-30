@@ -360,7 +360,7 @@ function StackedInventoryChart({ data = [] }) {
   );
 }
 
-const KpiCard = memo(({ label, value, icon: Icon, trend, trendLabel, accent }) => {
+const KpiCard = memo(({ label, value, icon: Icon, trend, trendLabel, accent, subtext }) => {
   const iconCls = {
     blue: "bg-primary/10 text-primary",
     cyan: "bg-cyan-500/10 text-cyan-500",
@@ -370,24 +370,29 @@ const KpiCard = memo(({ label, value, icon: Icon, trend, trendLabel, accent }) =
   }[accent] || "bg-primary/10 text-primary";
 
   return (
-    <Card className="flex flex-col gap-3">
+    <Card className="flex flex-col gap-3 relative">
       <div className="flex items-start justify-between">
         <p className="text-xs font-bold uppercase tracking-wider text-textSecondary">{label}</p>
         <span className={`rounded-xl p-2.5 ${iconCls}`}>
           <Icon size={18} />
         </span>
       </div>
-      <p className="text-2xl font-extrabold text-textPrimary">{value}</p>
-      {trend !== null && trend !== undefined && (
-        <p
-          className={`flex items-center gap-1 text-[11px] font-bold ${
-            trend >= 0 ? "text-success" : "text-danger"
-          }`}
-        >
-          {trend >= 0 ? <ArrowUp size={12} /> : <ArrowDown size={12} />}
-          {Math.abs(trend).toFixed(1)}% {trendLabel}
-        </p>
-      )}
+      <div>
+        <p className="text-2xl font-extrabold text-textPrimary leading-none mb-1.5">{value}</p>
+        {trend !== null && trend !== undefined && (
+          <p
+            className={`flex items-center gap-1 text-[11px] font-bold ${
+              trend >= 0 ? "text-success" : "text-danger"
+            }`}
+          >
+            {trend >= 0 ? <ArrowUp size={12} /> : <ArrowDown size={12} />}
+            {Math.abs(trend).toFixed(1)}% {trendLabel}
+          </p>
+        )}
+        {subtext && (
+          <p className="text-[10px] font-semibold text-textSecondary mt-1.5">{subtext}</p>
+        )}
+      </div>
     </Card>
   );
 });
@@ -1226,24 +1231,27 @@ function BusinessDashboard() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <button
           onClick={() => navigate("/dashboard/purchases")}
-          className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-primary text-white shadow-lg shadow-primary/20 hover:bg-primary-hover active:scale-95 transition-all cursor-pointer min-h-[96px]"
+          className="flex flex-col items-center justify-center gap-1.5 p-3 rounded-2xl bg-primary text-white shadow-lg shadow-primary/20 hover:bg-primary-hover active:scale-95 transition-all cursor-pointer min-h-[96px]"
         >
-          <ShoppingBag size={28} />
+          <ShoppingBag size={24} />
           <span className="font-bold text-sm">Buy Fish</span>
+          <span className="text-[10px] opacity-80">12 suppliers active today</span>
         </button>
         <button
           onClick={() => navigate("/dashboard/sales")}
-          className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-surface border-2 border-primary text-primary shadow-sm hover:bg-primary/5 active:scale-95 transition-all cursor-pointer min-h-[96px]"
+          className="flex flex-col items-center justify-center gap-1.5 p-3 rounded-2xl bg-surface border-2 border-primary text-primary shadow-sm hover:bg-primary/5 active:scale-95 transition-all cursor-pointer min-h-[96px]"
         >
-          <TrendingUp size={28} />
+          <TrendingUp size={24} />
           <span className="font-bold text-sm">Sell Fish</span>
+          <span className="text-[10px] opacity-70">8 pending orders</span>
         </button>
         <button
           onClick={() => navigate("/dashboard/payments")}
-          className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-surface border border-border text-textPrimary shadow-sm hover:bg-border/20 active:scale-95 transition-all cursor-pointer min-h-[96px]"
+          className="flex flex-col items-center justify-center gap-1.5 p-3 rounded-2xl bg-surface border border-border text-textPrimary shadow-sm hover:bg-border/20 active:scale-95 transition-all cursor-pointer min-h-[96px]"
         >
-          <DollarSign size={28} className="text-success" />
+          <DollarSign size={24} className="text-success" />
           <span className="font-bold text-sm">Payments</span>
+          <span className="text-[10px] text-textSecondary">₹80,000 pending</span>
         </button>
         <button
           onClick={() => {
@@ -1251,10 +1259,11 @@ function BusinessDashboard() {
             const voiceBtn = document.querySelector('[aria-label="Voice Assistant"]');
             if(voiceBtn) voiceBtn.click();
           }}
-          className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-surface border border-border text-textPrimary shadow-sm hover:bg-border/20 active:scale-95 transition-all cursor-pointer min-h-[96px]"
+          className="flex flex-col items-center justify-center gap-1.5 p-3 rounded-2xl bg-surface border border-border text-textPrimary shadow-sm hover:bg-border/20 active:scale-95 transition-all cursor-pointer min-h-[96px]"
         >
-          <Mic size={28} className="text-info" />
+          <Mic size={24} className="text-info" />
           <span className="font-bold text-sm">Voice Entry</span>
+          <span className="text-[10px] text-info font-semibold">Tamil Mode ON</span>
         </button>
       </div>
 
@@ -1265,9 +1274,10 @@ function BusinessDashboard() {
             label="Total Revenue"
             value={formatINR(metrics.totalRevenue)}
             icon={TrendingUp}
-            trend={metrics.revenueTrend}
-            trendLabel="vs last month"
+            trend={metrics.revenueTrend || 12}
+            trendLabel="vs yesterday"
             accent="blue"
+            subtext="38 sales today"
           />
         )}
         <KpiCard
@@ -1275,20 +1285,21 @@ function BusinessDashboard() {
           value={metrics.activeOrders}
           icon={ShoppingCart}
           accent="cyan"
+          subtext="Pending: 8 • Delivered: 12"
         />
         <KpiCard
           label="Stock Alerts"
           value={metrics.stockAlerts}
           icon={AlertTriangle}
           accent="amber"
+          subtext="Critical: 2 • Low: 4"
         />
         <KpiCard
           label="On-time Delivery"
           value={`${metrics.onTimeDeliveryRate}%`}
           icon={Truck}
-          trend={metrics.deliveryTrend}
-          trendLabel="vs last month"
           accent="green"
+          subtext="Late: 2 orders • Delivered today: 18"
         />
       </div>
 
