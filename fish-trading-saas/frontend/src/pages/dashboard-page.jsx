@@ -1976,12 +1976,12 @@ function BusinessDashboard() {
                 <div className="overflow-x-auto">
                   <table className="min-w-full text-sm">
                     <thead>
-                      <tr className="border-b border-border text-left text-xs font-bold uppercase tracking-wider text-textSecondary/70">
-                        <th className="pb-3 pr-4">Invoice</th>
-                        <th className="pb-3 pr-4">Buyer</th>
-                        <th className="pb-3 pr-4">Amount</th>
-                        <th className="pb-3 pr-4">Status</th>
-                        <th className="pb-3 text-right">Actions</th>
+                      <tr className="border-b border-border/60 text-left text-[11px] font-extrabold uppercase tracking-widest text-textSecondary bg-border/10 rounded-t-lg">
+                        <th className="py-3 px-4 first:rounded-tl-lg">Invoice</th>
+                        <th className="py-3 px-4">Buyer</th>
+                        <th className="py-3 px-4">Amount</th>
+                        <th className="py-3 px-4">Status</th>
+                        <th className="py-3 px-4 text-right last:rounded-tr-lg">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/40">
@@ -1990,22 +1990,23 @@ function BusinessDashboard() {
                         const cls = DELIVERY_CLS[key] || DELIVERY_CLS.pending;
                         return (
                           <tr key={order.id} className="hover:bg-border/10 transition-colors group">
-                            <td className="py-3 pr-4 font-bold text-primary cursor-pointer hover:underline">
+                            <td className="py-3.5 px-4 font-bold text-primary cursor-pointer hover:underline">
                               {order.invoice_number}
                             </td>
-                            <td className="py-3 pr-4 text-textSecondary font-semibold">{order.buyer_name}</td>
-                            <td className="py-3 pr-4 font-bold text-textPrimary">
+                            <td className="py-3.5 px-4 text-textSecondary font-semibold">{order.buyer_name}</td>
+                            <td className="py-3.5 px-4 font-bold text-textPrimary">
                               {formatINR(order.final_amount ?? order.total_revenue)}
                             </td>
-                            <td className="py-3 pr-4">
+                            <td className="py-3.5 px-4">
                               <span
-                                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-bold capitalize ${cls}`}
+                                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide border shadow-sm ${cls}`}
+                                style={{ borderColor: 'currentColor' }}
                               >
-                                <span className={`h-1.5 w-1.5 rounded-full ${key === 'pending' ? 'bg-amber-500' : key === 'delivered' ? 'bg-green-500' : 'bg-current'}`}></span>
+                                <span className={`h-1.5 w-1.5 rounded-full shadow-[0_0_4px_currentColor] ${key === 'pending' ? 'bg-amber-500' : key === 'delivered' ? 'bg-green-500' : 'bg-current'}`}></span>
                                 {order.delivery_status_display || order.delivery_status}
                               </span>
                             </td>
-                            <td className="py-3 text-right">
+                            <td className="py-3.5 px-4 text-right">
                               <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <button className="text-[10px] font-bold text-textSecondary hover:text-primary px-2 py-1 rounded bg-border/20 hover:bg-primary/10">View</button>
                                 {key === 'pending' && <button className="text-[10px] font-bold text-white px-2 py-1 rounded bg-success hover:bg-success-hover shadow-sm">Collect Payment</button>}
@@ -2057,9 +2058,9 @@ function BusinessDashboard() {
                   <div key={item.name} className="space-y-2">
                     <div className="flex justify-between items-center text-xs font-bold">
                       <div className="flex items-center gap-2">
-                        <span className="text-textSecondary opacity-50 w-3">{idx + 1}.</span>
-                        <div className="bg-primary/10 text-primary p-1.5 rounded-lg">
-                          <Fish size={14} />
+                        <span className="text-textSecondary font-extrabold opacity-40 w-4 text-sm">{idx + 1}.</span>
+                        <div className="bg-primary/10 text-primary p-2 rounded-xl border border-primary/20 shadow-sm">
+                          <Fish size={16} />
                         </div>
                         <div>
                           <span className="text-textPrimary block leading-none mb-0.5">{item.name}</span>
