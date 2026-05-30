@@ -1683,6 +1683,12 @@ function BusinessDashboard() {
   const { metrics, topFish, recentOrders, riskAlerts } = overview;
   const maxRevenue = topFish[0]?.revenue || 1;
 
+  // Header Greeting Logic
+  const currentHour = new Date().getHours();
+  const greeting = currentHour < 12 ? "Good Morning" : currentHour < 18 ? "Good Afternoon" : "Good Evening";
+  const firstName = user?.username ? user.username.split(' ')[0] : "User";
+  const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+
   // Static/Mock details for the SVG telemetry charts. In production, these can be served by API endpoints.
   const salesTrendData = [
     { label: "Dec", value: 180000 },
@@ -1707,10 +1713,28 @@ function BusinessDashboard() {
 
   return (
     <div className="flex flex-col gap-6 pb-24 md:pb-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-extrabold tracking-tight">Overview Dashboard</h2>
-          <p className="text-xs text-textSecondary">Real-time trading telemetry and tenant analytics.</p>
+          <h2 className="text-2xl font-extrabold tracking-tight text-textPrimary flex items-center gap-2">
+            {greeting}, {firstName} <span className="animate-wave origin-bottom-right inline-block">👋</span>
+          </h2>
+          <div className="flex items-center gap-3 mt-1.5 text-sm font-semibold text-textSecondary">
+            <span className="flex items-center gap-1.5 bg-surface border border-border px-2.5 py-1 rounded-lg shadow-sm">
+              <span className="text-primary">{today}</span>
+              <span className="text-border mx-1">•</span>
+              <span>Chennai Market</span>
+            </span>
+            <span className="flex items-center gap-1.5 bg-surface border border-border px-2.5 py-1 rounded-lg shadow-sm">
+              Market Status: 
+              <span className="flex items-center gap-1.5 text-success">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-success"></span>
+                </span>
+                Open
+              </span>
+            </span>
+          </div>
         </div>
         <Button
           onClick={() => {
@@ -1718,7 +1742,7 @@ function BusinessDashboard() {
             window.location.reload();
           }}
           variant="outline"
-          className="flex items-center gap-2 border-primary/40 text-primary hover:bg-primary/5 font-bold"
+          className="flex items-center gap-2 border-primary/20 text-primary bg-primary/5 hover:bg-primary/10 hover:border-primary/40 font-bold shadow-sm transition-all rounded-xl"
         >
           Simple Mode / எளிய முறை
         </Button>
