@@ -846,19 +846,47 @@ const KpiCard = memo(({ label, value, icon: Icon, trend, trendLabel, accent, sub
 });
 
 const DashboardSkeleton = () => (
-  <div className="space-y-6">
-    <div className="flex justify-between items-center">
-      <Skeleton className="h-8 w-44" />
-      <Skeleton className="h-9 w-28" />
+  <div className="space-y-6 animate-pulse">
+    {/* Header Skeleton */}
+    <div className="flex justify-between items-start">
+      <div className="space-y-2">
+        <div className="h-8 w-64 bg-border/40 rounded-lg"></div>
+        <div className="h-5 w-48 bg-border/20 rounded-md"></div>
+      </div>
+      <div className="h-10 w-32 bg-border/30 rounded-xl"></div>
     </div>
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+    
+    {/* Quick Actions Skeleton */}
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
       {[...Array(4)].map((_, i) => (
-        <Skeleton key={i} className="h-28" />
+        <div key={i} className="h-[104px] bg-surface border border-border/50 rounded-2xl p-4 flex flex-col items-center justify-center gap-2">
+          <div className="h-8 w-8 bg-border/40 rounded-full"></div>
+          <div className="h-4 w-16 bg-border/30 rounded"></div>
+          <div className="h-2 w-24 bg-border/20 rounded"></div>
+        </div>
       ))}
     </div>
+    
+    {/* KPI Cards Skeleton */}
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      {[...Array(4)].map((_, i) => (
+        <div key={i} className="h-36 bg-surface border border-border/50 rounded-2xl p-5 flex flex-col justify-between">
+          <div className="flex justify-between items-start">
+            <div className="h-3 w-20 bg-border/30 rounded"></div>
+            <div className="h-10 w-10 bg-border/20 rounded-xl"></div>
+          </div>
+          <div className="space-y-2">
+            <div className="h-8 w-24 bg-border/40 rounded"></div>
+            <div className="h-3 w-32 bg-border/20 rounded"></div>
+          </div>
+        </div>
+      ))}
+    </div>
+    
+    {/* Charts Skeleton */}
     <div className="grid gap-4 lg:grid-cols-3">
-      <Skeleton className="h-80 lg:col-span-2" />
-      <Skeleton className="h-80" />
+      <div className="h-80 bg-surface border border-border/50 rounded-2xl lg:col-span-2"></div>
+      <div className="h-80 bg-surface border border-border/50 rounded-2xl"></div>
     </div>
   </div>
 );
@@ -1964,9 +1992,15 @@ function BusinessDashboard() {
 
             if (recentOrders.length === 0) {
               return (
-                <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-textSecondary">
-                  <Inbox className="h-8 w-8 mb-2 opacity-50" />
-                  <p className="text-sm font-semibold">No recent orders found</p>
+                <div className="flex-1 flex flex-col items-center justify-center p-12 text-center border-2 border-dashed border-border/50 rounded-2xl bg-surface/50 m-2">
+                  <div className="bg-primary/10 text-primary p-4 rounded-full mb-4">
+                    <Inbox className="h-8 w-8" />
+                  </div>
+                  <h4 className="text-sm font-extrabold text-textPrimary mb-1">No Recent Orders</h4>
+                  <p className="text-xs text-textSecondary font-semibold mb-4 max-w-[200px]">There are no pending or recent trading actions to display.</p>
+                  <button onClick={() => navigate("/dashboard/sales")} className="text-xs font-bold bg-primary text-white px-4 py-2 rounded-lg hover:bg-primaryHover transition-colors shadow-sm">
+                    Create Sale Entry
+                  </button>
                 </div>
               );
             }
@@ -2102,9 +2136,9 @@ function BusinessDashboard() {
                   const isCritical = alertMsg.toLowerCase().includes("expir") || alertMsg.toLowerCase().includes("critical");
                   const isWarning = alertMsg.toLowerCase().includes("low");
                   
-                  const borderCls = isCritical ? "border-danger/30 bg-danger/10" : 
-                                    isWarning ? "border-warning/30 bg-warning/10" : 
-                                    "border-info/30 bg-info/10";
+                  const borderCls = isCritical ? "border-danger/30 bg-danger/5 shadow-danger/5" : 
+                                    isWarning ? "border-warning/30 bg-warning/5 shadow-warning/5" : 
+                                    "border-info/30 bg-info/5 shadow-info/5";
                   const textCls = isCritical ? "text-danger" : 
                                   isWarning ? "text-warning" : 
                                   "text-info";
@@ -2112,15 +2146,23 @@ function BusinessDashboard() {
                   return (
                     <div
                       key={idx}
-                      className={`flex items-start gap-2.5 rounded-xl border ${borderCls} p-3 text-xs`}
+                      className={`group relative flex items-start gap-3 rounded-xl border ${borderCls} p-3.5 text-xs shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer overflow-hidden`}
                     >
-                      <AlertTriangle
-                        size={15}
-                        className={`shrink-0 ${textCls}`}
-                      />
-                      <span className="text-textPrimary font-semibold leading-relaxed">
-                        {alertMsg}
-                      </span>
+                      <div className={`absolute top-0 left-0 w-1 h-full ${isCritical ? 'bg-danger' : isWarning ? 'bg-warning' : 'bg-info'}`}></div>
+                      <div className={`shrink-0 p-1.5 rounded-lg bg-surface border border-border/50 shadow-sm ${textCls}`}>
+                        <AlertTriangle size={16} />
+                      </div>
+                      <div className="flex-1 pt-0.5">
+                        <span className="text-textPrimary font-bold leading-relaxed block pr-4">
+                          {alertMsg}
+                        </span>
+                        <span className={`text-[10px] font-semibold mt-1 block ${textCls} opacity-80 uppercase tracking-widest`}>
+                          {isCritical ? 'Immediate Action Required' : isWarning ? 'Review Needed' : 'System Notice'}
+                        </span>
+                      </div>
+                      <div className={`absolute right-3 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity ${textCls}`}>
+                        <ChevronRight size={14} />
+                      </div>
                     </div>
                   );
                 })}
