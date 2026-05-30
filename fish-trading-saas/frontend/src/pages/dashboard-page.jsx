@@ -1173,6 +1173,8 @@ function PlatformOperatorDashboard() {
 
 // ---- Original Business Dashboard View ----
 function BusinessDashboard() {
+  const { user } = useAuthStore();
+  const role = user?.role || "tenant_admin";
   const [overview, setOverview] = useState(null);
   const [error, setError] = useState("");
   const { canViewFinancial } = usePermission();
@@ -1231,7 +1233,7 @@ function BusinessDashboard() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-6 pb-24 md:pb-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-extrabold tracking-tight">Overview Dashboard</h2>
@@ -1290,44 +1292,52 @@ function BusinessDashboard() {
       </div>
 
       {/* KPI Cards Row */}
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className={`flex flex-nowrap overflow-x-auto snap-x md:grid gap-4 md:grid-cols-2 xl:grid-cols-4 pb-2 md:pb-0 scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0 ${role === 'store' ? 'order-3' : 'order-2'}`}>
         {canViewFinancial() && (
-          <KpiCard
-            label="Total Revenue"
-            value={formatINR(metrics.totalRevenue)}
-            icon={TrendingUp}
-            trend={metrics.revenueTrend || 12}
-            trendLabel="vs yesterday"
-            accent="blue"
-            subtext="38 sales today"
-          />
+          <div className="flex-none w-[220px] md:w-auto snap-start">
+            <KpiCard
+              label="Total Revenue"
+              value={formatINR(metrics.totalRevenue)}
+              icon={TrendingUp}
+              trend={metrics.revenueTrend || 12}
+              trendLabel="vs yesterday"
+              accent="blue"
+              subtext="38 sales today"
+            />
+          </div>
         )}
-        <KpiCard
-          label="Active Orders"
-          value={metrics.activeOrders}
-          icon={ShoppingCart}
-          accent="cyan"
-          subtext="Pending: 8 • Delivered: 12"
-        />
-        <KpiCard
-          label="Stock Alerts"
-          value={metrics.stockAlerts}
-          icon={AlertTriangle}
-          accent="amber"
-          subtext="Critical: 2 • Low: 4"
-        />
-        <KpiCard
-          label="On-time Delivery"
-          value={`${metrics.onTimeDeliveryRate}%`}
-          icon={Truck}
-          accent="green"
-          subtext="Late: 2 orders • Delivered today: 18"
-        />
+        <div className="flex-none w-[220px] md:w-auto snap-start">
+          <KpiCard
+            label="Active Orders"
+            value={metrics.activeOrders}
+            icon={ShoppingCart}
+            accent="cyan"
+            subtext="Pending: 8 • Delivered: 12"
+          />
+        </div>
+        <div className="flex-none w-[220px] md:w-auto snap-start">
+          <KpiCard
+            label="Stock Alerts"
+            value={metrics.stockAlerts}
+            icon={AlertTriangle}
+            accent="amber"
+            subtext="Critical: 2 • Low: 4"
+          />
+        </div>
+        <div className="flex-none w-[220px] md:w-auto snap-start">
+          <KpiCard
+            label="On-time Delivery"
+            value={`${metrics.onTimeDeliveryRate}%`}
+            icon={Truck}
+            accent="green"
+            subtext="Late: 2 orders • Delivered today: 18"
+          />
+        </div>
       </div>
 
       {/* Charts Grid */}
       {canViewFinancial() && (
-        <div className="grid gap-4 lg:grid-cols-3">
+        <div className={`grid gap-4 lg:grid-cols-3 order-3 ${role === 'accountant' ? 'order-2' : ''}`}>
           {/* Sales Trend Line Chart */}
           <Card className="lg:col-span-2 flex flex-col justify-between">
             <div className="flex items-start justify-between mb-4">
@@ -1357,9 +1367,9 @@ function BusinessDashboard() {
       )}
 
       {/* Lower Row: recent orders + top fish + alerts */}
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className={`grid gap-4 lg:grid-cols-3 ${role === 'store' ? 'order-2' : 'order-4'}`}>
         {/* Recent Orders Card */}
-        <Card className="lg:col-span-2 flex flex-col">
+        <Card className={`lg:col-span-2 flex flex-col ${role === 'accountant' ? 'order-first' : ''}`}>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
             <div>
               <h3 className="text-base font-bold text-textPrimary">Recent Orders</h3>
@@ -1466,10 +1476,11 @@ function BusinessDashboard() {
         </Card>
 
         {/* Right Column: Top Products & Alerts */}
-        <div className="space-y-4">
+        <div className={`space-y-4 flex flex-col ${role === 'store' ? 'order-first' : ''}`}>
           {/* Top Products */}
-          <Card>
-            <h3 className="text-base font-bold text-textPrimary">Top Products</h3>
+          {canViewFinancial() && (
+            <Card className="order-2 lg:order-none">
+              <h3 className="text-base font-bold text-textPrimary">Top Products</h3>
             <p className="text-xs text-textSecondary mb-4">Volume drivers in gross revenue.</p>
             <div className="space-y-3.5">
               {topFish.map((item, idx) => {
@@ -1502,10 +1513,11 @@ function BusinessDashboard() {
                 );
               })}
             </div>
-          </Card>
+            </Card>
+          )}
 
           {/* Stacked Inventory Breakdown */}
-          <Card>
+          <Card className={`${role === 'store' ? 'order-first border-primary border-2' : 'order-3 lg:order-none'}`}>
             <h3 className="text-base font-bold text-textPrimary">Inventory Breakdown</h3>
             <p className="text-xs text-textSecondary mb-4">Ratio of sold batches vs active holdings.</p>
             <StackedInventoryChart data={inventoryBreakdown} />
@@ -1513,7 +1525,7 @@ function BusinessDashboard() {
 
           {/* Risk Alerts */}
           {riskAlerts.length > 0 && (
-            <Card>
+            <Card className="order-1 lg:order-none">
               <h3 className="text-base font-bold text-textPrimary mb-3">System Alerts</h3>
               <div className="space-y-2">
                 {riskAlerts.slice(0, 4).map((alert, idx) => {
