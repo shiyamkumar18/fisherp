@@ -1749,30 +1749,39 @@ function BusinessDashboard() {
       </div>
 
       {/* Quick Actions (Mobile First) */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <button
           onClick={() => navigate("/dashboard/purchases")}
-          className="flex flex-col items-center justify-center gap-1.5 p-3 rounded-2xl bg-primary text-white shadow-lg shadow-primary/20 hover:bg-primary-hover active:scale-95 transition-all cursor-pointer min-h-[96px]"
+          className="group relative flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-gradient-to-br from-primary to-primaryHover text-white shadow-lg shadow-primary/30 hover:shadow-xl hover:-translate-y-1 active:scale-95 transition-all duration-200 cursor-pointer min-h-[104px] overflow-hidden"
         >
-          <ShoppingBag size={24} />
-          <span className="font-bold text-sm">Buy Fish</span>
-          <span className="text-[10px] opacity-80">12 suppliers active today</span>
+          <div className="absolute top-0 right-0 -mt-4 -mr-4 h-16 w-16 rounded-full bg-white opacity-10 blur-xl group-hover:scale-150 transition-transform duration-500"></div>
+          <ShoppingBag size={28} className="drop-shadow-sm transition-transform group-hover:scale-110" />
+          <div className="flex flex-col items-center">
+            <span className="font-bold text-sm tracking-wide">Buy Fish</span>
+            <span className="text-[10px] font-medium opacity-80 mt-0.5">12 suppliers active today</span>
+          </div>
         </button>
         <button
           onClick={() => navigate("/dashboard/sales")}
-          className="flex flex-col items-center justify-center gap-1.5 p-3 rounded-2xl bg-surface border-2 border-primary text-primary shadow-sm hover:bg-primary/5 active:scale-95 transition-all cursor-pointer min-h-[96px]"
+          className="group relative flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-surface border border-border shadow-sm hover:border-primary/50 hover:shadow-md hover:shadow-primary/5 hover:-translate-y-1 active:scale-95 transition-all duration-200 cursor-pointer min-h-[104px] overflow-hidden"
         >
-          <TrendingUp size={24} />
-          <span className="font-bold text-sm">Sell Fish</span>
-          <span className="text-[10px] opacity-70">8 pending orders</span>
+          <div className="absolute top-0 left-0 w-full h-1 bg-primary/20 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+          <TrendingUp size={28} className="text-primary transition-transform group-hover:scale-110" />
+          <div className="flex flex-col items-center">
+            <span className="font-bold text-sm tracking-wide text-textPrimary">Sell Fish</span>
+            <span className="text-[10px] font-medium text-textSecondary mt-0.5">8 pending orders</span>
+          </div>
         </button>
         <button
           onClick={() => navigate("/dashboard/payments")}
-          className="flex flex-col items-center justify-center gap-1.5 p-3 rounded-2xl bg-surface border border-border text-textPrimary shadow-sm hover:bg-border/20 active:scale-95 transition-all cursor-pointer min-h-[96px]"
+          className="group relative flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-surface border border-border shadow-sm hover:border-success/50 hover:shadow-md hover:shadow-success/5 hover:-translate-y-1 active:scale-95 transition-all duration-200 cursor-pointer min-h-[104px] overflow-hidden"
         >
-          <DollarSign size={24} className="text-success" />
-          <span className="font-bold text-sm">Payments</span>
-          <span className="text-[10px] text-textSecondary">₹80,000 pending</span>
+          <div className="absolute top-0 left-0 w-full h-1 bg-success/20 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+          <DollarSign size={28} className="text-success transition-transform group-hover:scale-110" />
+          <div className="flex flex-col items-center">
+            <span className="font-bold text-sm tracking-wide text-textPrimary">Payments</span>
+            <span className="text-[10px] font-medium text-textSecondary mt-0.5">₹80,000 pending</span>
+          </div>
         </button>
         <button
           onClick={() => {
@@ -1780,11 +1789,17 @@ function BusinessDashboard() {
             const voiceBtn = document.querySelector('[aria-label="Voice Assistant"]');
             if(voiceBtn) voiceBtn.click();
           }}
-          className="flex flex-col items-center justify-center gap-1.5 p-3 rounded-2xl bg-surface border border-border text-textPrimary shadow-sm hover:bg-border/20 active:scale-95 transition-all cursor-pointer min-h-[96px]"
+          className="group relative flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-surface border border-border shadow-sm hover:border-info/50 hover:shadow-md hover:shadow-info/5 hover:-translate-y-1 active:scale-95 transition-all duration-200 cursor-pointer min-h-[104px] overflow-hidden"
         >
-          <Mic size={24} className="text-info" />
-          <span className="font-bold text-sm">Voice Entry</span>
-          <span className="text-[10px] text-info font-semibold">Tamil Mode ON</span>
+          <div className="absolute top-0 left-0 w-full h-1 bg-info/20 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+          <div className="relative">
+            <Mic size={28} className="text-info transition-transform group-hover:scale-110 relative z-10" />
+            <div className="absolute inset-0 bg-info/20 blur-md rounded-full scale-0 group-hover:scale-125 transition-transform duration-300"></div>
+          </div>
+          <div className="flex flex-col items-center">
+            <span className="font-bold text-sm tracking-wide text-textPrimary">Voice Entry</span>
+            <span className="text-[10px] font-medium text-info mt-0.5">Tamil Mode ON</span>
+          </div>
         </button>
       </div>
 
