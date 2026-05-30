@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { 
   ShoppingBag, Plus, Search, Calendar, User, MapPin, 
   Package, Weight, DollarSign, AlertCircle, Info, Sparkles, Trash2, ShieldCheck
@@ -21,6 +22,7 @@ const formatINR = (n) =>
   }).format(n || 0);
 
 export default function PurchasesPage() {
+  const location = useLocation();
   const [batches, setBatches] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [fishTypes, setFishTypes] = useState([]);
@@ -75,6 +77,31 @@ export default function PurchasesPage() {
   useEffect(() => {
     loadData();
   }, []);
+
+  // Handle voice pre-fill
+  useEffect(() => {
+    if (location.state?.voiceData && suppliers.length > 0 && fishTypes.length > 0) {
+      const v = location.state.voiceData;
+      setModalOpen(true);
+      if (v.supplier_id) setSupplierId(v.supplier_id);
+      else setSupplierId(suppliers[0]?.id || "");
+      
+      if (v.fish_id) setFishId(v.fish_id);
+      else setFishId(fishTypes[0]?.id || "");
+      
+      if (v.packages) setPackages(v.packages);
+      if (v.package_weight) setPackageWeight(v.package_weight);
+      if (v.price_per_kg) setPricePerKg(v.price_per_kg);
+      if (v.labour_cost) setLabourCost(v.labour_cost);
+      if (v.ice_cost) setIceCost(v.ice_cost);
+      if (v.transport_cost) setTransportCost(v.transport_cost);
+      if (v.commission_cost) setCommissionCost(v.commission_cost);
+      if (v.other_cost) setOtherCost(v.other_cost);
+      
+      // Clear state to prevent re-opening modal on refresh
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state, suppliers, fishTypes]);
 
   // Real-time calculations
   const totalWeight = packages * packageWeight;

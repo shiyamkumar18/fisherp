@@ -117,6 +117,19 @@ export default function AppLayout() {
     }
   }
 
+  useEffect(() => {
+    const handleVoiceData = (event) => {
+      const data = event.detail;
+      if (data) {
+        // Navigate to purchases page and pass the parsed entity data
+        navigate("/dashboard/purchases", { state: { voiceData: data } });
+      }
+    };
+    
+    window.addEventListener("voiceFieldsParsed", handleVoiceData);
+    return () => window.removeEventListener("voiceFieldsParsed", handleVoiceData);
+  }, [navigate]);
+
   return (
     <div className="flex min-h-screen bg-bg text-textPrimary">
       {/* Mobile Sidebar Backdrop */}
