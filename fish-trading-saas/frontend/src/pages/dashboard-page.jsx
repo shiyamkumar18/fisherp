@@ -1167,6 +1167,9 @@ function BusinessDashboard() {
   const [error, setError] = useState("");
   const { canViewFinancial } = usePermission();
   const navigate = useNavigate();
+  const [orderSearch, setOrderSearch] = useState("");
+  const [orderPage, setOrderPage] = useState(1);
+  const ordersPerPage = 5;
 
   useEffect(() => {
     let alive = true;
@@ -1347,55 +1350,109 @@ function BusinessDashboard() {
       <div className="grid gap-4 lg:grid-cols-3">
         {/* Recent Orders Card */}
         <Card className="lg:col-span-2 flex flex-col">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
             <div>
               <h3 className="text-base font-bold text-textPrimary">Recent Orders</h3>
               <p className="text-xs text-textSecondary">Latest trading actions executed.</p>
             </div>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-textSecondary" size={14} />
+              <input
+                type="text"
+                placeholder="Search invoice or buyer..."
+                value={orderSearch}
+                onChange={(e) => { setOrderSearch(e.target.value); setOrderPage(1); }}
+                className="pl-9 pr-3 py-1.5 text-xs bg-surface border border-border/50 rounded-lg focus:outline-none focus:border-primary w-full sm:w-48"
+              />
+            </div>
           </div>
-          {recentOrders.length === 0 ? (
-            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-textSecondary">
-              <Inbox className="h-8 w-8 mb-2 opacity-50" />
-              <p className="text-sm font-semibold">No recent orders found</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border text-left text-xs font-bold uppercase tracking-wider text-textSecondary/70">
-                    <th className="pb-3 pr-4">Invoice</th>
-                    <th className="pb-3 pr-4">Buyer</th>
-                    <th className="pb-3 pr-4">Amount</th>
-                    <th className="pb-3">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/40">
-                  {recentOrders.map((order) => {
-                    const key = (order.delivery_status || "pending").toLowerCase();
-                    const cls = DELIVERY_CLS[key] || DELIVERY_CLS.pending;
-                    return (
-                      <tr key={order.id} className="hover:bg-border/10 transition-colors">
-                        <td className="py-3 pr-4 font-bold text-textPrimary">
-                          {order.invoice_number}
-                        </td>
-                        <td className="py-3 pr-4 text-textSecondary font-semibold">{order.buyer_name}</td>
-                        <td className="py-3 pr-4 font-bold text-textPrimary">
-                          {formatINR(order.final_amount ?? order.total_revenue)}
-                        </td>
-                        <td className="py-3">
-                          <span
-                            className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-bold capitalize ${cls}`}
-                          >
-                            {order.delivery_status_display || order.delivery_status}
-                          </span>
-                        </td>
+          {(() => {
+            const filteredOrders = recentOrders.filter(o => 
+              o.invoice_number?.toLowerCase().includes(orderSearch.toLowerCase()) || 
+              o.buyer_name?.toLowerCase().includes(orderSearch.toLowerCase())
+            );
+            const totalPages = Math.ceil(filteredOrders.length / ordersPerPage) || 1;
+            const paginatedOrders = filteredOrders.slice((orderPage - 1) * ordersPerPage, orderPage * ordersPerPage);
+
+            if (recentOrders.length === 0) {
+              return (
+                <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-textSecondary">
+                  <Inbox className="h-8 w-8 mb-2 opacity-50" />
+                  <p className="text-sm font-semibold">No recent orders found</p>
+                </div>
+              );
+            }
+
+            return (
+              <div className="flex flex-col h-full justify-between">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border text-left text-xs font-bold uppercase tracking-wider text-textSecondary/70">
+                        <th className="pb-3 pr-4">Invoice</th>
+                        <th className="pb-3 pr-4">Buyer</th>
+                        <th className="pb-3 pr-4">Amount</th>
+                        <th className="pb-3 pr-4">Status</th>
+                        <th className="pb-3 text-right">Actions</th>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+                    </thead>
+                    <tbody className="divide-y divide-border/40">
+                      {paginatedOrders.map((order) => {
+                        const key = (order.delivery_status || "pending").toLowerCase();
+                        const cls = DELIVERY_CLS[key] || DELIVERY_CLS.pending;
+                        return (
+                          <tr key={order.id} className="hover:bg-border/10 transition-colors group">
+                            <td className="py-3 pr-4 font-bold text-primary cursor-pointer hover:underline">
+                              {order.invoice_number}
+                            </td>
+                            <td className="py-3 pr-4 text-textSecondary font-semibold">{order.buyer_name}</td>
+                            <td className="py-3 pr-4 font-bold text-textPrimary">
+                              {formatINR(order.final_amount ?? order.total_revenue)}
+                            </td>
+                            <td className="py-3 pr-4">
+                              <span
+                                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-bold capitalize ${cls}`}
+                              >
+                                <span className={`h-1.5 w-1.5 rounded-full ${key === 'pending' ? 'bg-amber-500' : key === 'delivered' ? 'bg-green-500' : 'bg-current'}`}></span>
+                                {order.delivery_status_display || order.delivery_status}
+                              </span>
+                            </td>
+                            <td className="py-3 text-right">
+                              <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button className="text-[10px] font-bold text-textSecondary hover:text-primary px-2 py-1 rounded bg-border/20 hover:bg-primary/10">View</button>
+                                {key === 'pending' && <button className="text-[10px] font-bold text-white px-2 py-1 rounded bg-success hover:bg-success-hover shadow-sm">Collect Payment</button>}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {paginatedOrders.length === 0 && (
+                        <tr>
+                          <td colSpan={5} className="py-6 text-center text-xs text-textSecondary">No orders match your search.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+                {/* Pagination */}
+                <div className="flex items-center justify-between pt-4 mt-2 border-t border-border/40">
+                  <p className="text-[10px] text-textSecondary font-semibold">Page {orderPage} of {totalPages}</p>
+                  <div className="flex gap-1">
+                    <button 
+                      disabled={orderPage === 1} 
+                      onClick={() => setOrderPage(p => p - 1)}
+                      className="px-2.5 py-1 text-[11px] font-bold bg-border/20 text-textSecondary rounded hover:bg-border/40 disabled:opacity-30"
+                    >Prev</button>
+                    <button 
+                      disabled={orderPage === totalPages}
+                      onClick={() => setOrderPage(p => p + 1)}
+                      className="px-2.5 py-1 text-[11px] font-bold bg-border/20 text-textSecondary rounded hover:bg-border/40 disabled:opacity-30"
+                    >Next</button>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
         </Card>
 
         {/* Right Column: Top Products & Alerts */}
