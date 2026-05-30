@@ -19,7 +19,9 @@ def custom_exception_handler(exc, context):
         }, status=exc.status_code)
     
     # Fallback
+    import traceback
     return Response({
         'error': 'Internal server error',
         'code': 'INTERNAL_ERROR',
+        'traceback': traceback.format_exc(),
     }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

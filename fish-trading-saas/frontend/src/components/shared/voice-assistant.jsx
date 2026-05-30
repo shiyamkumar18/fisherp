@@ -108,6 +108,7 @@ export default function VoiceAssistant({ onFieldsParsed }) {
     <div className="voice-assistant-container" style={{ position: 'fixed', bottom: '24px', right: '24px', zIndex: 1000 }}>
       {/* Floating Action Button */}
       <motion.button
+        id="voice-assistant-btn"
         onClick={() => {
           setIsOpen(!isOpen);
           if (!isOpen) {

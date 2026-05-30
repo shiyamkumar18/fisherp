@@ -73,10 +73,28 @@ const purchaseMockData = [
   }
 ];
 
+const PURCHASE_NUMERIC_FIELDS = [
+  "total_weight", "price_per_kg", "fish_cost", "labour_cost", "ice_cost",
+  "transport_cost", "commission_cost", "other_cost", "total_expense",
+  "actual_cost_per_kg", "cost_per_package", "amount_paid", "pending_amount",
+  "number_of_packages", "package_weight", "remaining_packages", "sold_packages",
+];
+
+const parseBatch = (b) => {
+  const out = { ...b };
+  for (const field of PURCHASE_NUMERIC_FIELDS) {
+    if (out[field] !== undefined && out[field] !== null) {
+      out[field] = parseFloat(out[field]) || 0;
+    }
+  }
+  return out;
+};
+
 export const fetchPurchaseBatches = async () => {
   if (config.useMocks) return purchaseMockData;
   const response = await apiClient.get("/purchase-batches/");
-  return response.data?.results || response.data || [];
+  const raw = response.data?.results || response.data || [];
+  return raw.map(parseBatch);
 };
 
 export const createPurchaseBatch = async (data) => {

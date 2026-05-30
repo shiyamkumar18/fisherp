@@ -36,10 +36,12 @@
 import { apiClient } from "@/services/apiClient";
 
 export const loginUser = async ({ email, password, company_name }) => {
-  const body = { identifier: email, password };
+  // The unified endpoint expects 'email' or 'username' in the body
+  const body = { email, password };
+  if (company_name) {
+    body.company_name = company_name;
+  }
   
-  // The new endpoint /auth/login/ maps to MultiIdentifierLoginView
-  // 'email' parameter acts as the universal identifier.
   const response = await apiClient.post("/auth/login/", body);
   const data = response.data;
 
@@ -47,12 +49,12 @@ export const loginUser = async ({ email, password, company_name }) => {
     access: data.access,
     refresh: data.refresh,
     user: {
-      id: data.user?.id,
-      email: data.user?.email,
-      username: data.user?.username,
-      role: data.user?.role || "customer",
-      company_name: data.user?.company?.name || null,
-      tenant_slug: data.user?.company?.slug || null,
+      id: data.user_id || data.user?.id,
+      email: data.email || data.user?.email,
+      username: data.username || data.user?.username,
+      role: data.role || data.user?.role || "customer",
+      company_name: data.company_name || data.user?.company?.name || null,
+      tenant_slug: data.tenant_slug || data.user?.company?.slug || null,
     },
   };
 };

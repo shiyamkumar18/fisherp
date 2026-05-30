@@ -244,12 +244,20 @@ if not DEBUG and not _testing:
 # =========================
 # CACHING
 # =========================
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-        'LOCATION': os.getenv('REDIS_URL', 'redis://localhost:6379/1'),
+if DEBUG and not os.getenv('REDIS_URL'):
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'fisherp-dev-cache',
+        }
     }
-}
+else:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+            'LOCATION': os.getenv('REDIS_URL', 'redis://localhost:6379/1'),
+        }
+    }
 
 # Secure Cookies
 SESSION_COOKIE_SECURE = not DEBUG
@@ -367,9 +375,11 @@ CORS_ALLOW_HEADERS = [
 ]
 
 # Celery Configuration
-REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
-CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', REDIS_URL)
-CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', CELERY_BROKER_URL)
+REDIS_URL = os.getenv('REDIS_URL') or ('redis://localhost:6379/0' if not DEBUG else 'memory://')
+CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL') or REDIS_URL
+CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND') or CELERY_BROKER_URL
+if DEBUG and not os.getenv('REDIS_URL'):
+    CELERY_TASK_ALWAYS_EAGER = True
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'

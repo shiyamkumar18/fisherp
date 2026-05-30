@@ -76,29 +76,36 @@ export default defineConfig(({ mode }) => ({
     alias: {
       // @ alias → project src
       "@": path.resolve(PROJECT_FRONTEND, "src"),
-      // Absolute-path aliases for every package so Vite's rolldown resolver
-      // can find them regardless of where `root` points.
-      "react": `${M}/react/index.js`,
-      "react/jsx-dev-runtime": `${M}/react/jsx-dev-runtime.js`,
-      "react/jsx-runtime": `${M}/react/jsx-runtime.js`,
-      "react-dom": `${M}/react-dom/index.js`,
-      "react-dom/client": `${M}/react-dom/client.js`,
-      "react-router-dom": `${M}/react-router-dom/dist/main.js`,
-      "axios": `${M}/axios/index.js`,
-      "zustand": `${M}/zustand/index.js`,
-      "framer-motion": `${M}/framer-motion/dist/framer-motion.js`,
-      "lucide-react": `${M}/lucide-react/dist/cjs/lucide-react.js`,
-      "clsx": `${M}/clsx/dist/clsx.js`,
-      "tailwind-merge": `${M}/tailwind-merge/dist/bundle-cjs.js`,
-      "class-variance-authority": `${M}/class-variance-authority/dist/index.js`,
+      // Core React packages – map to directories to allow Node resolution
+      "react": `${M}/react`,
+      "react-dom": `${M}/react-dom`,
+      "react-router-dom": `${M}/react-router-dom`,
+      "axios": `${M}/axios`,
+      "zustand": `${M}/zustand`,
+      "framer-motion": `${M}/framer-motion`,
+      "lucide-react": `${M}/lucide-react`,
+      "clsx": `${M}/clsx`,
+      "tailwind-merge": `${M}/tailwind-merge`,
+      "class-variance-authority": `${M}/class-variance-authority`,
     },
     preserveSymlinks: true,
   },
 
-  // Skip dep optimisation — we use absolute aliases instead
+  // Explicitly tell Vite to optimize these dependencies since they live in /tmp/vite-workspace
   optimizeDeps: {
-    noDiscovery: true,
-    include: [],
+    include: [
+      "react",
+      "react-dom/client",
+      "react-router-dom",
+      "cookie",
+      "axios",
+      "zustand",
+      "framer-motion",
+      "lucide-react",
+      "clsx",
+      "tailwind-merge",
+      "class-variance-authority"
+    ],
   },
 
   base: mode === "production" ? "/static/" : "/",
@@ -112,5 +119,6 @@ export default defineConfig(({ mode }) => ({
     host: "0.0.0.0",
     port: 5173,
     strictPort: true,
+    watch: null,
   },
 }));

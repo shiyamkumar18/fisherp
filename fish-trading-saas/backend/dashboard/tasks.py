@@ -95,8 +95,7 @@ def _generate_inventory_summary(company, target_date):
     inventories = Inventory.objects.filter(company=company, remaining_packages__gt=0)
     
     agg = inventories.aggregate(
-        stock_value=Sum(F('remaining_packages') * F('purchase_batch__cost_per_package')),
-        spoilage_loss=Sum('spoilage_loss_amount')
+        stock_value=Sum(F('remaining_packages') * F('purchase_batch__cost_per_package'))
     )
     
     # Low stock count calculation
@@ -111,7 +110,7 @@ def _generate_inventory_summary(company, target_date):
         defaults={
             'stock_value': agg['stock_value'] or Decimal('0.00'),
             'low_stock_count': low_stock_count,
-            'spoilage_loss': agg['spoilage_loss'] or Decimal('0.00')
+            'spoilage_loss': Decimal('0.00')
         }
     )
 

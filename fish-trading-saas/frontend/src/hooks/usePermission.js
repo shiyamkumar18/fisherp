@@ -23,10 +23,17 @@ export function usePermission() {
   const canManageSubscription = () => isTenantAdmin() || isPlatformUser();
   const canManageSecurity = () => isTenantAdmin();
 
+  const isTrader = () => role === "trader";
+  const isStore = () => role === "store";
+  const isAccountant = () => role === "accountant";
+
   return {
     role,
     isTenantAdmin,
     isPlatformUser,
+    isTrader,
+    isStore,
+    isAccountant,
     canViewFinancial,
     canDelete,
     canCreateSale,

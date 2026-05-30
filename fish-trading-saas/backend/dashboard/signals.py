@@ -24,7 +24,10 @@ def handle_sale_change(sender, instance, **kwargs):
         _invalidate_dashboard_cache(company_id)
         # Trigger incremental rollup
         date_str = instance.date.strftime('%Y-%m-%d')
-        trigger_incremental_rollup_update.delay(company_id, 'sale', date_str)
+        try:
+            trigger_incremental_rollup_update.delay(company_id, 'sale', date_str)
+        except Exception as e:
+            logger.error(f"Failed to queue rollup task: {e}")
 
 @receiver([post_save, post_delete], sender=PurchaseBatch)
 def handle_purchase_change(sender, instance, **kwargs):
@@ -33,7 +36,10 @@ def handle_purchase_change(sender, instance, **kwargs):
         _invalidate_dashboard_cache(company_id)
         # Trigger incremental rollup
         date_str = instance.date.strftime('%Y-%m-%d')
-        trigger_incremental_rollup_update.delay(company_id, 'purchase', date_str)
+        try:
+            trigger_incremental_rollup_update.delay(company_id, 'purchase', date_str)
+        except Exception as e:
+            logger.error(f"Failed to queue rollup task: {e}")
 
 @receiver([post_save, post_delete], sender=Payment)
 def handle_payment_change(sender, instance, **kwargs):
@@ -49,4 +55,7 @@ def handle_inventory_change(sender, instance, **kwargs):
         # Trigger incremental rollup using today's date
         from django.utils import timezone
         date_str = timezone.now().date().strftime('%Y-%m-%d')
-        trigger_incremental_rollup_update.delay(company_id, 'inventory', date_str)
+        try:
+            trigger_incremental_rollup_update.delay(company_id, 'inventory', date_str)
+        except Exception as e:
+            logger.error(f"Failed to queue rollup task: {e}")

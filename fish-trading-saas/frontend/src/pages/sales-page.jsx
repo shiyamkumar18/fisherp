@@ -532,8 +532,8 @@ export default function SalesPage() {
                 <p className="text-xs font-bold text-success mb-3">Payment Collection</p>
                 <div className="space-y-3">
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-textSecondary">Commission %</label>
-                    <Input className="h-12" type="number" step="0.01" value={commissionRate} onChange={(e) => setCommissionRate(Math.max(0, parseFloat(e.target.value) || 0))} />
+                    <label className="text-[10px] font-bold text-textSecondary">Amount Received</label>
+                    <Input className="h-12" type="number" step="1" value={amountReceived} onChange={(e) => setAmountReceived(Math.max(0, parseFloat(e.target.value) || 0))} />
                   </div>
                   <div className="flex justify-between text-xs font-bold text-textSecondary pt-1">
                     <span>Outstanding Due:</span>

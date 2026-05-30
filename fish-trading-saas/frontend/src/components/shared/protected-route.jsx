@@ -11,6 +11,11 @@ export default function ProtectedRoute({ children }) {
 
   const role = session.user?.role || "customer";
   if (!canAccessRoute(role, location.pathname)) {
+    // If they have an invalid role (e.g. from a previous caching bug), force logout to self-heal
+    if (role === "customer") {
+      useAuthStore.getState().logout();
+      return <Navigate to="/login" replace />;
+    }
     return <Navigate to="/dashboard" replace />;
   }
 

@@ -62,10 +62,29 @@ const salesMockData = [
   }
 ];
 
+const NUMERIC_FIELDS = [
+  "total_revenue", "total_cost", "profit", "profit_margin_percent",
+  "amount_received", "pending_amount", "final_amount",
+  "discount_amount", "discount_percent", "tax_percent", "tax_amount",
+  "refund_amount", "selling_price_per_kg", "selling_weight_per_package",
+  "number_of_packages_sold",
+];
+
+const parseSale = (s) => {
+  const out = { ...s };
+  for (const field of NUMERIC_FIELDS) {
+    if (out[field] !== undefined && out[field] !== null) {
+      out[field] = parseFloat(out[field]) || 0;
+    }
+  }
+  return out;
+};
+
 export const fetchSales = async () => {
   if (config.useMocks) return salesMockData;
   const response = await apiClient.get("/sales/");
-  return response.data?.results || response.data || [];
+  const raw = response.data?.results || response.data || [];
+  return raw.map(parseSale);
 };
 
 export const createSale = async (data) => {

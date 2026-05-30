@@ -25,14 +25,19 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
 
-    if (!form.email || !form.password) {
+    // Read directly from DOM in case password manager autofill bypassed React state
+    const emailVal = e.target.elements.email?.value || form.email;
+    const passwordVal = e.target.elements.password?.value || form.password;
+    const companyVal = e.target.elements.company_name?.value || form.company_name;
+
+    if (!emailVal || !passwordVal) {
       setError("Email and password are required.");
       return;
     }
 
     setLoading(true);
     try {
-      const session = await loginUser(form);
+      const session = await loginUser({ email: emailVal, password: passwordVal, company_name: companyVal });
       login(session);
       push({ message: "Welcome back." });
       navigate("/dashboard");
@@ -114,6 +119,7 @@ export default function LoginPage() {
               <Building2 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-textSecondary/50" />
               <Input
                 id="company_name"
+                name="company_name"
                 className="pl-9"
                 placeholder="e.g. Fresh Fish Traders"
                 autoComplete="organization"
@@ -130,6 +136,7 @@ export default function LoginPage() {
               <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-textSecondary/50" />
               <Input
                 id="email"
+                name="email"
                 type="email"
                 className="pl-9"
                 placeholder="you@company.com"
@@ -147,6 +154,7 @@ export default function LoginPage() {
               <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-textSecondary/50" />
               <Input
                 id="password"
+                name="password"
                 type={showPassword ? "text" : "password"}
                 className="pl-9 pr-10"
                 placeholder="Enter your password"

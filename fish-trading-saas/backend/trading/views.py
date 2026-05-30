@@ -1506,13 +1506,13 @@ class VoiceParserAPIView(APIView):
         pkg_match = pkg_pattern.search(normalized)
         packages = int(pkg_match.group(1)) if pkg_match else None
 
-        price_pattern = re.compile(r'(rate|price|விலை|ரூபாய்|rs)\s*(\d+)|(\d+)\s*(rate|price|விலை|ரூபாய்|rs)')
+        price_pattern = re.compile(r'(rate|price|விலை|ரூபாய்|ரூவா|rs|rupee|rupees|ruba|ruva|rooba)\s*(\d+)|(\d+)\s*(rate|price|விலை|ரூபாய்|ரூவா|rs|rupee|rupees|ruba|ruva|rooba)')
         price_match = price_pattern.search(normalized)
         price_per_kg = None
         if price_match:
             price_per_kg = float(price_match.group(2) or price_match.group(3))
         else:
-            rate_search = re.search(r'(?:rate|price|விலை|ரூபாய்|rs)\D*(\d+)', normalized)
+            rate_search = re.search(r'(?:rate|price|விலை|ரூபாய்|ரூவா|rs|rupee|rupees|ruba|ruva|rooba)\D*(\d+)', normalized)
             if rate_search:
                 price_per_kg = float(rate_search.group(1))
 
@@ -1540,7 +1540,7 @@ class VoiceParserAPIView(APIView):
         matched_fish = None
         
         for f in fishes:
-            fish_name = f.name.lower()
+            fish_name = (f.name or '').lower()
             tamil_map = {
                 'vanjaram': ['வஞ்சரம்', 'vanjaram', 'seer'],
                 'nethili': ['நெத்திலி', 'nethili', 'anchovy'],

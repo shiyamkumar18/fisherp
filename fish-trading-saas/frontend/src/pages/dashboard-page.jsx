@@ -1631,6 +1631,7 @@ function PlatformOperatorDashboard() {
 // ---- Original Business Dashboard View ----
 function BusinessDashboard() {
   const { user } = useAuthStore();
+  const { push } = useToast();
   const role = user?.role || "tenant_admin";
   const [overview, setOverview] = useState(null);
   const [error, setError] = useState("");
@@ -1837,8 +1838,12 @@ function BusinessDashboard() {
         <button
           onClick={() => {
             // Trigger voice if ai_assistant available
-            const voiceBtn = document.querySelector('[aria-label="Voice Assistant"]');
-            if(voiceBtn) voiceBtn.click();
+            const voiceBtn = document.getElementById('voice-assistant-btn');
+            if (voiceBtn) {
+              voiceBtn.click();
+            } else {
+              push({ title: "Not Available", description: "Voice Assistant is not enabled for your account.", type: "warning" });
+            }
           }}
           className="group relative flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-surface border border-border shadow-sm hover:border-info/50 hover:shadow-md hover:shadow-info/5 hover:-translate-y-1 active:scale-95 transition-all duration-200 cursor-pointer min-h-[104px] overflow-hidden"
         >

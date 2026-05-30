@@ -147,7 +147,15 @@ if not hasattr(enum, 'nonmember'):
         def __get__(self, instance, owner): return self.value
     enum.nonmember = nonmember
 if not hasattr(datetime, 'UTC'): datetime.UTC = datetime.timezone.utc
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
+os.environ["DB_NAME"] = "fisherp_dev"
+os.environ["DB_USER"] = "odoo"
+os.environ["DB_PASSWORD"] = ""
+os.environ["DB_HOST"] = "/home/odoo/.cache/pg_run"
+os.environ["DB_PORT"] = "5432"
+os.environ["SECRET_KEY"] = "dev-secret-key-do-not-use-in-production"
+os.environ["ALLOWED_HOSTS"] = "localhost,127.0.0.1"
+os.environ["DJANGO_SETTINGS_MODULE"] = "config.settings"
+os.environ["DEBUG"] = "True"
 django.setup()
 from django.contrib.auth import get_user_model
 User = get_user_model()
@@ -217,13 +225,17 @@ start_frontend() {
     ln -sf "$FRONTEND_MODULES/node_modules" "$VITE_WS/node_modules"
   fi
 
-  # Copy the vite config (small file) into the writable workspace
+  # Copy the vite and postcss configs into the writable workspace
   cp "$PROJECT_DIR/frontend/vite.config.js" "$VITE_WS/vite.config.js"
+  if [ -f "$PROJECT_DIR/frontend/postcss.config.js" ]; then
+    cp "$PROJECT_DIR/frontend/postcss.config.js" "$VITE_WS/postcss.config.js"
+  fi
 
   cd "$VITE_WS"
 
   # Run Vite with --root pointing at the project source
   # node_modules is co-located in VITE_WS so all bare imports resolve
+  NODE_PATH="$FRONTEND_MODULES/node_modules" \
   VITE_ROOT="$PROJECT_DIR/frontend" \
   "$FRONTEND_MODULES/node_modules/.bin/vite" \
     --host 0.0.0.0 \
