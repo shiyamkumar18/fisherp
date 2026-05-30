@@ -52,7 +52,7 @@ export default function AppLayout() {
       title: "Core",
       items: [
         { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-        ...(entitlements.includes("advanced_analytics") ? [{ path: "/dashboard/reports", label: "Reports & Analytics", icon: BarChart3 }] : [])
+        ...(entitlements.includes("analytics") ? [{ path: "/dashboard/reports", label: "Reports & Analytics", icon: BarChart3 }] : [])
       ]
     },
     {
@@ -345,7 +345,7 @@ export default function AppLayout() {
             <Outlet />
           </motion.div>
         </main>
-        {entitlements.includes("ai_assistant") && <VoiceAssistant />}
+        {entitlements.includes("voice_ai") && <VoiceAssistant />}
         
         {/* Mobile Bottom Navigation */}
         <div className="md:hidden fixed bottom-0 left-0 right-0 min-h-[72px] bg-surface/95 backdrop-blur-xl border-t border-border z-40 flex items-center justify-around pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_24px_rgba(0,0,0,0.05)]">
