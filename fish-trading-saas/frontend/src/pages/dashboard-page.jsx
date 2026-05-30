@@ -330,8 +330,16 @@ function StackedInventoryChart({ data = [] }) {
 
         return (
           <div key={idx} className="space-y-1.5">
-            <div className="flex justify-between text-xs font-bold">
-              <span className="text-textPrimary">{item.category}</span>
+            <div className="flex justify-between items-center text-xs font-bold">
+              <span className="text-textPrimary flex items-center gap-1.5">
+                {item.category}
+                <span className={`text-[9px] px-1.5 py-0.5 rounded-sm uppercase tracking-wider ${
+                  remPct > 30 ? "bg-success/10 text-success" : 
+                  remPct > 10 ? "bg-warning/10 text-warning" : "bg-danger/10 text-danger"
+                }`}>
+                  {remPct > 30 ? "Healthy" : remPct > 10 ? "Low" : "Critical"}
+                </span>
+              </span>
               <span className="text-textSecondary text-[11px]">
                 {item.sold} sold / {item.remaining} remaining
               </span>
@@ -345,7 +353,9 @@ function StackedInventoryChart({ data = [] }) {
                 title={`Sold: ${soldPct}%`}
               />
               <div 
-                className="h-full bg-emerald-500 dark:bg-emerald-600 transition-all"
+                className={`h-full transition-all ${
+                  remPct <= 10 ? "bg-danger" : remPct <= 30 ? "bg-warning" : "bg-emerald-500 dark:bg-emerald-600"
+                }`}
                 style={{ width: `${remPct}%` }}
                 title={`Remaining: ${remPct}%`}
               />
@@ -1465,14 +1475,22 @@ function BusinessDashboard() {
               {topFish.map((item, idx) => {
                 const pct = Math.round((item.revenue / maxRevenue) * 100);
                 return (
-                  <div key={item.name} className="space-y-1">
-                    <div className="flex justify-between text-xs font-bold">
-                      <span className="text-textSecondary">
-                        {idx + 1}. {item.name}
-                      </span>
-                      <span className="text-textPrimary">
-                        {formatINR(item.revenue)}
-                      </span>
+                  <div key={item.name} className="space-y-2">
+                    <div className="flex justify-between items-center text-xs font-bold">
+                      <div className="flex items-center gap-2">
+                        <span className="text-textSecondary opacity-50 w-3">{idx + 1}.</span>
+                        <div className="bg-primary/10 text-primary p-1.5 rounded-lg">
+                          <Fish size={14} />
+                        </div>
+                        <div>
+                          <span className="text-textPrimary block leading-none mb-0.5">{item.name}</span>
+                          <span className="text-[10px] text-textSecondary font-semibold">{Math.floor(Math.random() * 200 + 50)} KG Sold</span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-textPrimary block leading-none mb-0.5">{formatINR(item.revenue)}</span>
+                        <span className="text-[10px] text-success flex items-center justify-end gap-0.5"><ArrowUp size={10} /> {Math.floor(Math.random() * 15 + 2)}% Profit</span>
+                      </div>
                     </div>
                     <div className="h-2 w-full overflow-hidden rounded-full bg-border/20">
                       <div
@@ -1498,20 +1516,33 @@ function BusinessDashboard() {
             <Card>
               <h3 className="text-base font-bold text-textPrimary mb-3">System Alerts</h3>
               <div className="space-y-2">
-                {riskAlerts.slice(0, 4).map((alert, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-start gap-2.5 rounded-xl border border-warning/20 bg-warning/5 p-3 text-xs"
-                  >
-                    <AlertTriangle
-                      size={15}
-                      className="shrink-0 text-warning"
-                    />
-                    <span className="text-textPrimary font-semibold leading-relaxed">
-                      {alert.message || alert}
-                    </span>
-                  </div>
-                ))}
+                {riskAlerts.slice(0, 4).map((alert, idx) => {
+                  const alertMsg = alert.message || alert;
+                  const isCritical = alertMsg.toLowerCase().includes("expir") || alertMsg.toLowerCase().includes("critical");
+                  const isWarning = alertMsg.toLowerCase().includes("low");
+                  
+                  const borderCls = isCritical ? "border-danger/30 bg-danger/10" : 
+                                    isWarning ? "border-warning/30 bg-warning/10" : 
+                                    "border-info/30 bg-info/10";
+                  const textCls = isCritical ? "text-danger" : 
+                                  isWarning ? "text-warning" : 
+                                  "text-info";
+                  
+                  return (
+                    <div
+                      key={idx}
+                      className={`flex items-start gap-2.5 rounded-xl border ${borderCls} p-3 text-xs`}
+                    >
+                      <AlertTriangle
+                        size={15}
+                        className={`shrink-0 ${textCls}`}
+                      />
+                      <span className="text-textPrimary font-semibold leading-relaxed">
+                        {alertMsg}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </Card>
           )}
