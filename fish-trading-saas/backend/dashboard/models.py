@@ -587,6 +587,64 @@ class DashboardManager:
             for row in data
         ]
 
+    @staticmethod
+    def get_inventory_health(user=None):
+        """
+        Tier 1: Core Production Chart - Inventory Health
+        Group inventory by status: Healthy, Low, Critical, Expiring
+        """
+        tenant_filter = DashboardManager._get_tenant_filter(user) if user else Q()
+        today = timezone.now().date()
+        expiry_threshold = today + timedelta(days=3)
+
+        qs = Inventory.objects.filter(tenant_filter)
+        
+        # We can run 4 counts instead of a complex annotation to get value and kg sum for each
+        def get_metrics(q):
+            res = q.aggregate(
+                count=Count('id'),
+                kg=Sum('remaining_weight_kg'),
+                # value is approximate: remaining_weight * purchase_batch__price_per_kg
+                value=Sum(F('remaining_weight_kg') * F('purchase_batch__price_per_kg'), output_field=DecimalField())
+            )
+            return {
+                'count': res['count'] or 0,
+                'kg': float(res['kg'] or 0),
+                'value': float(res['value'] or 0)
+            }
+
+        # Healthy: in_stock, not expiring soon
+        healthy = qs.filter(
+            status='in_stock',
+            remaining_packages__gt=0
+        ).exclude(
+            expiry_date__lte=expiry_threshold
+        )
+        
+        # Expiring: expiring within 3 days, still in stock
+        expiring = qs.filter(
+            expiry_date__lte=expiry_threshold,
+            remaining_packages__gt=0
+        )
+        
+        # Low: status='low_stock' and not expiring soon
+        low = qs.filter(
+            status='low_stock',
+            remaining_packages__gt=0
+        ).exclude(
+            expiry_date__lte=expiry_threshold
+        )
+        
+        # Critical: status='out_of_stock'
+        critical = qs.filter(status='out_of_stock')
+
+        return [
+            {'status': 'Healthy', **get_metrics(healthy)},
+            {'status': 'Low Stock', **get_metrics(low)},
+            {'status': 'Expiring Soon', **get_metrics(expiring)},
+            {'status': 'Critical', **get_metrics(critical)},
+        ]
+
     # ============================================================
     # INVENTORY OVERVIEW
     # ============================================================

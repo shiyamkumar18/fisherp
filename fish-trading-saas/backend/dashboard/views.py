@@ -155,6 +155,15 @@ class OutstandingCollectionsTrendView(RoleRestrictedAPIView):
         return Response(data)
 
 
+class InventoryHealthView(RoleRestrictedAPIView):
+    """Tier 1: Core Production Chart - Inventory Health"""
+    role_flags = ('is_tenant_admin', 'is_store_accounts', 'is_sales_staff')
+    
+    def get(self, request):
+        data = DashboardManager.get_inventory_health(request.user)
+        return Response(data)
+
+
 class MonthlyRevenueComparisonView(APIView):
     """Compare revenue across last N months"""
     permission_classes = [permissions.IsAuthenticated, CanViewFinancials]
