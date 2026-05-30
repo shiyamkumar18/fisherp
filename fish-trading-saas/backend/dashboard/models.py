@@ -686,6 +686,41 @@ class DashboardManager:
 
         return data
 
+    @staticmethod
+    def get_payment_collection_trend(user=None, days=14):
+        """
+        Tier 1: Core Production Chart - Payment Collection Trend
+        Aggregates sale payments collected over the last N days.
+        """
+        tenant_filter = DashboardManager._get_tenant_filter(user) if user else Q()
+        end_date = timezone.now().date()
+        start_date = end_date - timedelta(days=days-1)
+        
+        from trading.models.payment import Payment
+
+        qs = Payment.objects.filter(
+            tenant_filter,
+            payment_type='sale',
+            date__range=[start_date, end_date],
+            is_deleted=False,
+            is_cleared=True,
+            approval_status='approved'
+        ).values('date').annotate(
+            collected=Sum('amount')
+        )
+        
+        payment_map = {row['date']: float(row['collected'] or 0) for row in qs}
+        
+        data = []
+        for i in range(days):
+            d = start_date + timedelta(days=i)
+            data.append({
+                'date': d.isoformat(),
+                'collected': payment_map.get(d, 0.0)
+            })
+
+        return data
+
     # ============================================================
     # INVENTORY OVERVIEW
     # ============================================================

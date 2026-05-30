@@ -80,6 +80,12 @@ export const fetchDailyPurchaseVsSales = async (days = 14) => {
   return res.data || [];
 };
 
+export const fetchPaymentCollectionTrend = async (days = 30) => {
+  if (config.useMocks) return [];
+  const res = await apiClient.get("/dashboard/payment-collection-trend/", { params: { days } });
+  return res.data || [];
+};
+
 export const fetchERPDashboard = async () => {
   const [financial, operational, alerts, topFish, recentSales, inventory, creditCustomers] =
     await Promise.allSettled([

@@ -174,6 +174,16 @@ class DailyPurchaseVsSalesView(RoleRestrictedAPIView):
         return Response(data)
 
 
+class PaymentCollectionTrendView(RoleRestrictedAPIView):
+    """Tier 1: Core Production Chart - Payment Collection Trend"""
+    role_flags = ('is_tenant_admin', 'is_accountant')
+    
+    def get(self, request):
+        days = min(int(request.query_params.get('days', 30)), 90)
+        data = DashboardManager.get_payment_collection_trend(request.user, days)
+        return Response(data)
+
+
 class MonthlyRevenueComparisonView(APIView):
     """Compare revenue across last N months"""
     permission_classes = [permissions.IsAuthenticated, CanViewFinancials]
