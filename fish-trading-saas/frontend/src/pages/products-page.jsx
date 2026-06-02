@@ -3,7 +3,7 @@ import {
   Package, Plus, Search, Tag, Settings, 
   Layers, Info, AlertTriangle, Trash2, CheckCircle, HelpCircle,
   TrendingUp, Download, X, SlidersHorizontal, Image as ImageIcon,
-  Archive, Copy, MoreHorizontal, Activity, ArrowRight
+  Archive, Copy, MoreHorizontal, Activity, ArrowRight, Eye
 } from "lucide-react";
 import Card from "@/components/ui/card";
 import Input from "@/components/ui/input";
