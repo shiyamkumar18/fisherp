@@ -16,8 +16,28 @@ export function DataTable({
   onSearch,
   actions,
   loading = false,
+  selectable = false,
+  selectedKeys = [],
+  onSelectionChange,
+  renderMobileCard,
 }) {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      onSelectionChange(data.map(r => r.id || r.invoice));
+    } else {
+      onSelectionChange([]);
+    }
+  };
+
+  const handleSelectRow = (id, checked) => {
+    if (checked) {
+      onSelectionChange([...selectedKeys, id]);
+    } else {
+      onSelectionChange(selectedKeys.filter(k => k !== id));
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -36,11 +56,21 @@ export function DataTable({
         </div>
       )}
 
-      {/* Table */}
-      <div className="overflow-x-auto rounded-xl border border-border bg-surface">
+      {/* Table (hidden on mobile if cards are provided) */}
+      <div className={`overflow-x-auto rounded-xl border border-border bg-surface ${renderMobileCard ? 'hidden md:block' : 'block'}`}>
         <table className="min-w-full text-left text-sm">
           <thead className="bg-border/20 text-xs font-bold uppercase tracking-wider text-textSecondary/80">
             <tr>
+              {selectable && (
+                <th className="px-4 py-3 w-12 text-center">
+                  <input 
+                    type="checkbox" 
+                    className="rounded border-border text-primary focus:ring-primary h-4 w-4" 
+                    onChange={handleSelectAll}
+                    checked={data.length > 0 && selectedKeys.length === data.length}
+                  />
+                </th>
+              )}
               {columns.map((column) => (
                 <th key={column.key} className="px-4 py-3">
                   {column.sortable ? (
@@ -72,6 +102,7 @@ export function DataTable({
               // Skeleton placeholder rows while fetching
               [...Array(5)].map((_, idx) => (
                 <tr key={idx} className="border-t border-border/40">
+                  {selectable && <td className="px-4 py-3"><Skeleton className="h-4 w-4" /></td>}
                   {columns.map((col) => (
                     <td key={col.key} className="px-4 py-3">
                       <Skeleton className="h-4 w-full" />
@@ -82,7 +113,7 @@ export function DataTable({
             ) : data.length === 0 ? (
               <tr>
                 <td
-                  colSpan={columns.length}
+                  colSpan={columns.length + (selectable ? 1 : 0)}
                   className="py-12 text-center text-sm text-textSecondary"
                 >
                   No records found.
@@ -91,9 +122,19 @@ export function DataTable({
             ) : (
               data.map((row) => (
                 <tr
-                  key={row.id}
-                  className="border-t border-border/40 transition-colors hover:bg-border/10"
+                  key={row.id || row.invoice || Math.random()}
+                  className={`border-t border-border/40 transition-colors group hover:bg-border/10 ${selectedKeys.includes(row.id || row.invoice) ? 'bg-primary/5' : ''}`}
                 >
+                  {selectable && (
+                    <td className="px-4 py-3 text-center">
+                      <input 
+                        type="checkbox" 
+                        className="rounded border-border text-primary focus:ring-primary h-4 w-4"
+                        checked={selectedKeys.includes(row.id || row.invoice)}
+                        onChange={(e) => handleSelectRow(row.id || row.invoice, e.target.checked)}
+                      />
+                    </td>
+                  )}
                   {columns.map((column) => (
                     <td key={column.key} className="px-4 py-3 text-textPrimary">
                       {column.render ? column.render(row) : (row[column.key] ?? "—")}
@@ -105,6 +146,31 @@ export function DataTable({
           </tbody>
         </table>
       </div>
+      
+      {/* Mobile Card View */}
+      {renderMobileCard && (
+        <div className="md:hidden space-y-4">
+          {loading ? (
+             [...Array(3)].map((_, idx) => (
+               <div key={idx} className="rounded-xl border border-border bg-surface p-4">
+                 <Skeleton className="h-6 w-1/2 mb-4" />
+                 <Skeleton className="h-4 w-full mb-2" />
+                 <Skeleton className="h-4 w-3/4" />
+               </div>
+             ))
+          ) : data.length === 0 ? (
+            <div className="py-12 text-center text-sm text-textSecondary bg-surface rounded-xl border border-border">
+              No records found.
+            </div>
+          ) : (
+            data.map((row) => (
+              <div key={row.id || row.invoice || Math.random()}>
+                {renderMobileCard(row)}
+              </div>
+            ))
+          )}
+        </div>
+      )}
 
       {/* Pagination */}
       <div className="flex items-center justify-between">
