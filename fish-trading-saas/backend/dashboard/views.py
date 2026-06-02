@@ -18,7 +18,7 @@ from django.core.cache import cache
 
 # Simple API for /dashboard/ (SaaS frontend quick stats)
 class DashboardView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsTenantUser]
 
     def get(self, request):
         user = request.user
@@ -66,7 +66,7 @@ class FinancialOverviewView(APIView):
     - PlatformMaintainer: Can view tenant financials
     - SalesStaff/StoreAccounts: Not allowed
     """
-    permission_classes = [permissions.IsAuthenticated, IsTenantUser]
+    permission_classes = [permissions.IsAuthenticated, IsTenantUser, CanViewFinancials]
     
     def get(self, request):
         user = request.user
@@ -340,7 +340,7 @@ class CreditCustomersView(APIView):
 
 class OperationalDashboardView(APIView):
     """Get daily operational data"""
-    permission_classes = [permissions.IsAuthenticated, IsTenantUser]
+    permission_classes = [permissions.IsAuthenticated, IsTenantUser, CanViewFinancials]
     
     def get(self, request):
         data = DashboardManager.get_operational_dashboard(request.user)
@@ -349,7 +349,7 @@ class OperationalDashboardView(APIView):
 
 class RiskAlertsView(APIView):
     """Get all risk alerts for the tenant"""
-    permission_classes = [permissions.IsAuthenticated, IsTenantUser]
+    permission_classes = [permissions.IsAuthenticated, IsTenantUser, CanViewFinancials]
     
     def get(self, request):
         data = DashboardManager.get_risk_alerts(request.user)
@@ -378,7 +378,7 @@ class AdminDashboardView(APIView):
 # Legacy Views (for backward compatibility)
 class TodaySummaryView(APIView):
     """Get today's summary - total purchase, sales, profit"""
-    permission_classes = [permissions.IsAuthenticated, IsTenantUser]
+    permission_classes = [permissions.IsAuthenticated, IsTenantUser, CanViewFinancials]
     
     def get(self, request):
         summary = DashboardManager.get_today_summary(request.user)
@@ -725,7 +725,7 @@ class FilterOptionsView(APIView):
     Get available filter options for the dashboard.
     Returns lists of fish types, buyers, suppliers, and batches.
     """
-    permission_classes = [permissions.IsAuthenticated, IsTenantUser]
+    permission_classes = [permissions.IsAuthenticated, IsTenantUser, CanViewFinancials]
     
     def get(self, request):
         user = request.user

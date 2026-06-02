@@ -7,7 +7,8 @@ from .auth import (  # noqa: F401
     SendOTPView,
     VerifyOTPView,
 )
-from .users import (  # noqa: F401
+from .users import (
+    DeviceSessionView,  # noqa: F401
     UserRegistrationView,
     UserProfileView,
     UserListView,

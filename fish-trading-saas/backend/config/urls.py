@@ -87,6 +87,10 @@ urlpatterns = [
     # Platform Manager API (SaaS-level management)
     path("api/platform/", include("saas_admin.urls")),
 
+    # Permissions API (RBAC role matrix, permission check)
+    path("api/permissions/", include("permissions.urls")),
+
+
     # Tenant-specific login URLs (e.g., /acme-corp/login/)
     path("<str:tenant_slug>/login/", UnifiedLoginView.as_view(), name="tenant-login"),
     path("<str:tenant_slug>/register/", TenantRegisterView.as_view(), name="tenant-register"),

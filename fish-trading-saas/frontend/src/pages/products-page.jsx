@@ -189,14 +189,14 @@ export default function ProductsPage() {
       sortable: true,
       render: (row) => (
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center shrink-0 border border-slate-200">
-            <ImageIcon size={18} className="text-slate-400" />
+          <div className="w-10 h-10 rounded-xl bg-hover flex items-center justify-center shrink-0 border border-border">
+            <ImageIcon size={18} className="text-textSecondary/70" />
           </div>
           <div className="flex flex-col">
-            <button onClick={() => setSelectedProduct(row)} className="font-black text-indigo-600 hover:text-indigo-800 transition-colors text-left text-[13px]">
+            <button onClick={() => setSelectedProduct(row)} className="font-black text-primary hover:text-indigo-800 transition-colors text-left text-[13px]">
               {row.name}
             </button>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{row.tamil_name || "Tamil Name N/A"}</span>
+            <span className="text-[10px] font-bold text-textSecondary/70 uppercase tracking-wider">{row.tamil_name || "Tamil Name N/A"}</span>
           </div>
         </div>
       )
@@ -207,7 +207,7 @@ export default function ProductsPage() {
       sortable: true,
       render: (row) => {
         const cat = (row.category_name || "General").toLowerCase();
-        let color = "bg-slate-100 text-slate-700 border-slate-200";
+        let color = "bg-hover text-textPrimary border-border";
         if (cat.includes("sea")) color = "bg-blue-100 text-blue-700 border-blue-200";
         if (cat.includes("fresh")) color = "bg-cyan-100 text-cyan-700 border-cyan-200";
         if (cat.includes("shell") || cat.includes("premium")) color = "bg-purple-100 text-purple-700 border-purple-200";
@@ -220,7 +220,7 @@ export default function ProductsPage() {
       title: "Trading Unit",
       sortable: true,
       render: (row) => (
-        <span className="inline-flex items-center rounded px-2 py-1 bg-slate-100 border border-slate-200 text-xs font-bold text-slate-600 capitalize">
+        <span className="inline-flex items-center rounded px-2 py-1 bg-hover border border-border text-xs font-bold text-textSecondary capitalize">
           {row.unit_type_display || row.unit_type}
         </span>
       )
@@ -231,8 +231,8 @@ export default function ProductsPage() {
       sortable: true,
       render: (row) => (
         <div className="flex items-center gap-2">
-          <span className="font-bold text-slate-800">{row.box_weight_kg ? `${row.box_weight_kg} KG` : "—"}</span>
-          {row.unit_type === "box" && <span className="text-[9px] font-black uppercase tracking-widest text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100">Editable</span>}
+          <span className="font-bold text-textPrimary">{row.box_weight_kg ? `${row.box_weight_kg} KG` : "—"}</span>
+          {row.unit_type === "box" && <span className="text-[9px] font-black uppercase tracking-widest text-primary bg-primary/10 px-1.5 py-0.5 rounded border border-primary/20">Editable</span>}
         </div>
       )
     },
@@ -241,8 +241,8 @@ export default function ProductsPage() {
       title: "Status",
       sortable: false,
       render: (row) => (
-        <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-600 border border-emerald-200">
-          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div> Active
+        <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-wider bg-success/10 text-success border border-emerald-200">
+          <div className="w-1.5 h-1.5 rounded-full bg-success"></div> Active
         </span>
       )
     },
@@ -252,16 +252,16 @@ export default function ProductsPage() {
       sortable: false,
       render: (row) => (
         <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50" onClick={() => setSelectedProduct(row)} title="View Details">
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-textSecondary/70 hover:text-primary hover:bg-primary/10" onClick={() => setSelectedProduct(row)} title="View Details">
             <Eye size={16} />
           </Button>
           {isEditable && (
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50" title="Edit">
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-textSecondary/70 hover:text-success hover:bg-success/10" title="Edit">
               <Settings size={16} />
             </Button>
           )}
           {canDelete("catalog") && (
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-slate-400 hover:text-rose-600 hover:bg-rose-50" onClick={() => handleDelete(row.id)} title="Archive">
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-textSecondary/70 hover:text-danger hover:bg-danger/10" onClick={() => handleDelete(row.id)} title="Archive">
               <Archive size={16} />
             </Button>
           )}
@@ -288,17 +288,17 @@ export default function ProductsPage() {
       {/* KPI summaries */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Card className="relative overflow-hidden group">
-          <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-          <p className="text-xs font-black uppercase tracking-widest text-slate-400 mb-1">Catalog Species</p>
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+          <p className="text-xs font-black uppercase tracking-widest text-textSecondary/70 mb-1">Catalog Species</p>
           <div className="flex flex-col">
             <div className="flex items-center justify-between">
-              <span className="text-3xl font-black text-slate-800 tracking-tight">{totalSpecies}</span>
-              <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600">
+              <span className="text-3xl font-black text-textPrimary tracking-tight">{totalSpecies}</span>
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
                 <Package size={20} />
               </div>
             </div>
-            <div className="mt-3 flex items-center gap-1.5 text-xs font-bold text-slate-500">
-              <span className="text-emerald-600 flex items-center"><TrendingUp size={14} className="mr-0.5"/> 2</span>
+            <div className="mt-3 flex items-center gap-1.5 text-xs font-bold text-textSecondary">
+              <span className="text-success flex items-center"><TrendingUp size={14} className="mr-0.5"/> 2</span>
               <span>added this month</span>
             </div>
           </div>
@@ -306,15 +306,15 @@ export default function ProductsPage() {
         
         <Card className="relative overflow-hidden group">
           <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-          <p className="text-xs font-black uppercase tracking-widest text-slate-400 mb-1">Box Weight Units</p>
+          <p className="text-xs font-black uppercase tracking-widest text-textSecondary/70 mb-1">Box Weight Units</p>
           <div className="flex flex-col">
             <div className="flex items-center justify-between">
-              <span className="text-3xl font-black text-slate-800 tracking-tight">{boxUnitsCount}</span>
+              <span className="text-3xl font-black text-textPrimary tracking-tight">{boxUnitsCount}</span>
               <div className="w-10 h-10 rounded-full bg-cyan-50 flex items-center justify-center text-cyan-600">
                 <Layers size={20} />
               </div>
             </div>
-            <div className="mt-3 flex items-center gap-1.5 text-xs font-bold text-slate-500">
+            <div className="mt-3 flex items-center gap-1.5 text-xs font-bold text-textSecondary">
               <span>Most used:</span>
               <span className="text-cyan-600">20KG Box</span>
             </div>
@@ -323,15 +323,15 @@ export default function ProductsPage() {
         
         <Card className="relative overflow-hidden group">
           <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-          <p className="text-xs font-black uppercase tracking-widest text-slate-400 mb-1">Average Pack Size</p>
+          <p className="text-xs font-black uppercase tracking-widest text-textSecondary/70 mb-1">Average Pack Size</p>
           <div className="flex flex-col">
             <div className="flex items-center justify-between">
-              <span className="text-3xl font-black text-slate-800 tracking-tight">{avgPackSize} KG</span>
+              <span className="text-3xl font-black text-textPrimary tracking-tight">{avgPackSize} KG</span>
               <div className="w-10 h-10 rounded-full bg-purple-50 flex items-center justify-center text-purple-600">
                 <Activity size={20} />
               </div>
             </div>
-            <div className="mt-3 flex items-center gap-1.5 text-xs font-bold text-slate-500">
+            <div className="mt-3 flex items-center gap-1.5 text-xs font-bold text-textSecondary">
               <span>Most traded:</span>
               <span className="text-purple-600">Vanjaram</span>
             </div>
@@ -340,18 +340,18 @@ export default function ProductsPage() {
       </div>
 
       {/* Advanced Search & Filters */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 flex flex-col md:flex-row gap-4 items-center justify-between relative z-20">
+      <div className="bg-white rounded-2xl shadow-sm border border-border p-4 flex flex-col md:flex-row gap-4 items-center justify-between relative z-20">
         <div className="relative w-full md:max-w-md group">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={18} />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-textSecondary/70 group-focus-within:text-primary transition-colors" size={18} />
           <input 
             type="text" 
             placeholder="Search fish name, category, trading unit..." 
-            className="w-full h-12 pl-12 pr-10 bg-slate-50 border border-slate-200 rounded-xl font-medium text-sm text-slate-800 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all placeholder:text-slate-400"
+            className="w-full h-12 pl-12 pr-10 bg-card border border-border rounded-xl font-medium text-sm text-textPrimary focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all placeholder:text-textSecondary/70"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
           {search && (
-            <button onClick={() => setSearch('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+            <button onClick={() => setSearch('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-textSecondary/70 hover:text-textSecondary">
               <X size={16} />
             </button>
           )}
@@ -361,7 +361,7 @@ export default function ProductsPage() {
           <Button 
             variant="outline" 
             onClick={() => setShowFilters(!showFilters)}
-            className={`gap-2 font-bold whitespace-nowrap border-slate-200 h-12 rounded-xl transition-colors ${showFilters ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'text-slate-600 hover:bg-slate-50'}`}
+            className={`gap-2 font-bold whitespace-nowrap border-border h-12 rounded-xl transition-colors ${showFilters ? 'bg-primary/10 text-primaryHover border-indigo-200' : 'text-textSecondary hover:bg-card'}`}
           >
             <SlidersHorizontal size={16} /> Filters
           </Button>
@@ -370,12 +370,12 @@ export default function ProductsPage() {
       
       {/* Expanded Filter Bar */}
       {showFilters && (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-5 animate-in fade-in slide-in-from-top-2 duration-200 relative z-10">
+        <div className="bg-white rounded-2xl shadow-sm border border-border p-5 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-5 animate-in fade-in slide-in-from-top-2 duration-200 relative z-10">
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Category</label>
+            <label className="text-xs font-bold text-textSecondary uppercase tracking-wider">Category</label>
             <select 
               value={filters.category} onChange={e => setFilters({...filters, category: e.target.value})}
-              className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 outline-none focus:border-indigo-500"
+              className="w-full h-10 px-3 bg-card border border-border rounded-lg text-sm font-semibold text-textPrimary outline-none focus:border-primary"
             >
               <option value="all">All Categories</option>
               <option value="sea fish">Sea Fish</option>
@@ -384,10 +384,10 @@ export default function ProductsPage() {
             </select>
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Status</label>
+            <label className="text-xs font-bold text-textSecondary uppercase tracking-wider">Status</label>
             <select 
               value={filters.status} onChange={e => setFilters({...filters, status: e.target.value})}
-              className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 outline-none focus:border-indigo-500"
+              className="w-full h-10 px-3 bg-card border border-border rounded-lg text-sm font-semibold text-textPrimary outline-none focus:border-primary"
             >
               <option value="all">Any Status</option>
               <option value="active">Active</option>
@@ -395,10 +395,10 @@ export default function ProductsPage() {
             </select>
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Trading Unit</label>
+            <label className="text-xs font-bold text-textSecondary uppercase tracking-wider">Trading Unit</label>
             <select 
               value={filters.unit} onChange={e => setFilters({...filters, unit: e.target.value})}
-              className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 outline-none focus:border-indigo-500"
+              className="w-full h-10 px-3 bg-card border border-border rounded-lg text-sm font-semibold text-textPrimary outline-none focus:border-primary"
             >
               <option value="all">All Units</option>
               <option value="box">Box</option>
@@ -406,10 +406,10 @@ export default function ProductsPage() {
             </select>
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Weight Range</label>
+            <label className="text-xs font-bold text-textSecondary uppercase tracking-wider">Weight Range</label>
             <select 
               value={filters.weight} onChange={e => setFilters({...filters, weight: e.target.value})}
-              className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 outline-none focus:border-indigo-500"
+              className="w-full h-10 px-3 bg-card border border-border rounded-lg text-sm font-semibold text-textPrimary outline-none focus:border-primary"
             >
               <option value="all">Any Weight</option>
               <option value="0-10">0–10 KG</option>
@@ -439,16 +439,16 @@ export default function ProductsPage() {
           onPageChange={setPage}
           loading={loading}
           renderMobileCard={(row) => (
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex gap-4">
-              <div className="w-16 h-16 rounded-xl bg-slate-100 flex items-center justify-center shrink-0 border border-slate-200">
-                <ImageIcon size={24} className="text-slate-400" />
+            <div className="bg-white rounded-2xl border border-border shadow-sm p-4 flex gap-4">
+              <div className="w-16 h-16 rounded-xl bg-hover flex items-center justify-center shrink-0 border border-border">
+                <ImageIcon size={24} className="text-textSecondary/70" />
               </div>
               <div className="flex-1">
-                <h3 className="font-black text-slate-800 text-lg leading-tight mb-1">{row.name}</h3>
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">{row.category_name || "General"} · {row.box_weight_kg ? `${row.box_weight_kg} KG` : "—"}</p>
+                <h3 className="font-black text-textPrimary text-lg leading-tight mb-1">{row.name}</h3>
+                <p className="text-xs font-bold text-textSecondary uppercase tracking-wider mb-3">{row.category_name || "General"} · {row.box_weight_kg ? `${row.box_weight_kg} KG` : "—"}</p>
                 <div className="flex justify-between items-center">
-                  <span className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-600 border border-emerald-200">
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div> Active
+                  <span className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wider bg-success/10 text-success border border-emerald-200">
+                    <div className="w-1.5 h-1.5 rounded-full bg-success"></div> Active
                   </span>
                   <Button variant="outline" size="sm" className="h-8 text-xs font-bold" onClick={() => setSelectedProduct(row)}>Details</Button>
                 </div>
@@ -463,27 +463,27 @@ export default function ProductsPage() {
         <div className="fixed inset-0 z-50 flex justify-end">
           {/* Backdrop */}
           <div 
-            className="absolute inset-0 bg-slate-900/20 backdrop-blur-sm transition-opacity" 
+            className="absolute inset-0 bg-card/20 backdrop-blur-sm transition-opacity" 
             onClick={() => setSelectedProduct(null)}
           ></div>
           
           {/* Drawer Panel */}
           <div className="relative w-full max-w-md h-full bg-white shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
             {/* Header */}
-            <div className="flex items-start justify-between p-6 border-b border-slate-100 bg-slate-50">
+            <div className="flex items-start justify-between p-6 border-b border-border/50 bg-card">
               <div className="flex gap-4">
-                <div className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center shrink-0 border border-slate-200 shadow-sm">
-                  <ImageIcon size={28} className="text-slate-400" />
+                <div className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center shrink-0 border border-border shadow-sm">
+                  <ImageIcon size={28} className="text-textSecondary/70" />
                 </div>
                 <div>
-                  <p className="text-xs font-black text-indigo-600 uppercase tracking-widest mb-1">{selectedProduct.category_name || "General"}</p>
-                  <h2 className="text-2xl font-black text-slate-800 leading-tight mb-1">{selectedProduct.name}</h2>
-                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">{selectedProduct.tamil_name || "Tamil Name N/A"}</p>
+                  <p className="text-xs font-black text-primary uppercase tracking-widest mb-1">{selectedProduct.category_name || "General"}</p>
+                  <h2 className="text-2xl font-black text-textPrimary leading-tight mb-1">{selectedProduct.name}</h2>
+                  <p className="text-xs font-bold text-textSecondary uppercase tracking-wider">{selectedProduct.tamil_name || "Tamil Name N/A"}</p>
                 </div>
               </div>
               <button 
                 onClick={() => setSelectedProduct(null)}
-                className="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors"
+                className="w-10 h-10 rounded-full bg-white border border-border flex items-center justify-center text-textSecondary hover:bg-hover hover:text-textPrimary transition-colors"
               >
                 <X size={20} />
               </button>
@@ -494,13 +494,13 @@ export default function ProductsPage() {
               
               {/* Settings Section */}
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Trading Unit</p>
-                  <p className="font-bold text-slate-800 text-sm capitalize">{selectedProduct.unit_type_display || selectedProduct.unit_type}</p>
+                <div className="bg-card rounded-xl p-4 border border-border/50">
+                  <p className="text-[10px] font-bold text-textSecondary/70 uppercase tracking-wider mb-1">Trading Unit</p>
+                  <p className="font-bold text-textPrimary text-sm capitalize">{selectedProduct.unit_type_display || selectedProduct.unit_type}</p>
                 </div>
-                <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Standard Box Weight</p>
-                  <p className="font-bold text-slate-800 text-sm flex items-center gap-1.5">
+                <div className="bg-card rounded-xl p-4 border border-border/50">
+                  <p className="text-[10px] font-bold text-textSecondary/70 uppercase tracking-wider mb-1">Standard Box Weight</p>
+                  <p className="font-bold text-textPrimary text-sm flex items-center gap-1.5">
                     {selectedProduct.box_weight_kg ? `${selectedProduct.box_weight_kg} KG` : "—"}
                   </p>
                 </div>
@@ -508,31 +508,31 @@ export default function ProductsPage() {
 
               {/* Market Intelligence */}
               <div>
-                <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest mb-4 flex items-center gap-2">
-                  <Activity size={14} className="text-indigo-500" /> Market Intelligence
+                <h3 className="text-xs font-black text-textPrimary uppercase tracking-widest mb-4 flex items-center gap-2">
+                  <Activity size={14} className="text-primary" /> Market Intelligence
                 </h3>
-                <div className="bg-slate-900 rounded-2xl p-5 text-white">
+                <div className="bg-card rounded-2xl p-5 text-white">
                   <div className="flex justify-between items-center mb-6">
                     <div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Recent Market Price</p>
+                      <p className="text-[10px] font-bold text-textSecondary/70 uppercase tracking-widest mb-1">Recent Market Price</p>
                       <p className="text-2xl font-black">₹ 350 / kg</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Trend</p>
-                      <span className="inline-flex items-center rounded px-2 py-0.5 text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-400">
+                      <p className="text-[10px] font-bold text-textSecondary/70 uppercase tracking-widest mb-1">Trend</p>
+                      <span className="inline-flex items-center rounded px-2 py-0.5 text-[10px] font-black uppercase tracking-wider bg-success/20 text-success">
                         +5.2%
                       </span>
                     </div>
                   </div>
                   
-                  <div className="space-y-3 pt-4 border-t border-slate-700/50">
+                  <div className="space-y-3 pt-4 border-t border-border/50">
                     <div className="flex justify-between items-center text-sm font-medium">
-                      <span className="text-slate-300">Active Suppliers</span>
+                      <span className="text-textSecondary/50">Active Suppliers</span>
                       <span className="font-bold">12 Vendors</span>
                     </div>
                     <div className="flex justify-between items-center text-sm font-medium">
-                      <span className="text-slate-300">Inventory Status</span>
-                      <span className="font-bold text-emerald-400">In Stock</span>
+                      <span className="text-textSecondary/50">Inventory Status</span>
+                      <span className="font-bold text-success">In Stock</span>
                     </div>
                   </div>
                 </div>
@@ -541,11 +541,11 @@ export default function ProductsPage() {
             </div>
             
             {/* Actions */}
-            <div className="p-6 border-t border-slate-100 bg-white grid grid-cols-2 gap-3">
-              <Button className="w-full font-bold h-12 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-200 gap-2">
+            <div className="p-6 border-t border-border/50 bg-white grid grid-cols-2 gap-3">
+              <Button className="w-full font-bold h-12 rounded-xl bg-primary hover:bg-primaryHover text-white shadow-lg shadow-indigo-200 gap-2">
                 <Settings size={18} /> Configure
               </Button>
-              <Button variant="outline" className="w-full font-bold h-12 rounded-xl border-slate-200 text-slate-700 hover:bg-slate-50 gap-2">
+              <Button variant="outline" className="w-full font-bold h-12 rounded-xl border-border text-textPrimary hover:bg-card gap-2">
                 <Copy size={18} /> Duplicate
               </Button>
             </div>
@@ -557,10 +557,10 @@ export default function ProductsPage() {
       
       {/* Add Modal - Enterprise UI */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-[1200px] w-full h-full sm:w-[95vw] sm:max-h-[90vh] sm:rounded-xl overflow-hidden flex flex-col p-0 bg-slate-50">
+        <DialogContent className="max-w-[1200px] w-full h-full sm:w-[95vw] sm:max-h-[90vh] sm:rounded-xl overflow-hidden flex flex-col p-0 bg-card">
           <DialogHeader className="px-6 py-4 border-b border-border bg-white z-10 shadow-sm">
-            <DialogTitle className="text-xl font-extrabold flex items-center gap-2 text-slate-800">
-              <Package size={20} className="text-indigo-600" />
+            <DialogTitle className="text-xl font-extrabold flex items-center gap-2 text-textPrimary">
+              <Package size={20} className="text-primary" />
               Register Product Species
             </DialogTitle>
           </DialogHeader>
@@ -570,44 +570,44 @@ export default function ProductsPage() {
               
               {/* Column 1: Classification */}
               <div className="space-y-6">
-                <Card className="p-5 shadow-sm border-slate-200 bg-white">
-                  <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2 mb-5">
-                    <Tag size={16} className="text-indigo-500" /> Basic Information
+                <Card className="p-5 shadow-sm border-border bg-white">
+                  <h3 className="text-sm font-black text-textPrimary uppercase tracking-widest flex items-center gap-2 mb-5">
+                    <Tag size={16} className="text-primary" /> Basic Information
                   </h3>
                   <div className="space-y-4">
                     <div className="flex gap-4">
-                      <div className="w-20 h-20 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 flex flex-col items-center justify-center text-slate-400 hover:bg-slate-100 hover:border-slate-300 transition-colors cursor-pointer shrink-0">
+                      <div className="w-20 h-20 rounded-2xl border-2 border-dashed border-border bg-card flex flex-col items-center justify-center text-textSecondary/70 hover:bg-hover hover:border-border transition-colors cursor-pointer shrink-0">
                         <ImageIcon size={24} className="mb-1" />
                         <span className="text-[9px] font-bold uppercase">Upload</span>
                       </div>
                       <div className="flex-1 space-y-1.5">
-                        <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Fish Name (English) *</label>
-                        <Input disabled={!isEditable} className="h-10 bg-white border-slate-200 focus:border-indigo-500" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Seer Fish" required />
+                        <label className="text-[10px] font-extrabold text-textSecondary uppercase tracking-wider">Fish Name (English) *</label>
+                        <Input disabled={!isEditable} className="h-10 bg-white border-border focus:border-primary" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Seer Fish" required />
                       </div>
                     </div>
                     
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Tamil Name</label>
-                        <Input disabled={!isEditable} className="h-10 bg-white border-slate-200 focus:border-indigo-500" value={tamilName} onChange={(e) => setTamilName(e.target.value)} placeholder="e.g. Vanjaram" />
+                        <label className="text-[10px] font-extrabold text-textSecondary uppercase tracking-wider">Tamil Name</label>
+                        <Input disabled={!isEditable} className="h-10 bg-white border-border focus:border-primary" value={tamilName} onChange={(e) => setTamilName(e.target.value)} placeholder="e.g. Vanjaram" />
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Scientific Name</label>
-                        <Input disabled={!isEditable} className="h-10 bg-white border-slate-200 focus:border-indigo-500" value={scientificName} onChange={(e) => setScientificName(e.target.value)} placeholder="e.g. Scomberomorus" />
+                        <label className="text-[10px] font-extrabold text-textSecondary uppercase tracking-wider">Scientific Name</label>
+                        <Input disabled={!isEditable} className="h-10 bg-white border-border focus:border-primary" value={scientificName} onChange={(e) => setScientificName(e.target.value)} placeholder="e.g. Scomberomorus" />
                       </div>
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Alias Names (Comma separated)</label>
-                      <Input disabled={!isEditable} className="h-10 bg-white border-slate-200 focus:border-indigo-500" value={aliasNames} onChange={(e) => setAliasNames(e.target.value)} placeholder="e.g. King Mackerel, Surmai" />
+                      <label className="text-[10px] font-extrabold text-textSecondary uppercase tracking-wider">Alias Names (Comma separated)</label>
+                      <Input disabled={!isEditable} className="h-10 bg-white border-border focus:border-primary" value={aliasNames} onChange={(e) => setAliasNames(e.target.value)} placeholder="e.g. King Mackerel, Surmai" />
                     </div>
                     
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Category</label>
+                        <label className="text-[10px] font-extrabold text-textSecondary uppercase tracking-wider">Category</label>
                         <select disabled={!isEditable} 
                           value={category} onChange={(e) => setCategory(e.target.value)}
-                          className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-indigo-500 transition-all font-semibold"
+                          className="h-10 w-full rounded-lg border border-border bg-white px-3 text-sm text-textPrimary outline-none focus:border-primary transition-all font-semibold"
                         >
                           <option value="1">Sea Fish</option>
                           <option value="2">Freshwater</option>
@@ -616,10 +616,10 @@ export default function ProductsPage() {
                         </select>
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Status</label>
+                        <label className="text-[10px] font-extrabold text-textSecondary uppercase tracking-wider">Status</label>
                         <select disabled={!isEditable} 
                           value={status} onChange={(e) => setStatus(e.target.value)}
-                          className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-indigo-500 transition-all font-semibold"
+                          className="h-10 w-full rounded-lg border border-border bg-white px-3 text-sm text-textPrimary outline-none focus:border-primary transition-all font-semibold"
                         >
                           <option value="active">Active</option>
                           <option value="inactive">Inactive</option>
@@ -629,7 +629,7 @@ export default function ProductsPage() {
                     </div>
                     
                     {fishCatalog.some(f => f.name.toLowerCase() === name.trim().toLowerCase()) && name.trim() !== "" && (
-                      <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-700 text-xs font-bold">
+                      <div className="flex items-center gap-2 p-3 bg-warning/10 border border-warning/30 rounded-lg text-warning text-xs font-bold">
                         <AlertTriangle size={14} /> Warning: Species name already exists.
                       </div>
                     )}
@@ -639,17 +639,17 @@ export default function ProductsPage() {
 
               {/* Column 2: Trade & Market */}
               <div className="space-y-6">
-                <Card className="p-5 shadow-sm border-slate-200 bg-white">
-                  <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2 mb-5">
-                    <Layers size={16} className="text-indigo-500" /> Trade Configuration
+                <Card className="p-5 shadow-sm border-border bg-white">
+                  <h3 className="text-sm font-black text-textPrimary uppercase tracking-widest flex items-center gap-2 mb-5">
+                    <Layers size={16} className="text-primary" /> Trade Configuration
                   </h3>
                   <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Trading Unit</label>
+                        <label className="text-[10px] font-extrabold text-textSecondary uppercase tracking-wider">Trading Unit</label>
                         <select disabled={!isEditable} 
                           value={unitType} onChange={(e) => setUnitType(e.target.value)}
-                          className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-indigo-500 transition-all font-semibold"
+                          className="h-10 w-full rounded-lg border border-border bg-white px-3 text-sm text-textPrimary outline-none focus:border-primary transition-all font-semibold"
                         >
                           <option value="kg">Weight (KG)</option>
                           <option value="box">Box</option>
@@ -661,66 +661,66 @@ export default function ProductsPage() {
                       
                       {unitType === "box" && (
                         <div className="space-y-1.5">
-                          <label className="text-[10px] font-extrabold text-indigo-500 uppercase tracking-wider">Default Box Weight (KG) *</label>
-                          <Input disabled={!isEditable} type="number" step="0.1" className="h-10 bg-indigo-50/50 border-indigo-200 focus:border-indigo-500 text-indigo-900 font-bold" value={boxWeight} onChange={(e) => setBoxWeight(Math.max(0, parseFloat(e.target.value) || 0))} required />
+                          <label className="text-[10px] font-extrabold text-primary uppercase tracking-wider">Default Box Weight (KG) *</label>
+                          <Input disabled={!isEditable} type="number" step="0.1" className="h-10 bg-primary/10/50 border-indigo-200 focus:border-primary text-indigo-900 font-bold" value={boxWeight} onChange={(e) => setBoxWeight(Math.max(0, parseFloat(e.target.value) || 0))} required />
                         </div>
                       )}
                     </div>
                     
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Min. Purchase Qty</label>
-                        <Input disabled={!isEditable} type="number" className="h-10 bg-white border-slate-200 focus:border-indigo-500" value={minPurchase} onChange={(e) => setMinPurchase(parseInt(e.target.value))} />
+                        <label className="text-[10px] font-extrabold text-textSecondary uppercase tracking-wider">Min. Purchase Qty</label>
+                        <Input disabled={!isEditable} type="number" className="h-10 bg-white border-border focus:border-primary" value={minPurchase} onChange={(e) => setMinPurchase(parseInt(e.target.value))} />
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Spoilage Threshold (%)</label>
-                        <Input disabled={!isEditable} type="number" className="h-10 bg-white border-slate-200 focus:border-indigo-500" value={spoilage} onChange={(e) => setSpoilage(parseInt(e.target.value))} />
+                        <label className="text-[10px] font-extrabold text-textSecondary uppercase tracking-wider">Spoilage Threshold (%)</label>
+                        <Input disabled={!isEditable} type="number" className="h-10 bg-white border-border focus:border-primary" value={spoilage} onChange={(e) => setSpoilage(parseInt(e.target.value))} />
                       </div>
                     </div>
                     
-                    <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
+                    <div className="flex items-center justify-between p-3 bg-card rounded-lg border border-border/50">
                       <div>
-                        <p className="text-xs font-bold text-slate-800">Requires Cold Storage</p>
-                        <p className="text-[10px] font-semibold text-slate-500">Must be kept below 4°C</p>
+                        <p className="text-xs font-bold text-textPrimary">Requires Cold Storage</p>
+                        <p className="text-[10px] font-semibold text-textSecondary">Must be kept below 4°C</p>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" className="sr-only peer" checked={coldStorage} onChange={(e) => setColdStorage(e.target.checked)} disabled={!isEditable} />
-                        <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+                        <div className="w-9 h-5 bg-border peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-border after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
                       </label>
                     </div>
                   </div>
                 </Card>
 
-                <Card className="p-5 shadow-sm border-slate-200 bg-white">
-                  <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2 mb-5">
-                    <Activity size={16} className="text-indigo-500" /> Market Settings
+                <Card className="p-5 shadow-sm border-border bg-white">
+                  <h3 className="text-sm font-black text-textPrimary uppercase tracking-widest flex items-center gap-2 mb-5">
+                    <Activity size={16} className="text-primary" /> Market Settings
                   </h3>
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100 mb-2">
+                    <div className="flex items-center justify-between p-3 bg-card rounded-lg border border-border/50 mb-2">
                       <div>
-                        <p className="text-xs font-bold text-slate-800">Market Price Tracking</p>
-                        <p className="text-[10px] font-semibold text-slate-500">Auto-update from mandis</p>
+                        <p className="text-xs font-bold text-textPrimary">Market Price Tracking</p>
+                        <p className="text-[10px] font-semibold text-textSecondary">Auto-update from mandis</p>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" className="sr-only peer" checked={marketTracking} onChange={(e) => setMarketTracking(e.target.checked)} disabled={!isEditable} />
-                        <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+                        <div className="w-9 h-5 bg-border peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-border after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
                       </label>
                     </div>
                     
                     {marketTracking && (
                       <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
                         <div className="space-y-1.5">
-                          <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Tracked Cities</label>
-                          <Input disabled={!isEditable} className="h-10 bg-white border-slate-200 focus:border-indigo-500" value={trackedCities} onChange={(e) => setTrackedCities(e.target.value)} />
+                          <label className="text-[10px] font-extrabold text-textSecondary uppercase tracking-wider">Tracked Cities</label>
+                          <Input disabled={!isEditable} className="h-10 bg-white border-border focus:border-primary" value={trackedCities} onChange={(e) => setTrackedCities(e.target.value)} />
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-1.5">
-                            <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Selling Margin (%)</label>
-                            <Input disabled={!isEditable} type="number" className="h-10 bg-white border-slate-200 focus:border-indigo-500" value={margin} onChange={(e) => setMargin(parseInt(e.target.value))} />
+                            <label className="text-[10px] font-extrabold text-textSecondary uppercase tracking-wider">Selling Margin (%)</label>
+                            <Input disabled={!isEditable} type="number" className="h-10 bg-white border-border focus:border-primary" value={margin} onChange={(e) => setMargin(parseInt(e.target.value))} />
                           </div>
                           <div className="space-y-1.5">
-                            <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Low Price Alert (₹)</label>
-                            <Input disabled={!isEditable} type="number" className="h-10 bg-white border-slate-200 focus:border-indigo-500" value={lowPriceAlert} onChange={(e) => setLowPriceAlert(parseInt(e.target.value))} />
+                            <label className="text-[10px] font-extrabold text-textSecondary uppercase tracking-wider">Low Price Alert (₹)</label>
+                            <Input disabled={!isEditable} type="number" className="h-10 bg-white border-border focus:border-primary" value={lowPriceAlert} onChange={(e) => setLowPriceAlert(parseInt(e.target.value))} />
                           </div>
                         </div>
                       </div>
@@ -731,47 +731,47 @@ export default function ProductsPage() {
 
               {/* Column 3: Live Preview Panel */}
               <div className="space-y-6">
-                <div className="sticky top-0 bg-slate-900 rounded-2xl p-6 text-white shadow-xl">
-                  <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 mb-6">
-                    <Eye size={14} className="text-indigo-400" /> Live Preview
+                <div className="sticky top-0 bg-card rounded-2xl p-6 text-white shadow-xl">
+                  <h3 className="text-xs font-black text-textSecondary/70 uppercase tracking-widest flex items-center gap-2 mb-6">
+                    <Eye size={14} className="text-primary" /> Live Preview
                   </h3>
                   
                   <div className="flex items-center gap-4 mb-6">
-                    <div className="w-16 h-16 rounded-xl bg-slate-800 flex items-center justify-center shrink-0 border border-slate-700">
-                      <ImageIcon size={24} className="text-slate-500" />
+                    <div className="w-16 h-16 rounded-xl bg-elevated flex items-center justify-center shrink-0 border border-border">
+                      <ImageIcon size={24} className="text-textSecondary" />
                     </div>
                     <div>
                       <h2 className="text-2xl font-black text-white leading-tight">{name || "Fish Name"}</h2>
-                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{tamilName || "Tamil Name"}</p>
+                      <p className="text-xs font-bold text-textSecondary/70 uppercase tracking-wider">{tamilName || "Tamil Name"}</p>
                     </div>
                   </div>
 
                   <div className="space-y-4">
-                    <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
+                    <div className="bg-elevated/50 rounded-xl p-4 border border-border/50">
                       <div className="flex justify-between items-center mb-3">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Category</span>
-                        <span className="text-xs font-black text-indigo-400 uppercase">{category === "1" ? "Sea Fish" : category === "2" ? "Freshwater" : category === "3" ? "Shellfish" : "Frozen"}</span>
+                        <span className="text-[10px] font-bold text-textSecondary/70 uppercase tracking-wider">Category</span>
+                        <span className="text-xs font-black text-primary uppercase">{category === "1" ? "Sea Fish" : category === "2" ? "Freshwater" : category === "3" ? "Shellfish" : "Frozen"}</span>
                       </div>
                       <div className="flex justify-between items-center mb-3">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Status</span>
-                        <span className={`inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider ${status === 'active' ? 'text-emerald-400' : 'text-amber-400'}`}>
-                          <div className={`w-1.5 h-1.5 rounded-full ${status === 'active' ? 'bg-emerald-400' : 'bg-amber-400'}`}></div> {status}
+                        <span className="text-[10px] font-bold text-textSecondary/70 uppercase tracking-wider">Status</span>
+                        <span className={`inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider ${status === 'active' ? 'text-success' : 'text-warning'}`}>
+                          <div className={`w-1.5 h-1.5 rounded-full ${status === 'active' ? 'bg-success' : 'bg-warning'}`}></div> {status}
                         </span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Trading Unit</span>
+                        <span className="text-[10px] font-bold text-textSecondary/70 uppercase tracking-wider">Trading Unit</span>
                         <span className="text-xs font-black text-white capitalize">{unitType} {unitType === 'box' && `(${boxWeight} KG)`}</span>
                       </div>
                     </div>
                     
-                    <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50 space-y-3">
+                    <div className="bg-elevated/50 rounded-xl p-4 border border-border/50 space-y-3">
                       <div className="flex justify-between items-center">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Cold Storage</span>
-                        <span className={`text-xs font-black uppercase ${coldStorage ? 'text-blue-400' : 'text-slate-500'}`}>{coldStorage ? 'Required' : 'No'}</span>
+                        <span className="text-[10px] font-bold text-textSecondary/70 uppercase tracking-wider">Cold Storage</span>
+                        <span className={`text-xs font-black uppercase ${coldStorage ? 'text-blue-400' : 'text-textSecondary'}`}>{coldStorage ? 'Required' : 'No'}</span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Market Tracking</span>
-                        <span className={`text-xs font-black uppercase ${marketTracking ? 'text-emerald-400' : 'text-slate-500'}`}>{marketTracking ? 'Active' : 'Off'}</span>
+                        <span className="text-[10px] font-bold text-textSecondary/70 uppercase tracking-wider">Market Tracking</span>
+                        <span className={`text-xs font-black uppercase ${marketTracking ? 'text-success' : 'text-textSecondary'}`}>{marketTracking ? 'Active' : 'Off'}</span>
                       </div>
                     </div>
                   </div>
@@ -781,17 +781,17 @@ export default function ProductsPage() {
             </div>
           </div>
 
-          <DialogFooter className="px-6 py-4 border-t border-slate-200 bg-white">
+          <DialogFooter className="px-6 py-4 border-t border-border bg-white">
             <div className="flex w-full justify-between items-center">
-              <Button type="button" variant="ghost" onClick={() => setModalOpen(false)} className="text-slate-500 hover:text-slate-800 font-bold">
+              <Button type="button" variant="ghost" onClick={() => setModalOpen(false)} className="text-textSecondary hover:text-textPrimary font-bold">
                 {isEditable ? "Cancel" : "Close"}
               </Button>
               {isEditable && (
                 <div className="flex gap-3">
-                  <Button variant="outline" className="font-bold border-slate-200 text-slate-700 hover:bg-slate-50">
+                  <Button variant="outline" className="font-bold border-border text-textPrimary hover:bg-card">
                     Save Draft
                   </Button>
-                  <Button onClick={handleSubmit} loading={isSubmitting} className="font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-200 px-8">
+                  <Button onClick={handleSubmit} loading={isSubmitting} className="font-bold bg-primary hover:bg-primaryHover text-white shadow-lg shadow-indigo-200 px-8">
                     Register Species
                   </Button>
                 </div>

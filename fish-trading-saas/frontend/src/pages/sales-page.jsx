@@ -1,17 +1,13 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { 
   TrendingUp, Plus, Search, Calendar, User, FileText, 
   Layers, DollarSign, Percent, AlertCircle, ShoppingCart, Truck, Trash2, Sparkles, CheckCircle2
 } from "lucide-react";
 import Card from "@/components/ui/card";
 import Button from "@/components/ui/button";
-import Input from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { fetchSales, createSale, deleteSale } from "@/services/salesService";
-import { fetchCustomers } from "@/services/customerService";
-import { fetchPurchaseBatches } from "@/services/purchaseService";
+import { fetchSales, deleteSale } from "@/services/salesService";
 import { useToast } from "@/components/shared/toast-provider";
-import SaleDetailModal from "@/components/sales/sale-detail-modal";
 import { usePermission } from "@/hooks/usePermission";
 
 const formatINR = (n) =>
@@ -29,44 +25,22 @@ const PAYMENT_CLS = {
 };
 
 export default function SalesPage() {
+  const navigate = useNavigate();
   const [sales, setSales] = useState([]);
-  const [buyers, setBuyers] = useState([]);
-  const [batches, setBatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [modalOpen, setModalOpen] = useState(false);
-  const [detailModalOpen, setDetailModalOpen] = useState(false);
-  const [selectedSale, setSelectedSale] = useState(null);
   const { push: toast } = useToast();
-  const { canViewFinancial, canDelete } = usePermission();
-
-  // Invoice Form states
-  const [buyerId, setBuyerId] = useState("");
-  const [batchId, setBatchId] = useState("");
-  const [saleType, setSaleType] = useState("domestic");
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
-  const [packagesSold, setPackagesSold] = useState(0);
-  const [sellingPrice, setSellingPrice] = useState(0);
-  const [discountPercent, setDiscountPercent] = useState(0);
-  const [taxPercent, setTaxPercent] = useState(5);
-  const [amountReceived, setAmountReceived] = useState(0);
-  const [address, setAddress] = useState("");
-  const [notes, setNotes] = useState("");
+  const { canEditForm, canViewFinancial, canDelete } = usePermission();
+  const isEditable = canEditForm("sales");
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const [sData, bData, pData] = await Promise.all([
-        fetchSales(),
-        fetchCustomers(),
-        fetchPurchaseBatches()
-      ]);
+      const sData = await fetchSales();
       setSales(sData);
-      setBuyers(bData);
-      // Filter batches to those with remaining stock in inventory
-      setBatches(pData);
     } catch (e) {
-      toast({ message: "Failed to fetch sales assets.", variant: "error" });
+      toast({ message: e?.message || "Failed to fetch sales assets.", variant: "error" });
     } finally {
       setLoading(false);
     }
@@ -74,104 +48,24 @@ export default function SalesPage() {
 
   useEffect(() => {
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Find selected batch details for constraints
-  const selectedBatch = batches.find(b => b.id === Number(batchId));
-  const maxPackages = selectedBatch?.remaining_packages || 0;
-  const packageWeight = selectedBatch?.package_weight || 0;
-
-  // Real-time invoice math
-  const totalWeight = packagesSold * packageWeight;
-  const subtotal = totalWeight * sellingPrice;
-  const discountAmount = subtotal * (Number(discountPercent) / 100);
-  const taxAmount = (subtotal - discountAmount) * (Number(taxPercent) / 100);
-  const finalAmount = subtotal - discountAmount + taxAmount;
-  const pendingAmount = finalAmount - amountReceived;
-
-  // Stock warning status
-  const stockExceeded = packagesSold > maxPackages;
-
   const handleOpenAdd = () => {
-    if (buyers.length === 0) {
-      toast({ message: "Please register a customer first under the Customers tab.", variant: "error" });
-      return;
-    }
-    const activeStock = batches.filter(b => b.remaining_packages > 0);
-    if (activeStock.length === 0) {
-      toast({ message: "No active inventory available. Register a purchase batch first.", variant: "error" });
-      return;
-    }
-    setBuyerId(buyers[0]?.id || "");
-    setBatchId(activeStock[0]?.id || "");
-    setSaleType("domestic");
-    setDate(new Date().toISOString().split("T")[0]);
-    setPackagesSold(0);
-    setSellingPrice(0);
-    setDiscountPercent(0);
-    setTaxPercent(5);
-    setAmountReceived(0);
-    setAddress(buyers[0]?.address || "");
-    setNotes("");
-    setModalOpen(true);
-  };
-
-  const handleBuyerChange = (bId) => {
-    setBuyerId(bId);
-    const buyerObj = buyers.find(b => b.id === Number(bId));
-    if (buyerObj?.address) {
-      setAddress(buyerObj.address);
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!buyerId || !batchId || packagesSold <= 0 || sellingPrice <= 0) {
-      toast({ message: "Please enter all required billing items.", variant: "error" });
-      return;
-    }
-    if (stockExceeded) {
-      toast({ message: "Requested package amount exceeds active batch inventory.", variant: "error" });
-      return;
-    }
-
-    const payload = {
-      buyer: Number(buyerId),
-      batch: Number(batchId),
-      sale_type: saleType,
-      date,
-      number_of_packages_sold: Number(packagesSold),
-      selling_weight_per_package: packageWeight,
-      selling_price_per_kg: Number(sellingPrice),
-      total_revenue: subtotal,
-      discount_percent: Number(discountPercent),
-      discount_amount: discountAmount,
-      tax_percent: Number(taxPercent),
-      tax_amount: taxAmount,
-      final_amount: finalAmount,
-      amount_received: Number(amountReceived),
-      delivery_address: address,
-      notes
-    };
-
-    try {
-      await createSale(payload);
-      toast({ message: "Sales Invoice generated and inventory updated!" });
-      setModalOpen(false);
-      loadData();
-    } catch (e) {
-      toast({ message: "Failed to record sale transaction.", variant: "error" });
-    }
+    navigate("/dashboard/sales/new");
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to void this sales invoice?")) return;
+    setIsDeleting(true);
     try {
       await deleteSale(id);
       toast({ message: "Invoice record voided." });
       loadData();
     } catch (e) {
-      toast({ message: "Failed to delete sales record.", variant: "error" });
+      toast({ message: e?.message || "Failed to delete sales record.", variant: "error" });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -188,10 +82,12 @@ export default function SalesPage() {
           <h2 className="text-2xl font-extrabold tracking-tight">Sales & Billing</h2>
           <p className="text-xs text-textSecondary">Record customer trades, invoice orders, and track pending receivables.</p>
         </div>
+        {isEditable && (
         <Button onClick={handleOpenAdd} className="flex items-center gap-2">
           <Plus size={16} />
           Create Invoice
         </Button>
+        )}
       </div>
 
       {/* Overview stats */}
@@ -249,7 +145,7 @@ export default function SalesPage() {
         </div>
 
         {loading ? (
-          <div className="py-12 text-center text-textSecondary">Loading invoice history...</div>
+          <div className="py-12 text-center text-textSecondary animate-pulse">Loading invoice history...</div>
         ) : filteredSales.length === 0 ? (
           <div className="py-12 text-center text-textSecondary">
             <AlertCircle className="mx-auto h-8 w-8 mb-2 text-textSecondary/40" />
@@ -280,10 +176,7 @@ export default function SalesPage() {
                     <tr 
                       key={s.id} 
                       className="hover:bg-border/10 transition-colors cursor-pointer"
-                      onClick={() => {
-                        setSelectedSale(s);
-                        setDetailModalOpen(true);
-                      }}
+                      onClick={() => navigate(`/dashboard/sales/${s.id}`)}
                     >
                       <td className="py-3.5 pr-4">
                         <div>
@@ -317,7 +210,7 @@ export default function SalesPage() {
                         </span>
                       </td>
                       <td className="py-3.5 text-center">
-                        {canDelete() && (
+                        {canDelete("sales") && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -346,10 +239,7 @@ export default function SalesPage() {
                   <div 
                     key={s.id} 
                     className="bg-surface border border-border rounded-xl p-4 shadow-sm space-y-3 cursor-pointer hover:border-primary/50 transition-colors"
-                    onClick={() => {
-                      setSelectedSale(s);
-                      setDetailModalOpen(true);
-                    }}
+                    onClick={() => navigate(`/dashboard/sales/${s.id}`)}
                   >
                     <div className="flex justify-between items-start">
                       <div>
@@ -390,7 +280,7 @@ export default function SalesPage() {
                       </div>
                     </div>
 
-                    {canDelete() && (
+                    {canDelete("sales") && (
                       <div className="pt-3 border-t border-border/50 flex justify-end">
                         <button
                           onClick={(e) => {
@@ -410,176 +300,6 @@ export default function SalesPage() {
           </div>
         )}
       </Card>
-
-      {/* Invoice creation modal */}
-      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-2xl overflow-y-auto max-h-[85vh]">
-          <DialogHeader>
-            <DialogTitle>Generate Sales Invoice</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                  <label className="text-xs font-bold text-textSecondary">Customer/Buyer</label>
-                  <select 
-                    value={buyerId}
-                    onChange={(e) => setBuyerId(e.target.value)}
-                    className="h-12 w-full rounded-xl border border-border bg-surface px-3 text-sm text-textPrimary outline-none focus:border-primary"
-                  >
-                  {buyers.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                  <label className="text-xs font-bold text-textSecondary">Batch</label>
-                  <select 
-                    value={batchId}
-                    onChange={(e) => setBatchId(e.target.value)}
-                    className="h-12 w-full rounded-xl border border-border bg-surface px-3 text-sm text-textPrimary outline-none focus:border-primary"
-                  >
-                  {batches.filter(b => b.remaining_packages > 0).map(b => (
-                    <option key={b.id} value={b.id}>
-                      {b.batch_number} - {b.fish_name} ({b.remaining_packages} pkg remaining)
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                  <label className="text-xs font-bold text-textSecondary">Sale Type</label>
-                  <select 
-                    value={saleType}
-                    onChange={(e) => setSaleType(e.target.value)}
-                    className="h-12 w-full rounded-xl border border-border bg-surface px-3 text-sm text-textPrimary outline-none focus:border-primary"
-                  >
-                  <option value="domestic">Domestic Sale</option>
-                  <option value="export">International Export</option>
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                  <label className="text-xs font-bold text-textSecondary">Sale Date</label>
-                  <Input className="h-12" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-              </div>
-            </div>
-
-            {/* Calculations Box */}
-            <div className="bg-primary/5 dark:bg-primary/10 border border-primary/10 rounded-2xl p-4 mt-2">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-1 text-primary text-xs font-bold uppercase tracking-wider">
-                  <ShoppingCart size={13} />
-                  <span>Item Billing details</span>
-                </div>
-                {selectedBatch && (
-                  <span className="text-[11px] font-bold text-textSecondary">
-                    Available: <span className="text-textPrimary">{maxPackages} packages ({packageWeight} kg each)</span>
-                  </span>
-                )}
-              </div>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-extrabold text-textSecondary uppercase">Packages Sold *</label>
-                  <Input 
-                    type="number" 
-                    value={packagesSold} 
-                    onChange={(e) => setPackagesSold(Math.max(0, parseInt(e.target.value) || 0))} 
-                    className={stockExceeded ? "border-danger focus:ring-danger/20" : ""}
-                    required 
-                  />
-                  {stockExceeded && (
-                    <p className="text-[10px] text-danger font-bold flex items-center gap-0.5 mt-0.5">
-                      <AlertCircle size={10} /> Out of Stock (Max: {maxPackages} pkg)
-                    </p>
-                  )}
-                </div>
-                <div className="space-y-1">
-                    <label className="text-[10px] font-extrabold text-textSecondary uppercase">Packages Sold *</label>
-                    <Input className="h-12" type="number" value={packagesSold} onChange={(e) => setPackagesSold(Math.max(0, parseInt(e.target.value) || 0))} required />
-                </div>
-              </div>
-              
-              <div className="flex flex-wrap gap-4 mt-3 pt-3 border-t border-primary/10 text-xs font-bold text-textSecondary">
-                <div>Total Selling Weight: <span className="text-textPrimary">{totalWeight} kg</span></div>
-                <div>Subtotal: <span className="text-textPrimary">{formatINR(subtotal)}</span></div>
-              </div>
-            </div>
-
-            {/* Taxes & Discounts */}
-            <div className="border border-border rounded-2xl p-4">
-              <p className="text-xs font-bold text-textPrimary mb-3">Adjustments & Fees</p>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-textSecondary">Discount (%)</label>
-                  <Input type="number" min="0" max="100" value={discountPercent} onChange={(e) => setDiscountPercent(Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)))} />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-textSecondary">Tax / GST (%)</label>
-                  <Input type="number" min="0" max="100" value={taxPercent} onChange={(e) => setTaxPercent(Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)))} />
-                </div>
-              </div>
-              
-              <div className="flex flex-wrap gap-4 mt-3 pt-3 border-t border-border/60 text-xs font-bold text-textSecondary">
-                <div>Discount Amt: <span className="text-danger">-{formatINR(discountAmount)}</span></div>
-                <div>GST Tax Amt: <span className="text-textPrimary">+{formatINR(taxAmount)}</span></div>
-                <div>Grand Total: <span className="text-primary font-extrabold">{formatINR(finalAmount)}</span></div>
-              </div>
-            </div>
-
-            {/* Collection & Shipping */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/10 rounded-2xl p-4">
-                <p className="text-xs font-bold text-success mb-3">Payment Collection</p>
-                <div className="space-y-3">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-textSecondary">Amount Received</label>
-                    <Input className="h-12" type="number" step="1" value={amountReceived} onChange={(e) => setAmountReceived(Math.max(0, parseFloat(e.target.value) || 0))} />
-                  </div>
-                  <div className="flex justify-between text-xs font-bold text-textSecondary pt-1">
-                    <span>Outstanding Due:</span>
-                    <span className={pendingAmount > 0 ? "text-amber-500 font-extrabold" : "text-success font-extrabold"}>{formatINR(pendingAmount)}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="border border-border rounded-2xl p-4 space-y-3">
-                <p className="text-xs font-bold text-textPrimary flex items-center gap-1">
-                  <Truck size={14} className="text-primary" /> Delivery Logistics
-                </p>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-textSecondary">Delivery Address</label>
-                  <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Complete shipping address..." />
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-textSecondary">Notes / Invoice Comments</label>
-              <textarea 
-                value={notes} 
-                onChange={(e) => setNotes(e.target.value)} 
-                rows="2" 
-                placeholder="Log special logistics remarks or customer delivery window notes..."
-                className="w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-textPrimary outline-none focus:border-primary"
-              />
-            </div>
-
-              <DialogFooter className="border-t border-border pt-4">
-                <Button type="button" variant="ghost" className="h-12 w-full sm:w-auto" onClick={() => setModalOpen(false)}>Cancel</Button>
-                <Button type="submit" className="h-12 w-full sm:w-auto">Finalize Invoice</Button>
-              </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-      {/* Sale Detail Modal */}
-      <SaleDetailModal
-        sale={selectedSale}
-        open={detailModalOpen}
-        onOpenChange={setDetailModalOpen}
-        onUpdate={() => {
-          loadData();
-        }}
-      />
     </div>
   );
 }

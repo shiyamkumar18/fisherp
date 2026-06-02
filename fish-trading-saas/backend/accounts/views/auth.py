@@ -13,7 +13,7 @@ from django.utils import timezone
 from django.conf import settings
 import random
 
-from ..throttles import LoginThrottle
+from ..throttles import LoginThrottle, OTPThrottle
 from ..models import ROLE_CHOICES, PhoneOTPChallenge
 from ..models_audit import AuditLog
 from ..utils import (
@@ -132,6 +132,7 @@ def _frontend_auth_redirect(path, **params):
 
 class SendOTPView(APIView):
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [OTPThrottle]
 
     def post(self, request):
         phone = _normalize_phone(request.data.get('phone'))
@@ -170,6 +171,7 @@ class SendOTPView(APIView):
 
 class VerifyOTPView(APIView):
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [OTPThrottle]
 
     def post(self, request):
         phone = _normalize_phone(request.data.get('phone'))
@@ -369,6 +371,7 @@ class TenantLoginView(APIView):
     Each tenant/company gets a unique login URL like /login/acme-corp/
     """
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [LoginThrottle]
 
     def get(self, request, tenant_slug):
         """Show tenant-specific login page"""
@@ -552,6 +555,7 @@ class UnifiedLoginView(APIView):
     Platform users use /platform-admin/.
     """
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [LoginThrottle]
 
     @staticmethod
     def _resolve_company(company_identifier):
@@ -787,6 +791,7 @@ class PlatformLoginView(APIView):
     Only accepts: platform_operator, platform_support, superuser
     """
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [LoginThrottle]
 
     def get(self, request):
         """Show platform login page"""

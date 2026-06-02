@@ -11,6 +11,16 @@ export default {
         bg: "var(--bg)",
         surface: "var(--surface)",
         border: "var(--border)",
+        
+        // Layered Surfaces
+        sidebar: "var(--bg-sidebar)",
+        card: "var(--bg-card)",
+        elevated: "var(--bg-elevated)",
+        hover: "var(--bg-hover)",
+        modal: "var(--bg-modal)",
+        tableHeader: "var(--bg-table-header)",
+        input: "var(--bg-input)",
+
         primary: "var(--primary)",
         primaryHover: "var(--primary-hover)",
         success: "var(--success)",

@@ -8,11 +8,12 @@ import Button from "@/components/ui/button";
 import Input from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { fetchInventory, updateInventoryItem } from "@/services/inventoryService";
+import { usePermission } from "@/hooks/usePermission";
 import { useToast } from "@/components/shared/toast-provider";
 
 const STATUS_CLS = {
   in_stock: "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400 border border-green-200/50 dark:border-green-900/50",
-  low_stock: "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-200/50 dark:border-amber-900/50",
+  low_stock: "bg-amber-100 text-warning dark:bg-amber-950/40 dark:text-warning border border-warning/30/50 dark:border-amber-900/50",
   out_of_stock: "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400 border border-red-200/50 dark:border-red-900/50 border-red-200/50",
 };
 
@@ -23,6 +24,10 @@ export default function InventoryPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const { push: toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { canEditForm, canViewFinancial, canDelete } = usePermission();
+  const isEditable = canEditForm("inventory");
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Form states
   const [storageLocation, setStorageLocation] = useState("");
@@ -36,7 +41,7 @@ export default function InventoryPage() {
       const data = await fetchInventory();
       setInventory(data);
     } catch (e) {
-      toast({ message: "Failed to load inventory levels.", variant: "error" });
+      toast({ message: e?.message || "Failed to load inventory levels.", variant: "error" });
     } finally {
       setLoading(false);
     }
@@ -72,7 +77,9 @@ export default function InventoryPage() {
       setModalOpen(false);
       loadInventory();
     } catch (err) {
-      toast({ message: "Failed to update storage telemetry.", variant: "error" });
+      toast({ message: err?.message || "Failed to update storage telemetry.", variant: "error" });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -245,53 +252,105 @@ export default function InventoryPage() {
       </Card>
 
       {/* Edit Storage Log Modal */}
+      
+      {/* Edit Storage Log Modal - Enterprise UI */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Update Storage Telemetry</DialogTitle>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+          <DialogHeader className="px-6 py-4 border-b border-border bg-surface/50">
+            <DialogTitle className="text-xl font-extrabold flex items-center gap-2">
+              <Thermometer size={20} className="text-primary" />
+              Update Storage Telemetry
+            </DialogTitle>
           </DialogHeader>
-          {selectedItem && (
-            <div className="mb-2 text-xs font-bold text-textSecondary bg-border/20 p-3 rounded-xl flex items-center gap-2">
-              <ClipboardCheck size={14} className="text-primary" />
-              <span>Updating: <strong className="text-textPrimary">{selectedItem.fish_name} ({selectedItem.batch_number})</strong></span>
-            </div>
-          )}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-textSecondary">Storage Location / Cold Room</label>
-              <Input value={storageLocation} onChange={(e) => setStorageLocation(e.target.value)} placeholder="e.g. Cold Room A" />
-            </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-textSecondary">Bin Number</label>
-                <Input value={binNumber} onChange={(e) => setBinNumber(e.target.value)} placeholder="e.g. Bin-04" />
+          <div className="flex-1 overflow-y-auto p-6 bg-background space-y-6">
+            
+            {selectedItem && (
+              <div className="mb-2 bg-primary/5 border border-primary/20 p-4 rounded-xl flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-extrabold text-textSecondary uppercase tracking-wider">Target Batch</p>
+                  <p className="font-black text-textPrimary text-lg">{selectedItem.fish_name} <span className="text-primary">({selectedItem.batch_number})</span></p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[10px] font-extrabold text-textSecondary uppercase tracking-wider">Current Stock</p>
+                  <p className="font-bold text-textPrimary">{selectedItem.remaining_packages} pkg / {selectedItem.remaining_weight_kg} kg</p>
+                </div>
               </div>
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-textSecondary">Rack Number</label>
-                <Input value={rackNumber} onChange={(e) => setRackNumber(e.target.value)} placeholder="e.g. Rack-B2" />
-              </div>
-            </div>
+            )}
 
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-textSecondary flex items-center justify-between">
-                <span>Freezer Temperature (°C)</span>
-                {currentTemperature > -10 && (
-                  <span className="text-[10px] text-danger font-extrabold flex items-center gap-0.5">
-                    <AlertTriangle size={11} /> Warm Temp Warning!
-                  </span>
-                )}
-              </label>
-              <Input type="number" step="0.1" value={currentTemperature} onChange={(e) => setCurrentTemperature(e.target.value)} placeholder="-18.0" />
-            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              
+              {/* Section 1: Location & Bins */}
+              <Card className="p-5 shadow-sm border-border/60">
+                <h3 className="text-sm font-bold text-textPrimary flex items-center gap-2 mb-4">
+                  <MapPin size={16} className="text-primary" /> Physical Storage Location
+                </h3>
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-extrabold text-textSecondary uppercase tracking-wider">Storage Location / Cold Room</label>
+                    <Input disabled={!isEditable} className="h-11 bg-surface" value={storageLocation} onChange={(e) => setStorageLocation(e.target.value)} placeholder="e.g. Cold Room A" />
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-extrabold text-textSecondary uppercase tracking-wider">Bin Number</label>
+                      <Input disabled={!isEditable} className="h-11 bg-surface" value={binNumber} onChange={(e) => setBinNumber(e.target.value)} placeholder="e.g. Bin-04" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-extrabold text-textSecondary uppercase tracking-wider">Rack Number</label>
+                      <Input disabled={!isEditable} className="h-11 bg-surface" value={rackNumber} onChange={(e) => setRackNumber(e.target.value)} placeholder="e.g. Rack-B2" />
+                    </div>
+                  </div>
+                </div>
+              </Card>
 
-            <DialogFooter className="mt-6 border-t border-border pt-4">
-              <Button type="button" variant="ghost" onClick={() => setModalOpen(false)}>Cancel</Button>
-              <Button type="submit">Log Changes</Button>
-            </DialogFooter>
-          </form>
+              {/* Section 2: Telemetry & Quality */}
+              <Card className="p-5 shadow-sm border-border/60">
+                <h3 className="text-sm font-bold text-textPrimary flex items-center gap-2 mb-4">
+                  <Thermometer size={16} className="text-primary" /> Temperature Control
+                </h3>
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-extrabold text-textSecondary uppercase tracking-wider flex items-center justify-between">
+                      <span>Freezer Temperature (°C)</span>
+                      {currentTemperature > -10 && (
+                        <span className="text-[10px] text-danger font-extrabold flex items-center gap-0.5 animate-pulse">
+                          <AlertTriangle size={11} /> Warm Temp Warning!
+                        </span>
+                      )}
+                    </label>
+                    <Input disabled={!isEditable} className={`h-11 text-lg font-black ${currentTemperature > -10 ? "bg-danger/5 border-danger/30 text-danger focus:border-danger" : "bg-surface text-primary"}`} type="number" step="0.1" value={currentTemperature} onChange={(e) => setCurrentTemperature(parseFloat(e.target.value) || 0)} placeholder="-18.0" />
+                  </div>
+                  
+                  <div className="p-3 bg-surface border border-border/50 rounded-lg text-[11px] text-textSecondary">
+                    <p className="font-bold text-textPrimary mb-1">Cold Chain Guidelines:</p>
+                    <ul className="list-disc pl-4 space-y-0.5">
+                      <li>Target: <span className="text-success font-bold">-18°C or lower</span></li>
+                      <li>Warning: <span className="text-warning font-bold">-10°C to -17°C</span></li>
+                      <li>Critical: <span className="text-danger font-bold">-9°C and above</span></li>
+                    </ul>
+                  </div>
+                </div>
+              </Card>
+              
+            </div>
+          </div>
+
+          <DialogFooter className="px-6 py-4 border-t border-border bg-surface/50">
+            <div className="flex w-full justify-end gap-3">
+              <Button type="button" variant="outline" onClick={() => setModalOpen(false)}>
+                {isEditable ? "Cancel" : "Close"}
+              </Button>
+              {isEditable && (
+                <Button onClick={handleSubmit} loading={isSubmitting} className="px-8 shadow-sm">
+                  Log Changes
+                </Button>
+              )}
+            </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
+
     </div>
   );
 }

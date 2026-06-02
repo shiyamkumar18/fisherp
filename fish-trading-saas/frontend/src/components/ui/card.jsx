@@ -1,9 +1,12 @@
 import React from "react";
+import clsx from "clsx";
 
 export default function Card({ children, className = "", hoverEffect = true, ...props }) {
-  const hoverClasses = hoverEffect ? "hover:shadow-md transition-all duration-200 hover:scale-[1.02]" : "";
+  const hoverClasses = hoverEffect 
+    ? "hover:bg-elevated hover:-translate-y-[1px] hover:shadow-md transition-all duration-300" 
+    : "transition-all duration-300";
   return (
-    <div className={`bg-surface border rounded-xl shadow-sm p-5 ${hoverClasses} ${className}`} {...props}>
+    <div className={clsx("bg-card border border-border rounded-xl shadow-sm p-6", hoverClasses, className)} {...props}>
       {children}
     </div>
   );

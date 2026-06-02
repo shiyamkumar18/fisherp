@@ -1,5 +1,6 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.core.validators import FileExtensionValidator
 from django.core.exceptions import ValidationError
 from django.contrib.auth.hashers import check_password, make_password
 from django.utils import timezone
@@ -11,22 +12,44 @@ ROLE_CHOICES = [
     ('platform_support', 'Platform Support'),
     ('tenant_admin', 'Tenant Admin'),
     ('accountant', 'Accountant'),
+    ('finance_manager', 'Finance Manager'),
+    ('purchase_manager', 'Purchase Manager'),
+    ('sales_staff', 'Sales Staff'),
+    ('inventory_manager', 'Inventory Manager'),
+    ('auction_manager', 'Auction Manager'),
+    ('branch_manager', 'Branch Manager'),
+    ('supervisor', 'Supervisor'),
     ('trader', 'Trader'),
     ('store', 'Store / Inventory'),
+    ('staff', 'Staff'),
+    ('viewer', 'Viewer'),
 ]
 
 # Role hierarchy (higher number = more authority)
 ROLE_HIERARCHY = {
-    'platform_operator': 6,
-    'platform_support': 5,
-    'tenant_admin': 4,
-    'accountant': 3,
-    'trader': 2,
-    'store': 1,
+    'platform_operator': 15,
+    'platform_support': 14,
+    'tenant_admin': 13,
+    'branch_manager': 12,
+    'finance_manager': 11,
+    'accountant': 10,
+    'purchase_manager': 9,
+    'auction_manager': 8,
+    'inventory_manager': 7,
+    'supervisor': 6,
+    'sales_staff': 5,
+    'trader': 4,
+    'store': 3,
+    'staff': 2,
+    'viewer': 1,
 }
 
 PLATFORM_ROLES = {'platform_operator', 'platform_support'}
-TENANT_ROLES = {'tenant_admin', 'accountant', 'trader', 'store'}
+TENANT_ROLES = {
+    'tenant_admin', 'branch_manager', 'finance_manager', 'accountant',
+    'purchase_manager', 'auction_manager', 'inventory_manager',
+    'supervisor', 'sales_staff', 'trader', 'store', 'staff', 'viewer'
+}
 
 # Backward-compatibility map for older role values still present in data/code paths.
 LEGACY_ROLE_MAP = {
@@ -52,6 +75,7 @@ class User(AbstractUser):
         help_text="Company this user belongs to",
         db_index=True
     )
+    tenant_role = models.ForeignKey('permissions.TenantRole', null=True, blank=True, on_delete=models.SET_NULL, related_name='users', help_text='Assigned role within tenant')
     
     # Platform flag - explicit for queries/JWT (CRITICAL for SaaS)
     is_platform_user = models.BooleanField(
@@ -60,6 +84,32 @@ class User(AbstractUser):
         db_index=True
     )
     
+    # ====================
+    # EXTENDED PROFILE
+    # ====================
+    department = models.CharField(max_length=100, blank=True, null=True, help_text="Department within the company")
+    employee_id = models.CharField(max_length=50, blank=True, null=True, help_text="Company Employee ID")
+    staff_id = models.CharField(max_length=50, blank=True, null=True, help_text="System Staff ID")
+    timezone = models.CharField(max_length=50, default='UTC', help_text="User's preferred timezone")
+    language = models.CharField(max_length=20, default='en', help_text="User's preferred UI language")
+    theme = models.CharField(max_length=20, default='system', help_text="UI Theme preference")
+    address = models.TextField(blank=True, null=True, help_text="User address")
+    emergency_contact = models.CharField(max_length=100, blank=True, null=True, help_text="Emergency Contact Info")
+    photo = models.ImageField(
+        upload_to='user_photos/', 
+        blank=True, 
+        null=True, 
+        help_text="Profile Photo",
+        validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'webp'])]
+    )
+    
+    # Preferences & Permissions
+    work_preferences_json = models.JSONField(default=dict, blank=True, help_text="Detailed work preferences")
+    notification_settings_json = models.JSONField(default=dict, blank=True, help_text="Granular notification settings")
+    granular_permissions = models.JSONField(default=dict, blank=True, help_text="Overrides for RBAC base roles")
+    
+    is_suspended = models.BooleanField(default=False, help_text="Suspended by Tenant Admin")
+
     # ====================
     # SECURITY FIELDS
     # ====================
@@ -268,3 +318,20 @@ class PhoneOTPChallenge(models.Model):
 
     def is_expired(self):
         return timezone.now() >= self.expires_at
+
+
+class DeviceSession(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='device_sessions')
+    session_key = models.CharField(max_length=40, unique=True, help_text="Django session key")
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(blank=True, null=True)
+    device_type = models.CharField(max_length=50, blank=True, null=True)
+    location = models.CharField(max_length=100, blank=True, null=True)
+    last_activity = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-last_activity']
+
+    def __str__(self):
+        return f"{self.user.username} - {self.ip_address} ({self.device_type})"

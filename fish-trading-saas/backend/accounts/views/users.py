@@ -373,8 +373,25 @@ class UserProfileView(APIView):
             'role_display': user.get_role_display() if hasattr(user, 'get_role_display') else user.role,
             **user_role_flags(user),
             'is_active': user.is_active,
+            'is_suspended': user.is_suspended,
             'two_factor_enabled': user.two_factor_enabled,
             'date_joined': user.date_joined,
+            
+            # Extended Profile Fields
+            'department': user.department,
+            'employee_id': user.employee_id,
+            'staff_id': user.staff_id,
+            'timezone': user.timezone,
+            'language': user.language,
+            'theme': user.theme,
+            'address': user.address,
+            'emergency_contact': user.emergency_contact,
+            'photo_url': user.photo.url if user.photo else None,
+            
+            # Preferences & Permissions
+            'work_preferences': user.work_preferences_json,
+            'notification_settings': user.notification_settings_json,
+            'granular_permissions': user.granular_permissions,
         })
 
     def put(self, request):
@@ -415,7 +432,26 @@ class UserProfileView(APIView):
         user.last_name = last_name
         user.email = email
         user.phone = phone
-        user.save(update_fields=['first_name', 'last_name', 'email', 'phone'])
+        
+        # Extended Fields
+        if 'department' in request.data: user.department = request.data['department']
+        if 'employee_id' in request.data: user.employee_id = request.data['employee_id']
+        if 'staff_id' in request.data: user.staff_id = request.data['staff_id']
+        if 'timezone' in request.data: user.timezone = request.data['timezone']
+        if 'language' in request.data: user.language = request.data['language']
+        if 'theme' in request.data: user.theme = request.data['theme']
+        if 'address' in request.data: user.address = request.data['address']
+        if 'emergency_contact' in request.data: user.emergency_contact = request.data['emergency_contact']
+        if 'work_preferences' in request.data: user.work_preferences_json = request.data['work_preferences']
+        if 'notification_settings' in request.data: user.notification_settings_json = request.data['notification_settings']
+
+        update_fields = [
+            'first_name', 'last_name', 'email', 'phone', 
+            'department', 'employee_id', 'staff_id', 'timezone', 
+            'language', 'theme', 'address', 'emergency_contact',
+            'work_preferences_json', 'notification_settings_json'
+        ]
+        user.save(update_fields=update_fields)
 
         return Response({
             'message': 'Profile updated successfully',
@@ -426,6 +462,10 @@ class UserProfileView(APIView):
                 'last_name': user.last_name,
                 'email': user.email,
                 'phone': user.phone,
+                'department': user.department,
+                'timezone': user.timezone,
+                'language': user.language,
+                'theme': user.theme,
             }
         })
 
@@ -481,7 +521,7 @@ class TenantUserManagementView(APIView):
         users = User.objects.filter(company=request.user.company).values(
             'id', 'username', 'email', 'phone', 'role',
             'is_active', 'date_joined', 'last_login',
-            'company__name'
+            'granular_permissions', 'company__name'
         )
         payload = []
         for entry in users:
@@ -521,7 +561,11 @@ class TenantUserManagementView(APIView):
         except Company.DoesNotExist:
             pass
 
-        valid_roles = ['trader', 'store']
+        valid_roles = [
+            'tenant_admin', 'branch_manager', 'finance_manager', 'accountant',
+            'purchase_manager', 'auction_manager', 'inventory_manager',
+            'supervisor', 'sales_staff', 'trader', 'store', 'staff', 'viewer'
+        ]
         if role not in valid_roles:
             return Response(
                 {'error': f'Invalid role. Must be one of: {", ".join(valid_roles)}'},
@@ -553,6 +597,7 @@ class TenantUserManagementView(APIView):
             phone=phone,
             company=request.user.company,
             role=role,
+            granular_permissions=request.data.get('granular_permissions', {})
         )
 
         return Response({
@@ -607,12 +652,20 @@ class TenantUserManagementView(APIView):
 
         if 'role' in request.data:
             new_role = normalize_tenant_role(request.data['role'], default='')
-            if new_role not in ['trader', 'store']:
+            valid_roles = [
+                'tenant_admin', 'branch_manager', 'finance_manager', 'accountant',
+                'purchase_manager', 'auction_manager', 'inventory_manager',
+                'supervisor', 'sales_staff', 'trader', 'store', 'staff', 'viewer'
+            ]
+            if new_role not in valid_roles:
                 return Response(
-                    {'error': 'Invalid role'},
+                    {'error': f'Invalid role. Must be one of: {", ".join(valid_roles)}'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
             user_to_update.role = new_role
+
+        if 'granular_permissions' in request.data:
+            user_to_update.granular_permissions = request.data['granular_permissions']
 
         if request.data.get('reset_password'):
             import secrets
@@ -625,6 +678,12 @@ class TenantUserManagementView(APIView):
                 'message': 'Password reset successfully',
                 'temp_password': new_password,
             })
+
+        if 'is_suspended' in request.data:
+            user_to_update.is_suspended = request.data['is_suspended']
+
+        if 'granular_permissions' in request.data:
+            user_to_update.granular_permissions = request.data['granular_permissions']
 
         user_to_update.save()
 
@@ -733,3 +792,46 @@ class CustomProfileRedirectView(LoginRequiredMixin, RedirectView):
 
     def get_redirect_url(self):
         return "/api/auth/profile/"
+
+class DeviceSessionView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        from accounts.models import DeviceSession
+        sessions = DeviceSession.objects.filter(user=request.user)
+        payload = []
+        for s in sessions:
+            payload.append({
+                'id': s.id,
+                'ip_address': s.ip_address,
+                'user_agent': s.user_agent,
+                'device_type': s.device_type,
+                'location': s.location,
+                'last_activity': s.last_activity,
+                'is_current': request.session.session_key == s.session_key if hasattr(request, 'session') else False
+            })
+        return Response(payload)
+
+    def delete(self, request):
+        from accounts.models import DeviceSession
+        from django.contrib.sessions.models import Session
+        
+        session_id = request.data.get('session_id')
+        
+        if session_id == 'all':
+            devices = DeviceSession.objects.filter(user=request.user)
+            # Cannot accurately filter standard django sessions by user easily without this model,
+            # so we just delete all sessions tracked by DeviceSession
+            for device in devices:
+                if not hasattr(request, 'session') or device.session_key != request.session.session_key:
+                    Session.objects.filter(session_key=device.session_key).delete()
+                    device.delete()
+            return Response({'message': 'All other devices logged out.'})
+        
+        try:
+            device = DeviceSession.objects.get(id=session_id, user=request.user)
+            Session.objects.filter(session_key=device.session_key).delete()
+            device.delete()
+            return Response({'message': 'Device logged out.'})
+        except DeviceSession.DoesNotExist:
+            return Response({'error': 'Session not found'}, status=404)

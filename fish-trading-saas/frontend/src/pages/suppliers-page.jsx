@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { 
-  Users, Plus, Search, Phone, Mail, MapPin, 
-  Percent, Star, CreditCard, ArrowRight, Trash2, Edit2, AlertCircle 
+  Users, User, Plus, Search, Phone, Mail, MapPin, 
+  Briefcase, Percent, Star, CreditCard, ArrowRight, Trash2, Edit2, AlertCircle 
 } from "lucide-react";
 import Card from "@/components/ui/card";
 import Button from "@/components/ui/button";
 import Input from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { fetchSuppliers, createSupplier, updateSupplier, deleteSupplier } from "@/services/supplierService";
+import { usePermission } from "@/hooks/usePermission";
 import { useToast } from "@/components/shared/toast-provider";
 
 export default function SuppliersPage() {
@@ -17,6 +18,10 @@ export default function SuppliersPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState(null);
   const { push: toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { canEditForm, canViewFinancial, canDelete } = usePermission();
+  const isEditable = canEditForm("suppliers");
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Form states
   const [name, setName] = useState("");
@@ -36,7 +41,7 @@ export default function SuppliersPage() {
       const data = await fetchSuppliers();
       setSuppliers(data);
     } catch (e) {
-      toast({ message: "Failed to load suppliers.", variant: "error" });
+      toast({ message: e?.message || "Failed to load suppliers.", variant: "error" });
     } finally {
       setLoading(false);
     }
@@ -82,6 +87,7 @@ export default function SuppliersPage() {
       toast({ message: "Name and Phone are required fields.", variant: "error" });
       return;
     }
+    setIsSubmitting(true);
 
     const payload = {
       name,
@@ -107,18 +113,23 @@ export default function SuppliersPage() {
       setModalOpen(false);
       loadSuppliers();
     } catch (err) {
-      toast({ message: "Error saving supplier details.", variant: "error" });
+      toast({ message: err?.message || "Error saving supplier details.", variant: "error" });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to delete this supplier?")) return;
+    setIsDeleting(true);
     try {
       await deleteSupplier(id);
       toast({ message: "Supplier deleted." });
       loadSuppliers();
     } catch (e) {
-      toast({ message: "Failed to delete supplier.", variant: "error" });
+      toast({ message: e?.message || "Failed to delete supplier.", variant: "error" });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -160,7 +171,7 @@ export default function SuppliersPage() {
           <p className="text-xs font-bold uppercase tracking-wider text-textSecondary mb-1">Total Outstanding</p>
           <div className="flex items-center justify-between">
             <span className="text-2xl font-extrabold text-textPrimary">{new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(totalOutstanding)}</span>
-            <CreditCard className="h-5 w-5 text-amber-500 opacity-65" />
+            <CreditCard className="h-5 w-5 text-warning opacity-65" />
           </div>
         </Card>
         <Card>
@@ -241,7 +252,7 @@ export default function SuppliersPage() {
                       </span>
                     </td>
                     <td className="py-3.5 pr-4 text-right font-bold">
-                      <span className={Number(sup.outstanding_amount) > 0 ? "text-amber-500" : "text-success"}>
+                      <span className={Number(sup.outstanding_amount) > 0 ? "text-warning" : "text-success"}>
                         {new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(sup.outstanding_amount || 0)}
                       </span>
                     </td>
@@ -255,7 +266,7 @@ export default function SuppliersPage() {
                           <Edit2 size={14} />
                         </button>
                         <button
-                          onClick={() => handleDelete(sup.id)}
+                          onClick={() => handleDelete(sup.id)} disabled={isDeleting}
                           className="rounded-lg p-1.5 text-danger hover:bg-danger/10 transition-colors cursor-pointer"
                           title="Delete Supplier"
                         >
@@ -272,79 +283,133 @@ export default function SuppliersPage() {
       </Card>
 
       {/* Add/Edit Modal */}
+      
+      {/* Add/Edit Modal - Enterprise UI */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-xl">
-          <DialogHeader>
-            <DialogTitle>{editingSupplier ? "Edit Supplier Account" : "Register New Supplier"}</DialogTitle>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+          <DialogHeader className="px-6 py-4 border-b border-border bg-surface/50">
+            <DialogTitle className="text-xl font-extrabold flex items-center gap-2">
+              <Users size={20} className="text-primary" />
+              {editingSupplier ? "Edit Supplier Account" : "Register New Supplier"}
+            </DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-textSecondary">Supplier / Vendor Name *</label>
-                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Mangalore Fisheries" required />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-textSecondary">Mobile Number *</label>
-                <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="e.g. 9876543210" required />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-textSecondary">Email Address</label>
-                <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="e.g. contact@supplier.com" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-textSecondary">Place of Origin / Harbor</label>
-                <Input value={origin} onChange={(e) => setOrigin(e.target.value)} placeholder="e.g. Kochi Jetty" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-textSecondary">Supplier Type</label>
-                <select 
-                  value={supplierType} 
-                  onChange={(e) => setSupplierType(e.target.value)}
-                  className="h-10 w-full rounded-xl border border-border bg-surface px-3 text-sm text-textPrimary outline-none focus:border-primary"
-                >
-                  <option value="distributor">Distributor</option>
-                  <option value="boat_owner">Boat Owner</option>
-                  <option value="cooperative">Cooperative</option>
-                  <option value="agent">Broker/Agent</option>
-                </select>
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-textSecondary">Commission Rate (%)</label>
-                <Input type="number" step="0.1" value={commissionRate} onChange={(e) => setCommissionRate(e.target.value)} placeholder="e.g. 2.5" />
-              </div>
+
+          <div className="flex-1 overflow-y-auto p-6 bg-background space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              
+              {/* Section 1: Basic Information */}
+              <Card className="p-5 shadow-sm border-border/60">
+                <h3 className="text-sm font-bold text-textPrimary flex items-center gap-2 mb-4">
+                  <User size={16} className="text-primary" /> Basic Information
+                </h3>
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-extrabold text-textSecondary uppercase tracking-wider">Supplier / Vendor Name *</label>
+                    <Input disabled={!isEditable} className="h-11 bg-surface" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Mangalore Fisheries" required />
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-extrabold text-textSecondary uppercase tracking-wider">Mobile Number *</label>
+                      <Input disabled={!isEditable} className="h-11 bg-surface" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="e.g. 9876543210" required />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-extrabold text-textSecondary uppercase tracking-wider">Email Address</label>
+                      <Input disabled={!isEditable} type="email" className="h-11 bg-surface" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="e.g. contact@supplier.com" />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-extrabold text-textSecondary uppercase tracking-wider">Harbor Address / Base Office</label>
+                    <textarea disabled={!isEditable} 
+                      value={address} 
+                      onChange={(e) => setAddress(e.target.value)} 
+                      rows="2"
+                      placeholder="Complete harbor details..." 
+                      className="w-full rounded-lg border border-border bg-surface px-4 py-3 text-sm text-textPrimary outline-none focus:border-primary transition-all min-h-[60px]"
+                    />
+                  </div>
+                </div>
+              </Card>
+
+              {/* Section 2: Business & Financials */}
+              <Card className="p-5 shadow-sm border-border/60">
+                <h3 className="text-sm font-bold text-textPrimary flex items-center gap-2 mb-4">
+                  <Briefcase size={16} className="text-primary" /> Business Operations
+                </h3>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-extrabold text-textSecondary uppercase tracking-wider">Supplier Type</label>
+                      <select disabled={!isEditable} 
+                        value={supplierType} 
+                        onChange={(e) => setSupplierType(e.target.value)}
+                        className="h-11 w-full rounded-lg border border-border bg-surface px-3 text-sm text-textPrimary outline-none focus:border-primary transition-all"
+                      >
+                        <option value="distributor">Distributor</option>
+                        <option value="boat_owner">Boat Owner</option>
+                        <option value="cooperative">Cooperative</option>
+                        <option value="agent">Broker/Agent</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-extrabold text-textSecondary uppercase tracking-wider">Place of Origin / Harbor</label>
+                      <Input disabled={!isEditable} className="h-11 bg-surface" value={origin} onChange={(e) => setOrigin(e.target.value)} placeholder="e.g. Kochi Jetty" />
+                    </div>
+                  </div>
+
+                  <div className="p-4 rounded-xl bg-primary/5 border border-primary/10 mt-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-extrabold text-primary uppercase tracking-wider flex items-center gap-1">
+                        <Percent size={12} /> Standard Commission Rate (%)
+                      </label>
+                      <Input disabled={!isEditable} type="number" step="0.1" className="h-11 bg-surface border-primary/30 focus:border-primary" value={commissionRate} onChange={(e) => setCommissionRate(e.target.value)} placeholder="e.g. 2.5" />
+                      <p className="text-[10px] text-textSecondary mt-1">Default percentage applied to consignment sales from this supplier.</p>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+              
             </div>
 
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-textSecondary">Harbor Address / Base Office</label>
-              <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Complete harbor details..." />
-            </div>
-
-            {/* Bank details section */}
-            <div className="border-t border-border pt-3 mt-4">
-              <p className="text-xs font-bold uppercase tracking-wider text-primary mb-3">Payout Bank Details</p>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-textSecondary">Bank Name</label>
-                  <Input value={bankName} onChange={(e) => setBankName(e.target.value)} placeholder="e.g. SBI" />
+            {/* Section 3: Payout Bank Details */}
+            <Card className="p-5 shadow-sm border-border/60">
+              <h3 className="text-sm font-bold text-textPrimary flex items-center gap-2 mb-4">
+                <CreditCard size={16} className="text-primary" /> Payout Bank Details
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-extrabold text-textSecondary uppercase tracking-wider">Bank Name</label>
+                  <Input disabled={!isEditable} className="h-11 bg-surface" value={bankName} onChange={(e) => setBankName(e.target.value)} placeholder="e.g. SBI" />
                 </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-textSecondary">Account Number</label>
-                  <Input value={bankAccount} onChange={(e) => setBankAccount(e.target.value)} placeholder="Account Number" />
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-extrabold text-textSecondary uppercase tracking-wider">Account Number</label>
+                  <Input disabled={!isEditable} className="h-11 bg-surface" value={bankAccount} onChange={(e) => setBankAccount(e.target.value)} placeholder="Account Number" />
                 </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-textSecondary">Bank IFSC Code</label>
-                  <Input value={bankIfsc} onChange={(e) => setBankIfsc(e.target.value)} placeholder="IFSC Code" />
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-extrabold text-textSecondary uppercase tracking-wider">Bank IFSC Code</label>
+                  <Input disabled={!isEditable} className="h-11 bg-surface" value={bankIfsc} onChange={(e) => setBankIfsc(e.target.value)} placeholder="IFSC Code" />
                 </div>
               </div>
-            </div>
+            </Card>
 
-            <DialogFooter className="mt-6 border-t border-border pt-4">
-              <Button type="button" variant="ghost" onClick={() => setModalOpen(false)}>Cancel</Button>
-              <Button type="submit">{editingSupplier ? "Save Changes" : "Create Supplier"}</Button>
-            </DialogFooter>
-          </form>
+          </div>
+
+          <DialogFooter className="px-6 py-4 border-t border-border bg-surface/50">
+            <div className="flex w-full justify-end gap-3">
+              <Button type="button" variant="outline" onClick={() => setModalOpen(false)}>
+                {isEditable ? "Cancel" : "Close"}
+              </Button>
+              {isEditable && (
+                <Button onClick={handleSubmit} loading={isSubmitting} disabled={!name.trim() || !phone.trim()} className="px-8 shadow-sm">
+                  {editingSupplier ? "Save Changes" : "Create Supplier"}
+                </Button>
+              )}
+            </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
+
     </div>
   );
 }

@@ -141,3 +141,19 @@ export const deletePurchaseBatch = async (id) => {
   await apiClient.delete(`/purchase-batches/${id}/`);
   return true;
 };
+
+export const getPurchaseBatch = async (id) => {
+  if (config.useMocks) {
+    const batch = purchaseMockData.find(b => b.id === parseInt(id));
+    return batch ? parseBatch(batch) : null;
+  }
+  const response = await apiClient.get(`/purchase-batches/${id}/`);
+  return parseBatch(response.data);
+};
+
+export const changePurchaseState = async (id, state, notes = "") => {
+  if (config.useMocks) return null;
+  const response = await apiClient.post(`/purchase-batches/${id}/change_state/`, { state, notes });
+  return parseBatch(response.data);
+};
+

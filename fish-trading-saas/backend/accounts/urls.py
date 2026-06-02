@@ -2,6 +2,7 @@ from django.urls import path
 from django.contrib.auth import views as auth_views
 from .authentication import LogoutView
 from .views import (
+    DeviceSessionView,
     UserRegistrationView,
     UserProfileView,
     UserListView,
@@ -46,4 +47,7 @@ urlpatterns = [
     path("auth/2fa/setup/", TwoFactorSetupView.as_view(), name="2fa-setup"),
     path("auth/2fa/verify/", TwoFactorVerifyView.as_view(), name="2fa-verify"),
     path("auth/2fa/disable/", TwoFactorDisableView.as_view(), name="2fa-disable"),
+]
+urlpatterns += [
+    path("auth/sessions/", DeviceSessionView.as_view(), name="user-sessions"),
 ]

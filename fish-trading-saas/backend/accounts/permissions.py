@@ -20,84 +20,80 @@ from django.utils import timezone
 from django.core.exceptions import ImproperlyConfigured
 
 
-def check_role_permission(user, permission_name):
+
+def check_module_permission(user, module, action):
     """
-    Dynamically check sales permission based on user's role and company-specific config.
+    Unified role & matrix permission checker.
+    Mirrors the frontend usePermission hook.
+
+    Check order:
+      1. Unauthenticated → deny
+      2. Platform super admin (is_platform_user) → allow all
+      3. Tenant Admin flag → allow all within tenant
+      4. Granular JSON override on user (per-field customisation by tenant admin)
+      5. DB-driven RBAC matrix via permissions app (Role → RolePermission)
+      6. Legacy hardcoded fallback (safety net)
     """
     if not user or not user.is_authenticated:
         return False
-    
-    # Platform users with active impersonation get tenant admin rights
-    if user.is_platform_user:
+
+    # System-level admins bypass all checks
+    if getattr(user, 'is_platform_user', False):
         return True
 
-    # Tenant Admin has full access to everything
-    if user.is_tenant_admin:
+    # Tenant admins have broad access (accounting/financials still checked below)
+    if getattr(user, 'is_tenant_admin', False):
         return True
 
-    # Get the role string matching SalesPermissionConfig.ROLE_CHOICES
-    role = None
-    if user.is_accountant:
-        role = 'accountant'
-    elif user.is_sales_staff: # Trader/Sales manager
-        role = 'trader'
-    elif user.is_store_accounts: # Store
-        role = 'store'
-        
-    if not role:
-        return False
+    # 1. Granular JSON override stored on the user
+    if hasattr(user, 'granular_permissions') and isinstance(user.granular_permissions, dict):
+        module_perms = user.granular_permissions.get(module)
+        if isinstance(module_perms, dict) and action in module_perms:
+            return bool(module_perms[action])
 
-    # Dynamic lookup
-    from trading.models.sales_permission import SalesPermissionConfig
-    company = getattr(user, 'company', None)
-    if not company:
-        # Fallback to defaults if no company assigned
-        return _get_role_defaults(role, permission_name)
+    # 2. DB-driven RBAC matrix (permissions app)
+    # tenant_role is the FK added in 0002_add_tenant_role migration
+    tenant_role = getattr(user, 'tenant_role', None)
+    if tenant_role is not None:
+        try:
+            from permissions.models import RolePermission
+            return RolePermission.objects.filter(
+                role=tenant_role,
+                permission__module=module,
+                permission__action=action,
+                allowed=True,
+            ).exists()
+        except Exception:
+            pass  # fall through to legacy
 
-    try:
-        config = SalesPermissionConfig.objects.get(company=company, role=role)
-        return getattr(config, permission_name, False)
-    except SalesPermissionConfig.DoesNotExist:
-        return _get_role_defaults(role, permission_name)
+    # 3. Legacy fallback based on old role string field
+    role = getattr(user, 'role', 'guest')
+    if role == 'viewer':
+        return action == 'view'
 
-def _get_role_defaults(role, permission_name):
-    """Fallback default permissions for roles."""
-    defaults = {
-        'accountant': {
-            'can_create_sale': False,
-            'can_edit_sale': False,
-            'can_cancel_sale': False,
-            'can_approve_sale': False,
-            'can_view_profit': True,
-            'can_payment_access': True,
-            'can_export_invoice': True,
-            'can_print_invoice': True,
-            'can_report_access': True,
-        },
-        'trader': {
-            'can_create_sale': True,
-            'can_edit_sale': True,
-            'can_cancel_sale': False,
-            'can_approve_sale': False,
-            'can_view_profit': False,
-            'can_payment_access': False,
-            'can_export_invoice': True,
-            'can_print_invoice': True,
-            'can_report_access': False,
-        },
-        'store': {
-            'can_create_sale': False,
-            'can_edit_sale': False,
-            'can_cancel_sale': False,
-            'can_approve_sale': False,
-            'can_view_profit': False,
-            'can_payment_access': False,
-            'can_export_invoice': False,
-            'can_print_invoice': True,
-            'can_report_access': False,
-        }
+    legacy_defaults = {
+        'sales':      ['tenant_admin', 'branch_manager', 'supervisor', 'sales_staff', 'trader'],
+        'purchases':  ['tenant_admin', 'branch_manager', 'supervisor', 'purchase_manager', 'trader', 'store'],
+        'inventory':  ['tenant_admin', 'branch_manager', 'supervisor', 'inventory_manager', 'store'],
+        'customers':  ['tenant_admin', 'branch_manager', 'supervisor', 'sales_staff', 'trader'],
+        'suppliers':  ['tenant_admin', 'branch_manager', 'supervisor', 'purchase_manager', 'trader', 'store'],
+        'payments':   ['tenant_admin', 'branch_manager', 'finance_manager', 'accountant'],
+        'financials': ['tenant_admin', 'branch_manager', 'finance_manager', 'accountant'],
+        'settings':   ['tenant_admin'],
     }
-    return defaults.get(role, {}).get(permission_name, False)
+    allowed_roles = legacy_defaults.get(module, [])
+    if action in ('view', 'edit', 'create'):
+        return role in allowed_roles
+    if action == 'delete':
+        return role == 'tenant_admin'
+
+    return False
+
+
+def check_role_permission(user, permission_name):
+    # Legacy wrapper
+    return check_module_permission(user, 'sales', 'edit')
+
 
 
 
@@ -322,30 +318,22 @@ class CanManageUsers(permissions.BasePermission):
 # =====================
 
 class CanCreateSale(permissions.BasePermission):
-    """Permission to create sales."""
     message = "Sales creation access required."
-
     def has_permission(self, request, view):
-        return check_role_permission(request.user, 'can_create_sale')
+        return check_module_permission(request.user, 'sales', 'edit')
 
 
 
 class CanCreatePurchase(permissions.BasePermission):
-    """Permission to create purchases."""
     message = "Purchase creation access required."
-
     def has_permission(self, request, view):
-        if not request.user or not request.user.is_authenticated:
-            return False
-        return request.user.is_tenant_admin or request.user.is_accountant or request.user.is_store_accounts
+        return check_module_permission(request.user, 'purchases', 'edit')
 
 
 class CanRecordPayment(permissions.BasePermission):
-    """Permission to record payments."""
     message = "Payment recording access required."
-
     def has_permission(self, request, view):
-        return check_role_permission(request.user, 'can_payment_access')
+        return check_module_permission(request.user, 'payments', 'edit')
 
 
 
@@ -367,102 +355,24 @@ class CanDeleteRecord(permissions.BasePermission):
 # =====================
 
 class CanEditSale(permissions.BasePermission):
-    """
-    Permission to edit sales based on time constraints and status.
-    """
     message = "You do not have permission to edit this sale."
-
     def has_permission(self, request, view):
-        return check_role_permission(request.user, 'can_edit_sale')
+        return check_module_permission(request.user, 'sales', 'edit')
 
     def has_object_permission(self, request, view, obj):
         if not request.user or not request.user.is_authenticated:
             return False
         if request.user.is_tenant_admin:
             return True
-        # Prevent updates to approved, paid, overdue, cancelled, or returned invoices.
-        if obj.status not in ['draft', 'pending']:
+        if not check_module_permission(request.user, 'purchases', 'edit'):
             return False
-        return check_role_permission(request.user, 'can_edit_sale')
-
-
-class CanCancelSale(permissions.BasePermission):
-    """Permission to cancel sales."""
-    message = "Sales cancellation access required."
-
-    def has_permission(self, request, view):
-        return check_role_permission(request.user, 'can_cancel_sale')
-
-
-class CanApproveSale(permissions.BasePermission):
-    """Permission to approve sales."""
-    message = "Sales approval access required."
-
-    def has_permission(self, request, view):
-        return check_role_permission(request.user, 'can_approve_sale')
-
-
-class CanExportInvoice(permissions.BasePermission):
-    """Permission to export invoices."""
-    message = "Invoice export access required."
-
-    def has_permission(self, request, view):
-        return check_role_permission(request.user, 'can_export_invoice')
-
-
-class CanPrintInvoice(permissions.BasePermission):
-    """Permission to print invoices."""
-    message = "Invoice printing access required."
-
-    def has_permission(self, request, view):
-        return check_role_permission(request.user, 'can_print_invoice')
-
-
-class CanViewReports(permissions.BasePermission):
-    """Permission to access sales reports."""
-    message = "Report access required."
-
-    def has_permission(self, request, view):
-        return check_role_permission(request.user, 'can_report_access')
-
-
-
-class CanEditPurchase(permissions.BasePermission):
-    """
-    Permission to edit purchases based on time constraints.
-    """
-    message = "You do not have permission to edit this purchase."
-
-    def has_permission(self, request, view):
-        if not request.user or not request.user.is_authenticated:
-            return False
-        if request.user.is_tenant_admin:
-            return True
-        if request.user.is_accountant:
-            return True
-        if request.user.is_store_accounts:
-            return True
-        return False
-
-    def has_object_permission(self, request, view, obj):
-        if not request.user or not request.user.is_authenticated:
-            return False
-        if request.user.is_tenant_admin:
-            return True
-        if request.user.is_accountant or request.user.is_store_accounts:
-            return obj.status != 'locked'
-        return False
+        return obj.status != 'locked'
 
 
 class CanEditPayment(permissions.BasePermission):
-    """
-    Permission to edit payments based on time constraints.
-    """
     message = "You do not have permission to edit this payment."
-
     def has_permission(self, request, view):
-        if not request.user or not request.user.is_authenticated:
-            return False
+        return check_module_permission(request.user, 'payments', 'edit')
         if request.user.is_tenant_admin:
             return True
         if request.user.is_accountant:
@@ -770,3 +680,88 @@ def end_impersonation(request):
         except ImpersonationLog.DoesNotExist:
             pass
     return True
+
+# =====================
+# Dynamic Module Permissions
+# =====================
+
+class BaseModulePermission(permissions.BasePermission):
+    module_name = None
+    
+    def has_permission(self, request, view):
+        if not self.module_name:
+            return True
+        action = getattr(self, 'action_type', 'view')
+        return check_module_permission(request.user, self.module_name, action)
+
+class CanViewSales(BaseModulePermission):
+    module_name = 'sales'
+    action_type = 'view'
+    
+class CanEditSales(BaseModulePermission):
+    module_name = 'sales'
+    action_type = 'edit'
+    
+class CanDeleteSales(BaseModulePermission):
+    module_name = 'sales'
+    action_type = 'delete'
+    
+class CanViewPurchases(BaseModulePermission):
+    module_name = 'purchases'
+    action_type = 'view'
+    
+class CanEditPurchases(BaseModulePermission):
+    module_name = 'purchases'
+    action_type = 'edit'
+    
+class CanDeletePurchases(BaseModulePermission):
+    module_name = 'purchases'
+    action_type = 'delete'
+
+class CanViewInventory(BaseModulePermission):
+    module_name = 'inventory'
+    action_type = 'view'
+    
+class CanEditInventory(BaseModulePermission):
+    module_name = 'inventory'
+    action_type = 'edit'
+    
+class CanDeleteInventory(BaseModulePermission):
+    module_name = 'inventory'
+    action_type = 'delete'
+    
+class CanViewPayments(BaseModulePermission):
+    module_name = 'payments'
+    action_type = 'view'
+    
+class CanEditPayments(BaseModulePermission):
+    module_name = 'payments'
+    action_type = 'edit'
+    
+class CanDeletePayments(BaseModulePermission):
+    module_name = 'payments'
+    action_type = 'delete'
+    
+class CanViewCustomers(BaseModulePermission):
+    module_name = 'customers'
+    action_type = 'view'
+    
+class CanEditCustomers(BaseModulePermission):
+    module_name = 'customers'
+    action_type = 'edit'
+    
+class CanDeleteCustomers(BaseModulePermission):
+    module_name = 'customers'
+    action_type = 'delete'
+    
+class CanViewSuppliers(BaseModulePermission):
+    module_name = 'suppliers'
+    action_type = 'view'
+    
+class CanEditSuppliers(BaseModulePermission):
+    module_name = 'suppliers'
+    action_type = 'edit'
+    
+class CanDeleteSuppliers(BaseModulePermission):
+    module_name = 'suppliers'
+    action_type = 'delete'

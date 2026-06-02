@@ -1,6 +1,6 @@
 from django.db import transaction
 from django.core.exceptions import ValidationError
-from trading.models import PurchaseBatch
+from trading.models import PurchaseBatch, PurchaseBatchHistory
 from services.trading.inventory_service import InventoryService
 from services.base import BaseService
 
@@ -18,6 +18,15 @@ class PurchaseBatchService(BaseService):
         # Trigger model validation and calculation
         batch.full_clean()
         batch.save()
+        
+        # Track history
+        PurchaseBatchHistory.objects.create(
+            batch=batch,
+            changed_by=self.user,
+            action='created',
+            changes={},
+            notes="Batch created"
+        )
         
         # Now automatically create inventory for this batch
         inventory_service = InventoryService(user=self.user, request=getattr(self, 'request', None))
@@ -47,12 +56,25 @@ class PurchaseBatchService(BaseService):
         old_packages = instance.number_of_packages
         old_weight = instance.total_weight
         
-        # Update model fields
+        # Keep track of changes
+        changes = {}
         for attr, value in validated_data.items():
+            old_val = getattr(instance, attr)
+            if old_val != value:
+                changes[attr] = {'old': str(old_val), 'new': str(value)}
             setattr(instance, attr, value)
             
         instance.full_clean()
         instance.save()
+        
+        if changes:
+            PurchaseBatchHistory.objects.create(
+                batch=instance,
+                changed_by=self.user,
+                action='updated',
+                changes=changes,
+                notes="Batch updated"
+            )
         
         # Sync inventory if necessary
         if instance.number_of_packages != old_packages:

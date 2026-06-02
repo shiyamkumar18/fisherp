@@ -79,6 +79,17 @@ class PurchaseBatch(models.Model):
         ('paid', 'Fully Paid'),
         ('cancelled', 'Cancelled'),
     ], default='pending')
+    
+    WORKFLOW_STATE_CHOICES = [
+        ('draft', 'Draft'),
+        ('submitted', 'Submitted'),
+        ('approved', 'Approved'),
+        ('stock_posted', 'Stock Posted'),
+        ('financially_posted', 'Financially Posted'),
+        ('cancelled', 'Cancelled'),
+        ('reopened', 'Reopened'),
+    ]
+    workflow_state = models.CharField(max_length=25, choices=WORKFLOW_STATE_CHOICES, default='draft')
     notes = models.TextField(blank=True, null=True)
     quality_grade = models.CharField(max_length=20, blank=True, null=True,
                                      help_text="Quality grade of fish (A, B, C, etc.)")
@@ -235,3 +246,16 @@ class PurchaseBatch(models.Model):
 
     def get_cost_per_package(self):
         return self.cost_per_package
+
+
+class PurchaseBatchHistory(models.Model):
+    batch = models.ForeignKey(PurchaseBatch, on_delete=models.CASCADE, related_name='history_logs')
+    changed_by = models.ForeignKey('accounts.User', on_delete=models.SET_NULL, null=True, blank=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    action = models.CharField(max_length=50, help_text="Action like 'created', 'updated', 'state_change'")
+    changes = models.JSONField(default=dict, help_text="Dictionary of changed fields: {field: {old: val, new: val}}")
+    notes = models.TextField(blank=True, null=True)
+
+    class Meta:
+        ordering = ['-timestamp']
+

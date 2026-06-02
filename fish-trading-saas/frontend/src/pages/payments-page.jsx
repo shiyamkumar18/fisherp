@@ -384,25 +384,25 @@ export default function PaymentsPage() {
           
           {/* Left Side 65%: Form */}
           <div className="w-full sm:w-[65%] flex flex-col bg-white">
-            <DialogHeader className="px-8 py-6 border-b border-slate-100 bg-white/80 backdrop-blur-md sticky top-0 z-10">
-              <DialogTitle className="text-2xl font-black tracking-tight flex items-center gap-3 text-slate-800">
-                <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl">
+            <DialogHeader className="px-8 py-6 border-b border-border/50 bg-white/80 backdrop-blur-md sticky top-0 z-10">
+              <DialogTitle className="text-2xl font-black tracking-tight flex items-center gap-3 text-textPrimary">
+                <div className="p-2.5 bg-primary/10 text-primary rounded-xl">
                   <CreditCard size={22} strokeWidth={2.5} />
                 </div>
                 Log Financial Transaction
               </DialogTitle>
-              <p className="text-sm font-medium text-slate-500 mt-2 pl-14">Draft a new collection or payout, allocate to pending invoices, and process securely.</p>
+              <p className="text-sm font-medium text-textSecondary mt-2 pl-14">Draft a new collection or payout, allocate to pending invoices, and process securely.</p>
             </DialogHeader>
             
             <div className="flex-1 overflow-y-auto p-8 space-y-10 custom-scrollbar">
               
               {/* Type Toggle - Premium Segmented Control */}
               <div className="space-y-4">
-                <div className="flex bg-slate-100/80 p-1.5 rounded-2xl max-w-md w-full relative isolation">
+                <div className="flex bg-hover/80 p-1.5 rounded-2xl max-w-md w-full relative isolation">
                   <button
                     type="button"
                     onClick={() => handleTypeChange("inbound")}
-                    className={`flex-1 py-3 text-sm font-bold rounded-xl transition-all duration-300 relative z-10 ${paymentType === "inbound" ? "text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                    className={`flex-1 py-3 text-sm font-bold rounded-xl transition-all duration-300 relative z-10 ${paymentType === "inbound" ? "text-primaryHover shadow-sm" : "text-textSecondary hover:text-textPrimary"}`}
                   >
                     {paymentType === "inbound" && <div className="absolute inset-0 bg-white rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] -z-10"></div>}
                     <ArrowDownLeft size={18} className="inline mr-2 opacity-80" strokeWidth={2.5} /> Inbound Collection
@@ -410,49 +410,49 @@ export default function PaymentsPage() {
                   <button
                     type="button"
                     onClick={() => handleTypeChange("outbound")}
-                    className={`flex-1 py-3 text-sm font-bold rounded-xl transition-all duration-300 relative z-10 ${paymentType === "outbound" ? "text-rose-700 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                    className={`flex-1 py-3 text-sm font-bold rounded-xl transition-all duration-300 relative z-10 ${paymentType === "outbound" ? "text-rose-700 shadow-sm" : "text-textSecondary hover:text-textPrimary"}`}
                   >
                     {paymentType === "outbound" && <div className="absolute inset-0 bg-white rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] -z-10"></div>}
                     <ArrowUpRight size={18} className="inline mr-2 opacity-80" strokeWidth={2.5} /> Outbound Payout
                   </button>
                 </div>
-                <p className="text-xs font-semibold text-slate-500 pl-2">
+                <p className="text-xs font-semibold text-textSecondary pl-2">
                   {paymentType === "inbound" ? "Inbound: Collect customer money" : "Outbound: Supplier payout"}
                 </p>
               </div>
 
               {/* Step 1: Party Linkage */}
               <div className="space-y-5">
-                <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-full bg-slate-900 text-white flex items-center justify-center text-[10px]">1</span> 
+                <h3 className="text-sm font-black text-textPrimary uppercase tracking-widest flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-card text-white flex items-center justify-center text-[10px]">1</span> 
                   Select Counterparty
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pl-8">
                   <div className="space-y-2 relative group">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">
-                      {paymentType === 'inbound' ? 'Customer' : 'Supplier'} <span className="text-rose-500">*</span>
+                    <label className="text-xs font-bold text-textSecondary uppercase tracking-wider ml-1">
+                      {paymentType === 'inbound' ? 'Customer' : 'Supplier'} <span className="text-danger">*</span>
                     </label>
                     <div className="relative">
-                      <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={18} />
+                      <User className="absolute left-4 top-1/2 -translate-y-1/2 text-textSecondary/70 group-focus-within:text-primary transition-colors" size={18} />
                       <select 
                         value={linkedPartyId}
                         onChange={(e) => setLinkedPartyId(e.target.value)}
-                        className="h-14 w-full rounded-xl border border-slate-200 bg-slate-50/50 pl-11 pr-4 text-sm font-bold text-slate-800 outline-none focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 transition-all appearance-none cursor-pointer"
+                        className="h-14 w-full rounded-xl border border-border bg-card/50 pl-11 pr-4 text-sm font-bold text-textPrimary outline-none focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all appearance-none cursor-pointer"
                       >
                         <option value="">-- Choose Profile --</option>
                         {(paymentType === 'inbound' ? buyers : suppliers).map(p => (
                           <option key={p.id} value={p.id}>{p.name}</option>
                         ))}
                       </select>
-                      <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">▼</div>
+                      <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-textSecondary/70">▼</div>
                     </div>
                   </div>
                   
                   {linkedPartyId && (
                     <div className="space-y-2 relative group animate-in fade-in slide-in-from-bottom-2 duration-300">
-                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Smart Document Link</label>
+                      <label className="text-xs font-bold text-textSecondary uppercase tracking-wider ml-1">Smart Document Link</label>
                       <div className="relative">
-                        <File className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={18} />
+                        <File className="absolute left-4 top-1/2 -translate-y-1/2 text-textSecondary/70 group-focus-within:text-primary transition-colors" size={18} />
                         <select 
                           value={linkedDocId}
                           onChange={(e) => {
@@ -462,7 +462,7 @@ export default function PaymentsPage() {
                               if(doc) setAmount(parseFloat(doc.pending_amount));
                             }
                           }}
-                          className="h-14 w-full rounded-xl border border-slate-200 bg-slate-50/50 pl-11 pr-4 text-sm font-bold text-slate-800 outline-none focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 transition-all appearance-none cursor-pointer"
+                          className="h-14 w-full rounded-xl border border-border bg-card/50 pl-11 pr-4 text-sm font-bold text-textPrimary outline-none focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all appearance-none cursor-pointer"
                         >
                           <option value="">-- Leave Unallocated (Advance) --</option>
                           {pendingDocs.map(d => (
@@ -471,7 +471,7 @@ export default function PaymentsPage() {
                             </option>
                           ))}
                         </select>
-                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">▼</div>
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-textSecondary/70">▼</div>
                       </div>
                     </div>
                   )}
@@ -480,33 +480,33 @@ export default function PaymentsPage() {
 
               {/* Step 2: Financial Details */}
               <div className="space-y-5">
-                <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-full bg-slate-900 text-white flex items-center justify-center text-[10px]">2</span> 
+                <h3 className="text-sm font-black text-textPrimary uppercase tracking-widest flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-card text-white flex items-center justify-center text-[10px]">2</span> 
                   Payment Specifics
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-6 pl-8">
                   <div className="space-y-3 group md:col-span-2">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Amount (INR) <span className="text-rose-500">*</span></label>
+                    <label className="text-xs font-bold text-textSecondary uppercase tracking-wider ml-1">Amount (INR) <span className="text-danger">*</span></label>
                     <div className="relative max-w-md">
-                      <span className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 font-extrabold text-xl group-focus-within:text-indigo-500">₹</span>
+                      <span className="absolute left-5 top-1/2 -translate-y-1/2 text-textSecondary/70 font-extrabold text-xl group-focus-within:text-primary">₹</span>
                       <Input 
-                        className={`h-16 pl-10 bg-slate-50/50 border-slate-200 font-black text-3xl text-slate-800 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 rounded-xl transition-all ${linkedDocId && amount > parseFloat(pendingDocs.find(d => String(d.id) === linkedDocId)?.pending_amount || Infinity) ? 'border-rose-500 focus:border-rose-500 focus:ring-rose-500/20 text-rose-600' : ''}`} 
+                        className={`h-16 pl-10 bg-card/50 border-border font-black text-3xl text-textPrimary focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/10 rounded-xl transition-all ${linkedDocId && amount > parseFloat(pendingDocs.find(d => String(d.id) === linkedDocId)?.pending_amount || Infinity) ? 'border-danger focus:border-danger focus:ring-danger/20 text-danger' : ''}`} 
                         type="number" step="0.01" value={amount} onChange={(e) => setAmount(Math.max(0, parseFloat(e.target.value) || 0))} required 
                       />
                     </div>
                     {linkedDocId && amount > parseFloat(pendingDocs.find(d => String(d.id) === linkedDocId)?.pending_amount || Infinity) && (
-                      <p className="text-xs font-bold text-rose-500 flex items-center gap-1"><AlertCircle size={14}/> Amount exceeds the outstanding balance.</p>
+                      <p className="text-xs font-bold text-danger flex items-center gap-1"><AlertCircle size={14}/> Amount exceeds the outstanding balance.</p>
                     )}
                     {linkedPartyId && pendingDocs.length > 0 && (
                       <div className="flex gap-2">
-                        <button type="button" onClick={() => setAmount(pendingDocs.reduce((sum, d) => sum + parseFloat(d.pending_amount), 0))} className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition-colors">Full Due</button>
-                        <button type="button" onClick={() => setAmount(pendingDocs.reduce((sum, d) => sum + parseFloat(d.pending_amount), 0) / 2)} className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition-colors">50%</button>
+                        <button type="button" onClick={() => setAmount(pendingDocs.reduce((sum, d) => sum + parseFloat(d.pending_amount), 0))} className="px-3 py-1 bg-hover hover:bg-border text-textPrimary text-xs font-bold rounded-lg transition-colors">Full Due</button>
+                        <button type="button" onClick={() => setAmount(pendingDocs.reduce((sum, d) => sum + parseFloat(d.pending_amount), 0) / 2)} className="px-3 py-1 bg-hover hover:bg-border text-textPrimary text-xs font-bold rounded-lg transition-colors">50%</button>
                       </div>
                     )}
                   </div>
                   
                   <div className="space-y-3 group md:col-span-2">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Method <span className="text-rose-500">*</span></label>
+                    <label className="text-xs font-bold text-textSecondary uppercase tracking-wider ml-1">Method <span className="text-danger">*</span></label>
                     <div className="flex flex-wrap gap-3">
                       {[
                         { id: 'bank_transfer', label: 'Bank Transfer' },
@@ -519,7 +519,7 @@ export default function PaymentsPage() {
                           key={method.id}
                           type="button"
                           onClick={() => setPaymentMode(method.id)}
-                          className={`px-4 py-2.5 rounded-xl border text-sm font-bold transition-all ${paymentMode === method.id ? 'bg-indigo-50 border-indigo-600 text-indigo-700 ring-1 ring-indigo-600' : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-indigo-300'}`}
+                          className={`px-4 py-2.5 rounded-xl border text-sm font-bold transition-all ${paymentMode === method.id ? 'bg-primary/10 border-primary text-primaryHover ring-1 ring-primary' : 'bg-card border-border text-textSecondary hover:border-indigo-300'}`}
                         >
                           {method.label}
                         </button>
@@ -528,47 +528,47 @@ export default function PaymentsPage() {
                   </div>
 
                   <div className="space-y-2 group">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Value Date <span className="text-rose-500">*</span></label>
-                    <Input className="h-14 bg-slate-50/50 border-slate-200 font-bold text-slate-800 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 rounded-xl transition-all px-4" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+                    <label className="text-xs font-bold text-textSecondary uppercase tracking-wider ml-1">Value Date <span className="text-danger">*</span></label>
+                    <Input className="h-14 bg-card/50 border-border font-bold text-textPrimary focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/10 rounded-xl transition-all px-4" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
                   </div>
                   
                   <div className="space-y-2 group">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Reference ID {paymentMode !== 'cash' && <span className="text-rose-500">*</span>}</label>
+                    <label className="text-xs font-bold text-textSecondary uppercase tracking-wider ml-1">Reference ID {paymentMode !== 'cash' && <span className="text-danger">*</span>}</label>
                     <Input 
-                      className={`h-14 bg-slate-50/50 border-slate-200 font-bold text-slate-800 placeholder:font-medium placeholder:text-slate-400 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 rounded-xl transition-all px-4 ${paymentMode !== 'cash' && !refNo.trim() ? 'border-amber-300 focus:border-amber-500' : ''}`} 
+                      className={`h-14 bg-card/50 border-border font-bold text-textPrimary placeholder:font-medium placeholder:text-textSecondary/70 focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/10 rounded-xl transition-all px-4 ${paymentMode !== 'cash' && !refNo.trim() ? 'border-amber-300 focus:border-warning' : ''}`} 
                       value={refNo} 
                       onChange={(e) => setRefNo(e.target.value)} 
                       placeholder="UTR, Cheque #, Txn ID..." 
                     />
                     {paymentMode !== 'cash' && !refNo.trim() && (
-                      <p className="text-xs font-bold text-amber-600 flex items-center gap-1"><AlertCircle size={14}/> Required for this payment method.</p>
+                      <p className="text-xs font-bold text-warning flex items-center gap-1"><AlertCircle size={14}/> Required for this payment method.</p>
                     )}
                   </div>
                   
                   <div className="space-y-2 md:col-span-2 group">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Internal Notes</label>
+                    <label className="text-xs font-bold text-textSecondary uppercase tracking-wider ml-1">Internal Notes</label>
                     <textarea 
                       value={notes} 
                       onChange={(e) => setNotes(e.target.value)} 
                       rows="2" 
                       placeholder="Add audit tracking details or billing contexts here..."
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-4 text-sm font-medium text-slate-800 outline-none focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 transition-all resize-none"
+                      className="w-full rounded-xl border border-border bg-card/50 px-4 py-4 text-sm font-medium text-textPrimary outline-none focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all resize-none"
                     />
                   </div>
                 </div>
               </div>
             </div>
 
-            <DialogFooter className="px-8 py-5 border-t border-slate-100 bg-slate-50/50 shrink-0 flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-400 flex items-center gap-1"><AlertCircle size={14}/> Fields marked with * are required.</span>
+            <DialogFooter className="px-8 py-5 border-t border-border/50 bg-card/50 shrink-0 flex items-center justify-between">
+              <span className="text-xs font-bold text-textSecondary/70 flex items-center gap-1"><AlertCircle size={14}/> Fields marked with * are required.</span>
               <div className="flex gap-3">
-                <Button type="button" variant="outline" onClick={() => setModalOpen(false)} className="px-6 h-12 rounded-xl font-bold border-slate-200 text-slate-600 hover:bg-slate-100 transition-colors">
+                <Button type="button" variant="outline" onClick={() => setModalOpen(false)} className="px-6 h-12 rounded-xl font-bold border-border text-textSecondary hover:bg-hover transition-colors">
                   Cancel
                 </Button>
                 <Button 
                   onClick={handleSubmit}
                   disabled={isSubmitting || amount <= 0 || !linkedPartyId}
-                  className="px-8 h-12 rounded-xl font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-[0_4px_14px_rgba(79,70,229,0.3)] transition-all active:scale-95 disabled:opacity-50 disabled:shadow-none"
+                  className="px-8 h-12 rounded-xl font-bold bg-primary hover:bg-primaryHover text-white shadow-[0_4px_14px_rgba(79,70,229,0.3)] transition-all active:scale-95 disabled:opacity-50 disabled:shadow-none"
                 >
                   {isSubmitting ? (
                     <span className="flex items-center gap-2"><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/> Processing</span>
@@ -581,8 +581,8 @@ export default function PaymentsPage() {
           {/* Right Side 35%: Premium Summary Pane */}
           <div className="hidden sm:flex sm:w-[35%] bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 flex-col text-white relative overflow-hidden">
             {/* Decorative background elements */}
-            <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
-            <div className="absolute bottom-0 left-0 w-64 h-64 bg-rose-500/10 rounded-full blur-3xl translate-y-1/3 -translate-x-1/3 pointer-events-none"></div>
+            <div className="absolute top-0 right-0 w-64 h-64 bg-primary/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
+            <div className="absolute bottom-0 left-0 w-64 h-64 bg-danger/10 rounded-full blur-3xl translate-y-1/3 -translate-x-1/3 pointer-events-none"></div>
             
             <div className="p-8 border-b border-white/10 shrink-0 relative z-10">
               <h3 className="font-black text-xl flex items-center gap-3">
@@ -598,8 +598,8 @@ export default function PaymentsPage() {
               <div className="bg-white/5 backdrop-blur-xl border border-white/10 p-6 rounded-2xl shadow-2xl relative overflow-hidden group">
                 <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/5 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                 <div className="flex justify-between items-start mb-2">
-                  <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Total Transaction Value</p>
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${paymentType === 'inbound' ? 'bg-indigo-500/20 text-indigo-300' : 'bg-rose-500/20 text-rose-300'}`}>
+                  <p className="text-xs font-black text-textSecondary/70 uppercase tracking-widest">Total Transaction Value</p>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${paymentType === 'inbound' ? 'bg-primary/20 text-indigo-300' : 'bg-danger/20 text-rose-300'}`}>
                     {paymentType === 'inbound' ? 'Collection' : 'Payout'}
                   </span>
                 </div>
@@ -607,7 +607,7 @@ export default function PaymentsPage() {
                 
                 {linkedPartyId && (
                   <div className="mt-4 pt-4 border-t border-white/10 flex items-center justify-between">
-                    <span className="text-sm font-bold text-slate-300">Party</span>
+                    <span className="text-sm font-bold text-textSecondary/50">Party</span>
                     <span className="text-sm font-bold text-white truncate max-w-[150px]">
                       {(paymentType === 'inbound' ? buyers : suppliers).find(p => String(p.id) === String(linkedPartyId))?.name || "Unknown"}
                     </span>
@@ -616,12 +616,12 @@ export default function PaymentsPage() {
                 
                 <div className="mt-4 space-y-3 text-sm font-medium">
                   <div className="flex justify-between items-center border-b border-white/10 pb-3">
-                    <span className="text-slate-400 flex items-center gap-1.5"><CheckCircle size={14} className="text-emerald-400"/> Allocated Amount</span>
-                    <span className="font-bold text-white bg-emerald-500/20 px-2 py-0.5 rounded text-emerald-300">{formatINR(linkedDocId ? amount : 0)}</span>
+                    <span className="text-textSecondary/70 flex items-center gap-1.5"><CheckCircle size={14} className="text-success"/> Allocated Amount</span>
+                    <span className="font-bold text-white bg-success/20 px-2 py-0.5 rounded text-emerald-300">{formatINR(linkedDocId ? amount : 0)}</span>
                   </div>
                   <div className="flex justify-between items-center pt-1">
-                    <span className="text-slate-400 flex items-center gap-1.5"><AlertCircle size={14} className="text-amber-400"/> Unallocated (Advance)</span>
-                    <span className={`font-bold px-2 py-0.5 rounded ${!linkedDocId && amount > 0 ? 'bg-amber-500/20 text-amber-300' : 'text-slate-500'}`}>{formatINR(linkedDocId ? 0 : amount)}</span>
+                    <span className="text-textSecondary/70 flex items-center gap-1.5"><AlertCircle size={14} className="text-warning"/> Unallocated (Advance)</span>
+                    <span className={`font-bold px-2 py-0.5 rounded ${!linkedDocId && amount > 0 ? 'bg-warning/20 text-amber-300' : 'text-textSecondary'}`}>{formatINR(linkedDocId ? 0 : amount)}</span>
                   </div>
                 </div>
               </div>
@@ -629,7 +629,7 @@ export default function PaymentsPage() {
               {pendingDocs.length > 0 && (
                 <div className="animate-in fade-in slide-in-from-right-4 duration-500 delay-150 fill-mode-both">
                   <div className="flex items-center justify-between mb-4">
-                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Pending Liabilities</p>
+                    <p className="text-xs font-black text-textSecondary/70 uppercase tracking-widest">Pending Liabilities</p>
                     <span className="bg-white/10 text-xs px-2 py-0.5 rounded-full font-bold">{pendingDocs.length} Docs</span>
                   </div>
                   
@@ -644,26 +644,26 @@ export default function PaymentsPage() {
                           key={d.id} 
                           className={`p-4 rounded-xl border text-sm transition-all duration-300 cursor-pointer relative overflow-hidden group ${
                             isSelected 
-                              ? 'bg-indigo-500/20 border-indigo-500/50 shadow-[0_0_15px_rgba(99,102,241,0.2)]' 
+                              ? 'bg-primary/20 border-primary/50 shadow-[0_0_15px_rgba(99,102,241,0.2)]' 
                               : 'bg-white/5 border-white/10 hover:border-white/30 hover:bg-white/10'
                           }`} 
                           onClick={() => { setLinkedDocId(String(d.id)); setAmount(parseFloat(d.pending_amount)); }}
                         >
-                          {isSelected && <div className="absolute top-0 right-0 w-8 h-8 bg-indigo-500/20 blur-md rounded-full -mt-2 -mr-2"></div>}
+                          {isSelected && <div className="absolute top-0 right-0 w-8 h-8 bg-primary/20 blur-md rounded-full -mt-2 -mr-2"></div>}
                           <div className="flex justify-between items-center mb-3">
                             <span className="font-black tracking-tight text-white">{paymentType === 'inbound' ? `Inv: ${d.invoice_number}` : `Batch: ${d.batch_number}`}</span>
-                            <span className="text-[10px] font-bold text-slate-400 uppercase bg-black/20 px-2 py-0.5 rounded">{d.date}</span>
+                            <span className="text-[10px] font-bold text-textSecondary/70 uppercase bg-black/20 px-2 py-0.5 rounded">{d.date}</span>
                           </div>
                           
                           <div className="space-y-1">
                             <div className="flex items-center justify-between">
-                              <span className="text-xs font-medium text-slate-400">Current Due</span>
+                              <span className="text-xs font-medium text-textSecondary/70">Current Due</span>
                               <span className="text-rose-400 font-bold tracking-tight">{formatINR(outstandingBefore)}</span>
                             </div>
                             {isSelected && (
                               <div className="flex items-center justify-between animate-in fade-in duration-300 pt-1 border-t border-white/10 mt-1">
-                                <span className="text-xs font-medium text-slate-300">After Payment</span>
-                                <span className="text-emerald-400 font-black tracking-tight">{formatINR(outstandingAfter)}</span>
+                                <span className="text-xs font-medium text-textSecondary/50">After Payment</span>
+                                <span className="text-success font-black tracking-tight">{formatINR(outstandingAfter)}</span>
                               </div>
                             )}
                           </div>
@@ -676,16 +676,16 @@ export default function PaymentsPage() {
                   {linkedDocId && (
                     <div className="mt-6 bg-white/5 p-4 rounded-xl border border-white/10 animate-in fade-in slide-in-from-bottom-2">
                       <div className="flex justify-between items-center mb-2">
-                        <span className="text-xs font-bold text-slate-400">Risk Assessment</span>
+                        <span className="text-xs font-bold text-textSecondary/70">Risk Assessment</span>
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${
                           (amount / parseFloat(pendingDocs.find(d => String(d.id) === linkedDocId)?.pending_amount || 1)) >= 1 
-                            ? 'bg-emerald-500/20 text-emerald-300' 
-                            : 'bg-amber-500/20 text-amber-300'
+                            ? 'bg-success/20 text-emerald-300' 
+                            : 'bg-warning/20 text-amber-300'
                         }`}>
                           {(amount / parseFloat(pendingDocs.find(d => String(d.id) === linkedDocId)?.pending_amount || 1)) >= 1 ? 'Low Risk' : 'Medium Risk'}
                         </span>
                       </div>
-                      <p className="text-[11px] text-slate-400 font-medium">Payment covers {Math.min(100, Math.round((amount / parseFloat(pendingDocs.find(d => String(d.id) === linkedDocId)?.pending_amount || 1)) * 100))}% of the selected document's outstanding balance.</p>
+                      <p className="text-[11px] text-textSecondary/70 font-medium">Payment covers {Math.min(100, Math.round((amount / parseFloat(pendingDocs.find(d => String(d.id) === linkedDocId)?.pending_amount || 1)) * 100))}% of the selected document's outstanding balance.</p>
                     </div>
                   )}
                 </div>
@@ -694,10 +694,10 @@ export default function PaymentsPage() {
               {!linkedPartyId && (
                 <div className="h-full flex flex-col items-center justify-center text-center opacity-50 mt-10">
                   <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4">
-                    <User size={24} className="text-slate-400" />
+                    <User size={24} className="text-textSecondary/70" />
                   </div>
                   <p className="text-sm font-bold text-white mb-1">No Party Selected</p>
-                  <p className="text-xs font-medium text-slate-400 max-w-[200px]">Select a customer or supplier to view their outstanding balances.</p>
+                  <p className="text-xs font-medium text-textSecondary/70 max-w-[200px]">Select a customer or supplier to view their outstanding balances.</p>
                 </div>
               )}
             </div>

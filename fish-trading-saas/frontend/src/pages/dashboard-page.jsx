@@ -55,7 +55,7 @@ const formatINR = (n) =>
   }).format(n || 0);
 
 const DELIVERY_CLS = {
-  pending: "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-200/50 dark:border-amber-900/50",
+  pending: "bg-amber-100 text-warning dark:bg-amber-950/40 dark:text-warning border border-warning/30/50 dark:border-amber-900/50",
   shipped: "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400 border border-blue-200/50 dark:border-blue-900/50",
   delivered: "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400 border border-green-200/50 dark:border-green-900/50",
   cancelled: "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400 border border-red-200/50 dark:border-red-900/50",
@@ -1203,7 +1203,7 @@ function PlatformOperatorDashboard() {
                                       ? "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400 border border-green-200/50"
                                       : company.subscription_status === "suspended"
                                       ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400 border border-red-200/50"
-                                      : "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-200/50"
+                                      : "bg-amber-100 text-warning dark:bg-amber-950/40 dark:text-warning border border-warning/30/50"
                                   }`}>
                                     {company.subscription_status}
                                   </span>
@@ -1361,7 +1361,7 @@ function PlatformOperatorDashboard() {
                                 ? "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400 border border-green-200/50"
                                 : isSuspended
                                 ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400 border border-red-200/50"
-                                : "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-200/50"
+                                : "bg-amber-100 text-warning dark:bg-amber-950/40 dark:text-warning border border-warning/30/50"
                             }`}>
                               {tenant.subscription_status}
                             </span>
@@ -2041,7 +2041,7 @@ function BusinessDashboard() {
                                 className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide border shadow-sm ${cls}`}
                                 style={{ borderColor: 'currentColor' }}
                               >
-                                <span className={`h-1.5 w-1.5 rounded-full shadow-[0_0_4px_currentColor] ${key === 'pending' ? 'bg-amber-500' : key === 'delivered' ? 'bg-green-500' : 'bg-current'}`}></span>
+                                <span className={`h-1.5 w-1.5 rounded-full shadow-[0_0_4px_currentColor] ${key === 'pending' ? 'bg-warning' : key === 'delivered' ? 'bg-green-500' : 'bg-current'}`}></span>
                                 {order.delivery_status_display || order.delivery_status}
                               </span>
                             </td>

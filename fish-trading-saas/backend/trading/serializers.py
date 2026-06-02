@@ -2,9 +2,18 @@
 from rest_framework import serializers
 from .models import (
     FishCategory, Fish, Supplier, Buyer, 
-    PurchaseBatch, Sale, Payment, Inventory,
-    MarketFishPrice, StockMovement, WhatsAppConfig, WhatsAppMessageLog
+    PurchaseBatch, PurchaseBatchHistory, Sale, Payment, Inventory,
+    MarketFishPrice, StockMovement, WhatsAppConfig, WhatsAppMessageLog,
+    JournalEntry, PaymentAuditLog
 )
+
+class PurchaseBatchHistorySerializer(serializers.ModelSerializer):
+    changed_by_name = serializers.CharField(source='changed_by.username', read_only=True)
+
+    class Meta:
+        model = PurchaseBatchHistory
+        fields = ['id', 'batch', 'changed_by', 'changed_by_name', 'timestamp', 'action', 'changes', 'notes']
+        read_only_fields = ['id', 'batch', 'changed_by', 'timestamp', 'action', 'changes', 'notes']
 
 
 def _is_in_user_scope(user, owner_user=None, company=None):
@@ -230,6 +239,8 @@ class PurchaseBatchSerializer(serializers.ModelSerializer):
     sold_packages = serializers.IntegerField(source='get_sold_packages', read_only=True)
     tenant_name = serializers.CharField(source='tenant.username', read_only=True)
     company_name = serializers.CharField(source='company.name', read_only=True)
+    workflow_state_display = serializers.CharField(source='get_workflow_state_display', read_only=True)
+    history_logs = PurchaseBatchHistorySerializer(many=True, read_only=True)
 
     class Meta:
         model = PurchaseBatch
@@ -242,6 +253,7 @@ class PurchaseBatchSerializer(serializers.ModelSerializer):
             'labour_cost', 'ice_cost', 'transport_cost', 'commission_cost', 'other_cost',
             'total_expense', 'actual_cost_per_kg', 'cost_per_package',
             'amount_paid', 'pending_amount', 'status', 'status_display',
+            'workflow_state', 'workflow_state_display', 'history_logs',
             'quality_grade', 'inspection_date', 'inspector_name',
             'quality_score', 'freshness_score',
             'fish_photo', 'quality_certificate', 'invoice_document',
@@ -489,6 +501,17 @@ class SaleSerializer(serializers.ModelSerializer):
         return data
 
 
+class JournalEntrySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = JournalEntry
+        fields = ['id', 'date', 'account_debit', 'account_credit', 'amount', 'reference', 'created_at']
+
+class PaymentAuditLogSerializer(serializers.ModelSerializer):
+    changed_by_name = serializers.CharField(source='changed_by.username', read_only=True)
+    class Meta:
+        model = PaymentAuditLog
+        fields = ['id', 'action', 'changed_by', 'changed_by_name', 'timestamp', 'changes', 'reason']
+
 class PaymentSerializer(serializers.ModelSerializer):
     payment_type_display = serializers.CharField(source='get_payment_type_display', read_only=True)
     payment_mode_display = serializers.CharField(source='get_payment_mode_display', read_only=True)
@@ -499,6 +522,8 @@ class PaymentSerializer(serializers.ModelSerializer):
     purchase_batch_number = serializers.CharField(source='purchase_batch.batch_number', read_only=True)
     tenant_name = serializers.CharField(source='tenant.username', read_only=True)
     company_name = serializers.CharField(source='company.name', read_only=True)
+    audit_logs = PaymentAuditLogSerializer(many=True, read_only=True)
+    journal_entries = JournalEntrySerializer(many=True, read_only=True)
 
     class Meta:
         model = Payment
@@ -512,12 +537,15 @@ class PaymentSerializer(serializers.ModelSerializer):
             'bank_name', 'account_number',
             'is_cleared', 'cleared_date',
             'notes', 'receipt_number', 'receipt_image',
+            'status', 'reconciliation_status', 'allocated_amount', 'unallocated_balance',
+            'submitted_for_approval_at', 'approved_at', 'paid_at',
             'approval_status', 'approval_status_display',
             'approved_by', 'processed_by',
+            'audit_logs', 'journal_entries',
             'created_at', 'updated_at',
             'tenant', 'tenant_name', 'company', 'company_name'
         ]
-        read_only_fields = ['receipt_number', 'created_at', 'updated_at', 'tenant', 'company']
+        read_only_fields = ['receipt_number', 'created_at', 'updated_at', 'tenant', 'company', 'allocated_amount', 'unallocated_balance']
 
     def validate(self, data):
         request = self.context.get('request')

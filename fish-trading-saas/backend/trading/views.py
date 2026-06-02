@@ -34,8 +34,14 @@ from services.trading import SaleService, InventoryService
 from services.purchase import PurchaseService
 from services.analytics import AnalyticsService
 from accounts.permissions import (
-    IsTenantAdmin, CanEditSale, CanEditPurchase, CanEditPayment, HasAnyRole,
-    QuerysetProtectionMixin, TenantObjectPermission, is_impersonating, get_impersonated_tenant
+    IsTenantAdmin, HasAnyRole,
+    QuerysetProtectionMixin, TenantObjectPermission, is_impersonating, get_impersonated_tenant,
+    CanViewSales, CanEditSales, CanDeleteSales,
+    CanViewPurchases, CanEditPurchases, CanDeletePurchases,
+    CanViewInventory, CanEditInventory, CanDeleteInventory,
+    CanViewPayments, CanEditPayments, CanDeletePayments,
+    CanViewCustomers, CanEditCustomers, CanDeleteCustomers,
+    CanViewSuppliers, CanEditSuppliers, CanDeleteSuppliers
 )
 from .helpers import _user_company   # <-- new import
 from datetime import timedelta, datetime
@@ -219,29 +225,22 @@ class FishViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.Mode
 
 
 class SupplierViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.ModelViewSet):
-    """
-    ViewSet for managing suppliers.
-    Provides standard CRUD operations and custom actions for credit management,
-    verification, and payment tracking.
-    """
-    queryset = Supplier.objects.all()
     serializer_class = SupplierSerializer
-    permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve', 'by_category', 'statistics', 'record_payment', 'mark_delivered', 'process_return']:
+            return [CanViewSuppliers()]
+        if self.action in ['create', 'update', 'partial_update', 'toggle_active']:
+            return [CanEditSuppliers()]
+        if self.action in ['destroy']:
+            return [CanDeleteSuppliers()]
+        return [CanViewSuppliers()]
+
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['supplier_type', 'is_verified', 'is_active', 'rating', 'payment_terms']
     search_fields = ['name', 'phone', 'email', 'place_of_origin', 'id_number', 'bank_name']
     ordering_fields = ['name', 'rating', 'outstanding_amount', 'created_at']
     ordering = ['name']
-
-    def get_permissions(self):
-        """
-        Instantiates and returns the list of permissions that this view requires.
-        """
-        if self.action in ['list', 'retrieve', 'with_outstanding', 'overdue_payments', 'payment_summary']:
-            return [HasAnyRole('is_tenant_admin', 'is_accountant', 'is_store_accounts')]
-        if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            return [HasAnyRole('is_tenant_admin', 'is_accountant', 'is_store_accounts')]
-        return [IsAuthenticated()]
 
     def get_queryset(self):
         """
@@ -411,29 +410,22 @@ class SupplierViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.
 
 
 class BuyerViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.ModelViewSet):
-    """
-    ViewSet for managing buyers.
-    Provides standard CRUD operations and custom actions for credit management
-    and preference status.
-    """
-    queryset = Buyer.objects.all()
     serializer_class = BuyerSerializer
-    permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve', 'by_category', 'statistics', 'record_payment', 'mark_delivered', 'process_return']:
+            return [CanViewCustomers()]
+        if self.action in ['create', 'update', 'partial_update', 'toggle_active']:
+            return [CanEditCustomers()]
+        if self.action in ['destroy']:
+            return [CanDeleteCustomers()]
+        return [CanViewCustomers()]
+
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['buyer_type', 'is_preferred', 'is_verified', 'is_active', 'rating']
     search_fields = ['name', 'phone', 'email', 'business_name', 'gst_number']
     ordering_fields = ['name', 'rating', 'total_purchases', 'created_at']
     ordering = ['name']
-
-    def get_permissions(self):
-        """
-        Instantiates and returns the list of permissions that this view requires.
-        """
-        if self.action in ['list', 'retrieve']:
-            return [HasAnyRole('is_tenant_admin', 'is_accountant', 'is_sales_staff')]
-        if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            return [HasAnyRole('is_tenant_admin', 'is_accountant', 'is_sales_staff')]
-        return [IsAuthenticated()]
 
     def get_queryset(self):
         """
@@ -488,32 +480,22 @@ class BuyerViewSet(TenantObjectPermission, QuerysetProtectionMixin, viewsets.Mod
 
 
 class PurchaseBatchViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
-    """
-    ViewSet for managing purchase batches.
-    Includes operations for quality tracking and sales summaries for specific batches.
-    """
-    queryset = PurchaseBatch.objects.all()
     serializer_class = PurchaseBatchSerializer
-    permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve', 'by_category', 'statistics', 'record_payment', 'mark_delivered', 'process_return']:
+            return [CanViewPurchases()]
+        if self.action in ['create', 'update', 'partial_update', 'toggle_active']:
+            return [CanEditPurchases()]
+        if self.action in ['destroy']:
+            return [CanDeletePurchases()]
+        return [CanViewPurchases()]
+
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['purchase_type', 'status', 'fish', 'supplier', 'date']
     search_fields = ['batch_number', 'fisherman_name', 'place_of_buying']
     ordering_fields = ['date', 'created_at', 'total_expense']
     ordering = ['-date']
-
-    def get_permissions(self):
-        """
-        Instantiates and returns the list of permissions that this view requires.
-        """
-        if self.action in ['list', 'retrieve', 'sales_summary']:
-            return [HasAnyRole('is_tenant_admin', 'is_accountant', 'is_store_accounts')]
-        if self.action in ['create']:
-            return [HasAnyRole('is_tenant_admin', 'is_accountant', 'is_store_accounts')]
-        if self.action in ['update', 'partial_update']:
-            return [CanEditPurchase()]
-        if self.action in ['destroy']:
-            return [IsTenantAdmin()]
-        return [IsAuthenticated()]
 
     def get_queryset(self):
         """
@@ -560,35 +542,50 @@ class PurchaseBatchViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
             'message': 'Quality information updated'
         })
 
+    @action(detail=True, methods=['post'])
+    def change_state(self, request, pk=None):
+        """
+        Transition the workflow_state of the purchase batch.
+        """
+        from trading.models import PurchaseBatchHistory
+        batch = self.get_object()
+        new_state = request.data.get('state')
+        if new_state not in dict(batch.WORKFLOW_STATE_CHOICES).keys():
+            return Response({'error': 'Invalid state'}, status=400)
+            
+        old_state = batch.workflow_state
+        batch.workflow_state = new_state
+        batch.save()
+        
+        PurchaseBatchHistory.objects.create(
+            batch=batch,
+            changed_by=request.user,
+            action='state_change',
+            changes={'workflow_state': {'old': old_state, 'new': new_state}},
+            notes=request.data.get('notes', f"State changed from {old_state} to {new_state}")
+        )
+        
+        serializer = self.get_serializer(batch)
+        return Response(serializer.data)
+
 
 class SaleViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
-    """
-    ViewSet for managing sales.
-    Provides standard CRUD operations and custom actions for payment recording,
-    delivery tracking, and processing returns.
-    """
-    queryset = Sale.objects.all()
     serializer_class = SaleSerializer
-    permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve', 'by_category', 'statistics', 'record_payment', 'mark_delivered', 'process_return']:
+            return [CanViewSales()]
+        if self.action in ['create', 'update', 'partial_update', 'toggle_active']:
+            return [CanEditSales()]
+        if self.action in ['destroy']:
+            return [CanDeleteSales()]
+        return [CanViewSales()]
+
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['sale_type', 'payment_status', 'delivery_status', 'buyer', 'date']
     search_fields = ['invoice_number', 'buyer__name', 'shipping_tracking_number']
     ordering_fields = ['date', 'total_revenue', 'profit', 'created_at']
     ordering = ['-date']
-
-    def get_permissions(self):
-        """
-        Instantiates and returns the list of permissions that this view requires.
-        """
-        if self.action in ['list', 'retrieve', 'record_payment', 'mark_delivered', 'process_return']:
-            return [HasAnyRole('is_tenant_admin', 'is_accountant', 'is_sales_staff')]
-        if self.action in ['create']:
-            return [HasAnyRole('is_tenant_admin', 'is_accountant', 'is_sales_staff')]
-        if self.action in ['update', 'partial_update']:
-            return [CanEditSale()]
-        if self.action in ['destroy']:
-            return [IsTenantAdmin()]
-        return [IsAuthenticated()]
 
     def get_queryset(self):
         """
@@ -665,32 +662,22 @@ class SaleViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
 
 
 class PaymentViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
-    """
-    ViewSet for managing payments.
-    Handles standard CRUD operations and approval/rejection workflows for payments.
-    """
-    queryset = Payment.objects.all()
     serializer_class = PaymentSerializer
-    permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve', 'by_category', 'statistics', 'record_payment', 'mark_delivered', 'process_return']:
+            return [CanViewPayments()]
+        if self.action in ['create', 'update', 'partial_update', 'toggle_active']:
+            return [CanEditPayments()]
+        if self.action in ['destroy']:
+            return [CanDeletePayments()]
+        return [CanViewPayments()]
+
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['payment_type', 'payment_mode', 'is_cleared', 'approval_status', 'date']
     search_fields = ['receipt_number', 'reference_number', 'notes']
     ordering_fields = ['date', 'amount', 'created_at']
     ordering = ['-date']
-
-    def get_permissions(self):
-        """
-        Instantiates and returns the list of permissions that this view requires.
-        """
-        if self.action in ['list', 'retrieve']:
-            return [HasAnyRole('is_tenant_admin', 'is_accountant', 'is_sales_staff', 'is_store_accounts')]
-        if self.action in ['create']:
-            return [HasAnyRole('is_tenant_admin', 'is_accountant', 'is_sales_staff', 'is_store_accounts')]
-        if self.action in ['update', 'partial_update']:
-            return [CanEditPayment()]
-        if self.action in ['destroy']:
-            return [IsTenantAdmin()]
-        return [IsAuthenticated()]
 
     def get_queryset(self):
         """
@@ -705,61 +692,92 @@ class PaymentViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
         """
         Create a new payment instance.
         """
-        serializer.save(**_get_create_scope(self.request))
+        instance = serializer.save(**_get_create_scope(self.request))
+        from trading.services.payment_service import PaymentService
+        PaymentService._log_audit(
+            payment=instance, action='created', changed_by=self.request.user,
+            reason="Initial creation via API"
+        )
+        serializer.instance = instance
+
+    def perform_update(self, serializer):
+        from trading.services.payment_service import PaymentService
+        reason = self.request.data.get('reason', '')
+        instance = PaymentService.update_payment(
+            serializer.instance, serializer.validated_data, self.request.user, reason
+        )
+        serializer.instance = instance
+
+    @action(detail=True, methods=['post'])
+    def submit_approval(self, request, pk=None):
+        payment = self.get_object()
+        from trading.services.payment_service import PaymentService
+        try:
+            payment = PaymentService.submit_for_approval(payment, request.user)
+            return Response(self.get_serializer(payment).data)
+        except ValueError as e:
+            return Response({'error': str(e)}, status=400)
 
     @action(detail=True, methods=['post'])
     def approve(self, request, pk=None):
-        """
-        Approve a pending payment.
-        """
         payment = self.get_object()
-        payment.approval_status = 'approved'
-        payment.approved_by = request.user
-        payment.save()
-        return Response({
-            'status': 'success',
-            'approval_status': payment.approval_status,
-            'approved_by': request.user.get_full_name()
-        })
+        from trading.services.payment_service import PaymentService
+        try:
+            payment = PaymentService.approve_payment(payment, request.user)
+            return Response(self.get_serializer(payment).data)
+        except ValueError as e:
+            return Response({'error': str(e)}, status=400)
 
     @action(detail=True, methods=['post'])
-    def reject(self, request, pk=None):
-        """
-        Reject a pending payment.
-        """
+    def mark_paid(self, request, pk=None):
         payment = self.get_object()
-        payment.approval_status = 'rejected'
-        payment.save()
-        return Response({
-            'status': 'success',
-            'approval_status': payment.approval_status
-        })
+        from trading.services.payment_service import PaymentService
+        try:
+            payment = PaymentService.mark_as_paid(payment, request.user)
+            return Response(self.get_serializer(payment).data)
+        except ValueError as e:
+            return Response({'error': str(e)}, status=400)
+
+    @action(detail=True, methods=['post'])
+    def reverse(self, request, pk=None):
+        payment = self.get_object()
+        from trading.services.payment_service import PaymentService
+        reason = request.data.get('reason', '')
+        try:
+            payment = PaymentService.reverse_payment(payment, request.user, reason)
+            return Response(self.get_serializer(payment).data)
+        except ValueError as e:
+            return Response({'error': str(e)}, status=400)
+            
+    @action(detail=True, methods=['post'])
+    def cancel(self, request, pk=None):
+        payment = self.get_object()
+        from trading.services.payment_service import PaymentService
+        reason = request.data.get('reason', '')
+        try:
+            payment = PaymentService.cancel_payment(payment, request.user, reason)
+            return Response(self.get_serializer(payment).data)
+        except ValueError as e:
+            return Response({'error': str(e)}, status=400)
 
 
 class InventoryViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
-    """
-    ViewSet for managing inventory items.
-    Provides CRUD operations and actions for stock movements, temperature updates,
-    and monitoring low or expiring stock.
-    """
-    queryset = Inventory.objects.all()
     serializer_class = InventorySerializer
-    permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve', 'by_category', 'statistics', 'record_payment', 'mark_delivered', 'process_return']:
+            return [CanViewInventory()]
+        if self.action in ['create', 'update', 'partial_update', 'toggle_active']:
+            return [CanEditInventory()]
+        if self.action in ['destroy']:
+            return [CanDeleteInventory()]
+        return [CanViewInventory()]
+
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['status', 'fish', 'expiry_date']
     search_fields = ['fish__name', 'storage_location', 'bin_number', 'rack_number']
     ordering_fields = ['created_at', 'remaining_packages', 'expiry_date']
     ordering = ['-created_at']
-
-    def get_permissions(self):
-        """
-        Instantiates and returns the list of permissions that this view requires.
-        """
-        if self.action in ['list', 'retrieve', 'low_stock', 'expiring_soon']:
-            return [HasAnyRole('is_tenant_admin', 'is_accountant', 'is_sales_staff', 'is_store_accounts')]
-        if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            return [HasAnyRole('is_tenant_admin', 'is_accountant', 'is_store_accounts')]
-        return [IsAuthenticated()]
 
     def get_queryset(self):
         """

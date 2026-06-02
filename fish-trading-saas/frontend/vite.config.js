@@ -97,7 +97,6 @@ export default defineConfig(({ mode }) => ({
       "react",
       "react-dom/client",
       "react-router-dom",
-      "cookie",
       "axios",
       "zustand",
       "framer-motion",

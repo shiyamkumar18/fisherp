@@ -21,3 +21,14 @@ class ImpersonationThrottle(ScopedRateThrottle):
             'scope': self.scope,
             'ident': f"{user_id}:{ip}"
         }
+
+class OTPThrottle(ScopedRateThrottle):
+    scope = 'otp'
+
+    def get_cache_key(self, request, view):
+        phone = request.data.get('phone', 'unknown')
+        ip = self.get_ident(request)
+        return self.cache_format % {
+            'scope': self.scope,
+            'ident': f"{phone}:{ip}"
+        }

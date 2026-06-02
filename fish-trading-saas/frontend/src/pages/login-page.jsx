@@ -175,9 +175,7 @@ export default function LoginPage() {
 
           {error ? <p className="text-sm text-red-600">{error}</p> : null}
 
-          <Button className="w-full" disabled={loading}>
-            {loading ? "Signing in..." : "Sign in"}
-          </Button>
+          <Button className="w-full" loading={loading}>Sign in</Button>
         </form>
 
         <p className="mt-5 text-center text-sm text-textSecondary">

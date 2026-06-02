@@ -25,7 +25,7 @@ export class ErrorBoundary extends React.Component {
             <AlertCircle className="w-8 h-8 text-red-600 dark:text-red-400" />
           </div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Something went wrong</h1>
-          <p className="text-slate-600 dark:text-slate-400 max-w-md mb-8">
+          <p className="text-textSecondary dark:text-textSecondary/70 max-w-md mb-8">
             An unexpected error occurred in the application. Please try refreshing the page or navigating back.
           </p>
           <div className="flex gap-4">
@@ -37,9 +37,9 @@ export class ErrorBoundary extends React.Component {
             </Button>
           </div>
           {process.env.NODE_ENV === 'development' && (
-            <div className="mt-8 p-4 bg-slate-100 dark:bg-slate-900 rounded-lg text-left overflow-auto max-w-4xl text-sm w-full">
+            <div className="mt-8 p-4 bg-hover dark:bg-card rounded-lg text-left overflow-auto max-w-4xl text-sm w-full">
               <p className="font-semibold text-red-500 mb-2">{this.state.error && this.state.error.toString()}</p>
-              <pre className="text-slate-500 whitespace-pre-wrap">{this.state.errorInfo?.componentStack}</pre>
+              <pre className="text-textSecondary whitespace-pre-wrap">{this.state.errorInfo?.componentStack}</pre>
             </div>
           )}
         </div>

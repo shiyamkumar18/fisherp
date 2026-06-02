@@ -12,12 +12,15 @@ import { fetchInventory } from "@/services/inventoryService";
 import { fetchSuppliers } from "@/services/supplierService";
 import { fetchCustomers } from "@/services/customerService";
 import { useToast } from "@/components/shared/toast-provider";
+import { usePermission } from "@/hooks/usePermission";
 
 export default function ReportsPage() {
   const [fromDate, setFromDate] = useState(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]);
   const [toDate, setToDate] = useState(new Date().toISOString().split("T")[0]);
   const [downloading, setDownloading] = useState("");
   const { push: toast } = useToast();
+  const { canEditForm } = usePermission();
+  const isEditable = canEditForm("reports");
 
   // Helper to trigger browser download of a CSV string
   const downloadCSVFile = (filename, csvContent) => {
@@ -247,7 +250,7 @@ export default function ReportsPage() {
                 </span>
                 <Button 
                   onClick={() => handleDownloadReport(report.title)} 
-                  disabled={!!downloading}
+                  disabled={!!downloading || !isEditable}
                   size="sm"
                   className="flex items-center gap-1.5"
                 >

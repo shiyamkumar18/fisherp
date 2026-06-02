@@ -37,6 +37,7 @@ class CompanyDetailsView(APIView):
             'business_type': company.business_type,
             'industry_type': company.industry_type,
             'is_active': company.is_active,
+            'settings': company.settings,
         })
 
     def put(self, request):
@@ -80,6 +81,16 @@ class CompanyDetailsView(APIView):
                 except (FileNotFoundError, OSError):
                     pass
             company.logo = logo_file
+            
+        # Update JSON settings (deep merge)
+        if 'settings' in request.data:
+            new_settings = request.data['settings']
+            if isinstance(new_settings, dict):
+                current_settings = company.settings or {}
+                # Update specific categories without overwriting entire dict blindly if needed
+                for key, val in new_settings.items():
+                    current_settings[key] = val
+                company.settings = current_settings
         
         company.save()
 

@@ -57,9 +57,9 @@ export function DataTable({
       )}
 
       {/* Table (hidden on mobile if cards are provided) */}
-      <div className={`overflow-x-auto rounded-xl border border-border bg-surface ${renderMobileCard ? 'hidden md:block' : 'block'}`}>
+      <div className={`overflow-x-auto rounded-xl border border-border bg-card shadow-sm ${renderMobileCard ? 'hidden md:block' : 'block'}`}>
         <table className="min-w-full text-left text-sm">
-          <thead className="bg-border/20 text-xs font-bold uppercase tracking-wider text-textSecondary/80">
+          <thead className="bg-tableHeader text-xs font-bold uppercase tracking-wider text-textSecondary/80 border-b border-border">
             <tr>
               {selectable && (
                 <th className="px-4 py-3 w-12 text-center">
@@ -123,7 +123,7 @@ export function DataTable({
               data.map((row) => (
                 <tr
                   key={row.id || row.invoice || Math.random()}
-                  className={`border-t border-border/40 transition-colors group hover:bg-border/10 ${selectedKeys.includes(row.id || row.invoice) ? 'bg-primary/5' : ''}`}
+                  className={`border-b border-border/40 transition-all duration-200 group hover:bg-hover ${selectedKeys.includes(row.id || row.invoice) ? 'bg-primary/5' : ''}`}
                 >
                   {selectable && (
                     <td className="px-4 py-3 text-center">
@@ -159,7 +159,7 @@ export function DataTable({
                </div>
              ))
           ) : data.length === 0 ? (
-            <div className="py-12 text-center text-sm text-textSecondary bg-surface rounded-xl border border-border">
+            <div className="py-12 text-center text-sm text-textSecondary bg-card rounded-xl border border-border">
               No records found.
             </div>
           ) : (

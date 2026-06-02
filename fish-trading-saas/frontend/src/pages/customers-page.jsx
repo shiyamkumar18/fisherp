@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from "react";
-import { 
-  Users, Plus, Search, Phone, Mail, MapPin, 
-  Briefcase, Star, CreditCard, Trash2, Edit2, AlertCircle 
+import {
+  Users, User, Plus, Search, Phone, Mail, MapPin,
+  Briefcase, Star, CreditCard, Trash2, Edit2, AlertCircle
 } from "lucide-react";
 import Card from "@/components/ui/card";
 import Button from "@/components/ui/button";
 import Input from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { fetchCustomers, createCustomer, updateCustomer, deleteCustomer } from "@/services/customerService";
+import { usePermission } from "@/hooks/usePermission";
 import { useToast } from "@/components/shared/toast-provider";
 
 export default function CustomersPage() {
@@ -17,6 +18,10 @@ export default function CustomersPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState(null);
   const { push: toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { canEditForm, canViewFinancial, canDelete } = usePermission();
+  const isEditable = canEditForm("customers");
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Form fields
   const [name, setName] = useState("");
@@ -34,7 +39,7 @@ export default function CustomersPage() {
       const data = await fetchCustomers();
       setCustomers(data);
     } catch (e) {
-      toast({ message: "Failed to load customers.", variant: "error" });
+      toast({ message: e?.message || "Failed to load customers.", variant: "error" });
     } finally {
       setLoading(false);
     }
@@ -76,6 +81,7 @@ export default function CustomersPage() {
       toast({ message: "Name and Phone are required fields.", variant: "error" });
       return;
     }
+    setIsSubmitting(true);
 
     const payload = {
       name,
@@ -99,18 +105,23 @@ export default function CustomersPage() {
       setModalOpen(false);
       loadCustomers();
     } catch (err) {
-      toast({ message: "Error saving customer details.", variant: "error" });
+      toast({ message: err?.message || "Error saving customer details.", variant: "error" });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to remove this customer profile?")) return;
+    setIsDeleting(true);
     try {
       await deleteCustomer(id);
       toast({ message: "Customer profile deleted." });
       loadCustomers();
     } catch (e) {
-      toast({ message: "Failed to delete customer profile.", variant: "error" });
+      toast({ message: e?.message || "Failed to delete customer profile.", variant: "error" });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -246,7 +257,7 @@ export default function CustomersPage() {
                           <Edit2 size={14} />
                         </button>
                         <button
-                          onClick={() => handleDelete(cust.id)}
+                          onClick={() => handleDelete(cust.id)} disabled={isDeleting}
                           className="rounded-lg p-1.5 text-danger hover:bg-danger/10 transition-colors cursor-pointer"
                           title="Delete Customer"
                         >
@@ -263,64 +274,116 @@ export default function CustomersPage() {
       </Card>
 
       {/* Add/Edit Modal */}
+      
+      {/* Add/Edit Modal - Enterprise UI */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-xl">
-          <DialogHeader>
-            <DialogTitle>{editingCustomer ? "Edit Customer Details" : "Add Customer Profile"}</DialogTitle>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+          <DialogHeader className="px-6 py-4 border-b border-border bg-surface/50">
+            <DialogTitle className="text-xl font-extrabold flex items-center gap-2">
+              <Users size={20} className="text-primary" />
+              {editingCustomer ? "Edit Customer Profile" : "Register New Customer"}
+            </DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-textSecondary">Buyer / Customer Name *</label>
-                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Ramesh Kumar" required />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-textSecondary">Mobile Number *</label>
-                <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="e.g. 9876500111" required />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-textSecondary">Email Address</label>
-                <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="e.g. contact@buyer.com" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-textSecondary">Client Type</label>
-                <select 
-                  value={buyerType} 
-                  onChange={(e) => setBuyerType(e.target.value)}
-                  className="h-10 w-full rounded-xl border border-border bg-surface px-3 text-sm text-textPrimary outline-none focus:border-primary"
-                >
-                  <option value="retail">Retailer</option>
-                  <option value="wholesale">Wholesaler</option>
-                  <option value="export">Exporter</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-textSecondary">Company / Business Name</label>
-                <Input value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder="e.g. Harbor Retail Ltd." />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-textSecondary">GST Identification Number</label>
-                <Input value={gstNumber} onChange={(e) => setGstNumber(e.target.value)} placeholder="e.g. 29AAAAA0000A1Z1" />
-              </div>
-              <div className="space-y-1 col-span-2">
-                <label className="text-xs font-bold text-textSecondary">Credit Exposure Limit (INR)</label>
-                <Input type="number" value={creditLimit} onChange={(e) => setCreditLimit(e.target.value)} placeholder="e.g. 150000" />
-              </div>
-            </div>
+          
+          <div className="flex-1 overflow-y-auto p-6 bg-background space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              
+              {/* Section 1: Basic Information */}
+              <Card className="p-5 shadow-sm border-border/60">
+                <h3 className="text-sm font-bold text-textPrimary flex items-center gap-2 mb-4">
+                  <User size={16} className="text-primary" /> Basic Information
+                </h3>
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-extrabold text-textSecondary uppercase tracking-wider">Full Name / Contact Person *</label>
+                    <Input disabled={!isEditable} className="h-11 bg-surface" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Ramesh Kumar" required />
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-extrabold text-textSecondary uppercase tracking-wider">Mobile Number *</label>
+                      <Input disabled={!isEditable} className="h-11 bg-surface" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="e.g. 9876500111" required />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-extrabold text-textSecondary uppercase tracking-wider">Email Address</label>
+                      <Input disabled={!isEditable} type="email" className="h-11 bg-surface" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="e.g. contact@buyer.com" />
+                    </div>
+                  </div>
 
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-textSecondary">Base Delivery Address</label>
-              <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Complete billing/shipping address..." />
-            </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-extrabold text-textSecondary uppercase tracking-wider">Base Delivery Address</label>
+                    <textarea disabled={!isEditable} 
+                      value={address} 
+                      onChange={(e) => setAddress(e.target.value)} 
+                      rows="2"
+                      placeholder="Complete billing/shipping address..." 
+                      className="w-full rounded-lg border border-border bg-surface px-4 py-3 text-sm text-textPrimary outline-none focus:border-primary transition-all min-h-[60px]"
+                    />
+                  </div>
+                </div>
+              </Card>
 
-            <DialogFooter className="mt-6 border-t border-border pt-4">
-              <Button type="button" variant="ghost" onClick={() => setModalOpen(false)}>Cancel</Button>
-              <Button type="submit">{editingCustomer ? "Save Changes" : "Register Profile"}</Button>
-            </DialogFooter>
-          </form>
+              {/* Section 2: Business & Financials */}
+              <Card className="p-5 shadow-sm border-border/60">
+                <h3 className="text-sm font-bold text-textPrimary flex items-center gap-2 mb-4">
+                  <Briefcase size={16} className="text-primary" /> Business Profile & Credit
+                </h3>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-extrabold text-textSecondary uppercase tracking-wider">Client Category</label>
+                      <select disabled={!isEditable} 
+                        value={buyerType} 
+                        onChange={(e) => setBuyerType(e.target.value)}
+                        className="h-11 w-full rounded-lg border border-border bg-surface px-3 text-sm text-textPrimary outline-none focus:border-primary transition-all"
+                      >
+                        <option value="retail">Retailer</option>
+                        <option value="wholesale">Wholesaler</option>
+                        <option value="export">Exporter</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-extrabold text-textSecondary uppercase tracking-wider">Company / Entity Name</label>
+                      <Input disabled={!isEditable} className="h-11 bg-surface" value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder="e.g. Harbor Retail Ltd." />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-extrabold text-textSecondary uppercase tracking-wider">GST / Tax ID Number</label>
+                    <Input disabled={!isEditable} className="h-11 bg-surface font-mono text-sm" value={gstNumber} onChange={(e) => setGstNumber(e.target.value)} placeholder="e.g. 29AAAAA0000A1Z1" />
+                  </div>
+
+                  <div className="p-4 rounded-xl bg-amber-500/5 border border-amber-500/20 mt-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-extrabold text-amber-600 dark:text-amber-500 uppercase tracking-wider flex items-center gap-1">
+                        <CreditCard size={12} /> Credit Exposure Limit (INR)
+                      </label>
+                      <Input disabled={!isEditable} type="number" className="h-11 bg-surface border-amber-500/30 focus:border-amber-500" value={creditLimit} onChange={(e) => setCreditLimit(e.target.value)} placeholder="e.g. 150000" />
+                      <p className="text-[10px] text-textSecondary mt-1">Set the maximum allowable outstanding balance before alerts trigger.</p>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+              
+            </div>
+          </div>
+
+          <DialogFooter className="px-6 py-4 border-t border-border bg-surface/50">
+            <div className="flex w-full justify-end gap-3">
+              <Button type="button" variant="outline" onClick={() => setModalOpen(false)}>
+                {isEditable ? "Cancel" : "Close"}
+              </Button>
+              {isEditable && (
+                <Button onClick={handleSubmit} loading={isSubmitting} disabled={!name.trim() || !phone.trim()} className="px-8 shadow-sm">
+                  {editingCustomer ? "Save Changes" : "Register Profile"}
+                </Button>
+              )}
+            </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
+
     </div>
   );
 }

@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth import get_user_model
+from django.core.validators import FileExtensionValidator
 
 User = get_user_model()
 
@@ -21,7 +22,12 @@ class Company(models.Model):
     tan_number = models.CharField(max_length=20, blank=True, null=True, help_text="Tax deduction number")
     
     # Branding
-    logo = models.ImageField(upload_to='company_logos/', blank=True, null=True)
+    logo = models.ImageField(
+        upload_to='company_logos/', 
+        blank=True, 
+        null=True,
+        validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'webp'])]
+    )
     website = models.URLField(blank=True, null=True)
     
     # Address Information

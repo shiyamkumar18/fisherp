@@ -86,3 +86,29 @@ export const deletePayment = async (id) => {
   await apiClient.delete(`/payments/${id}/`);
   return true;
 };
+
+export const fetchPaymentDetails = async (id) => {
+  if (config.useMocks) return paymentMockData.find(p => String(p.id) === String(id));
+  const response = await apiClient.get(`/payments/${id}/`);
+  return response.data;
+};
+
+export const approvePayment = async (id, reason = "") => {
+  const response = await apiClient.post(`/payments/${id}/approve/`, { reason });
+  return response.data;
+};
+
+export const markPaymentPaid = async (id) => {
+  const response = await apiClient.post(`/payments/${id}/mark_paid/`);
+  return response.data;
+};
+
+export const reversePayment = async (id, reason) => {
+  const response = await apiClient.post(`/payments/${id}/reverse/`, { reason });
+  return response.data;
+};
+
+export const cancelPayment = async (id, reason) => {
+  const response = await apiClient.post(`/payments/${id}/cancel/`, { reason });
+  return response.data;
+};

@@ -145,7 +145,7 @@ export default function AppLayout() {
         )}
       </AnimatePresence>      {/* Sidebar Navigation - Hidden on Mobile, Visible on Desktop */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 w-64 transform transition-transform duration-300 hidden md:flex md:flex-col md:static md:translate-x-0 bg-surface border-r border-border ${
+        className={`fixed inset-y-0 left-0 z-40 w-64 transform transition-transform duration-300 hidden md:flex md:flex-col md:static md:translate-x-0 bg-sidebar border-r border-border ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -290,7 +290,7 @@ export default function AppLayout() {
                       initial={{ opacity: 0, scale: 0.95, y: 10 }}
                       animate={{ opacity: 1, scale: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                      className="absolute right-0 mt-2 w-56 rounded-xl border border-border bg-surface p-2 shadow-xl z-20"
+                      className="absolute right-0 mt-2 w-56 rounded-xl border border-border bg-elevated p-2 shadow-xl z-20"
                     >
                       <div className="px-3 py-2 border-b border-border mb-1.5">
                         <p className="text-[10px] text-textSecondary uppercase tracking-wider font-bold">Role</p>
@@ -402,7 +402,7 @@ export default function AppLayout() {
                 animate={{ y: 0 }}
                 exit={{ y: "100%" }}
                 transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                className="md:hidden fixed bottom-0 left-0 right-0 bg-surface rounded-t-3xl border-t border-border z-50 p-6 shadow-2xl max-h-[85vh] overflow-y-auto"
+                className="md:hidden fixed bottom-0 left-0 right-0 bg-elevated rounded-t-3xl border-t border-border z-50 p-6 shadow-2xl max-h-[85vh] overflow-y-auto"
               >
                 <div className="flex justify-between items-center mb-6">
                   <h3 className="text-lg font-bold text-textPrimary">More Options</h3>

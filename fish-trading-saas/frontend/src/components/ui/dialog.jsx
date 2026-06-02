@@ -40,7 +40,7 @@ export function DialogContent({ className, children, ...props }) {
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={onClose}
-        className="fixed inset-0 bg-slate-950/40 backdrop-blur-sm"
+        className="fixed inset-0 bg-bg/60 backdrop-blur-sm"
       />
       
       {/* Modal Container */}
@@ -50,7 +50,7 @@ export function DialogContent({ className, children, ...props }) {
         exit={{ opacity: 0, y: "100%" }}
         transition={{ type: "spring", damping: 25, stiffness: 350 }}
         className={cn(
-          "relative z-50 w-full sm:max-w-lg max-h-[90vh] overflow-y-auto rounded-t-3xl sm:rounded-2xl border border-border bg-surface p-6 shadow-2xl",
+          "relative z-50 w-full sm:max-w-lg max-h-[90vh] overflow-y-auto rounded-t-3xl sm:rounded-2xl border border-border bg-modal p-6 shadow-2xl",
           className
         )}
         {...props}

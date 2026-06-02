@@ -49,11 +49,39 @@ class Payment(models.Model):
         upload_to='payment_receipts/%Y/%m/', blank=True, null=True,
         validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'webp', 'pdf'])]
     )
+    
+    # Lifecycle States
+    STATUS_CHOICES = [
+        ('draft', 'Draft'),
+        ('pending_approval', 'Pending Approval'),
+        ('approved', 'Approved'),
+        ('paid', 'Paid'),
+        ('partially_paid', 'Partially Paid'),
+        ('failed', 'Failed'),
+        ('cancelled', 'Cancelled'),
+        ('reversed', 'Reversed'),
+    ]
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
+    
+    RECON_CHOICES = [
+        ('pending', 'Pending'),
+        ('matched', 'Matched'),
+        ('unmatched', 'Unmatched'),
+    ]
+    reconciliation_status = models.CharField(max_length=20, choices=RECON_CHOICES, default='pending')
+    
+    allocated_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
+    unallocated_balance = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
+    
+    submitted_for_approval_at = models.DateTimeField(null=True, blank=True)
+    approved_at = models.DateTimeField(null=True, blank=True)
+    paid_at = models.DateTimeField(null=True, blank=True)
+
     approval_status = models.CharField(max_length=15, choices=[
         ('pending', 'Pending Approval'),
         ('approved', 'Approved'),
         ('rejected', 'Rejected'),
-    ], default='approved')
+    ], default='approved', help_text="Deprecated: Use 'status' field instead")
     approved_by = models.ForeignKey('accounts.User', on_delete=models.SET_NULL, null=True, blank=True,
                                     related_name='approved_payments')
     processed_by = models.ForeignKey('accounts.User', on_delete=models.SET_NULL, null=True, blank=True,

@@ -81,6 +81,7 @@ TENANT_APPS = [
     "subscriptions",
     "dashboard",
     "saas_admin",  # Platform Manager App
+    "permissions",  # New permissions app
 ]
 
 INSTALLED_APPS = SHARED_APPS + TENANT_APPS + [
@@ -116,6 +117,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "permissions.middleware.PermissionCheckMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "subscriptions.middleware.SubscriptionEnforcementMiddleware",
@@ -470,3 +472,29 @@ LOGGING = {
         },
     },
 }
+
+# =========================
+# THROTTLING SETTINGS
+# =========================
+REST_FRAMEWORK['DEFAULT_THROTTLE_CLASSES'] = [
+    'rest_framework.throttling.AnonRateThrottle',
+    'rest_framework.throttling.UserRateThrottle'
+]
+REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'] = {
+    'anon': '100/day',
+    'user': '1000/day',
+    'otp': '5/minute',
+    'login': '10/minute',
+}
+
+# =========================
+# SECURITY HEADERS
+# =========================
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = 'DENY'
+# For HTTPS (in production)
+# SECURE_SSL_REDIRECT = True
+# SECURE_HSTS_SECONDS = 31536000
+# SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+# SECURE_HSTS_PRELOAD = True

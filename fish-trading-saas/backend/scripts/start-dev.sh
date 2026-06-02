@@ -22,14 +22,10 @@ echo -e "${GREEN}[start-dev] Starting FisherP local development environment...${
 # ---------------------------------------------------------------------------
 # 1. Activate virtual environment
 # ---------------------------------------------------------------------------
-if [ ! -f "$BACKEND_DIR/.venv/bin/activate" ]; then
-    echo -e "${RED}[start-dev] ERROR: Virtual environment not found at $BACKEND_DIR/.venv${NC}"
-    echo "Run: cd $BACKEND_DIR && python -m venv .venv"
-    exit 1
-fi
-
-source "$BACKEND_DIR/.venv/bin/activate"
-echo -e "${GREEN}[start-dev] Virtual environment activated.${NC}"
+# Use system Python instead of virtual environment
+PYTHON=python3
+echo -e "${GREEN}[start-dev] Using system Python ${PYTHON}.${NC}"
+# Skip virtual environment activation
 
 # ---------------------------------------------------------------------------
 # 2. Start Redis (if not already running)
@@ -112,13 +108,13 @@ export CELERY_RESULT_BACKEND="redis://localhost:6379/1"
 # ---------------------------------------------------------------------------
 echo -e "${YELLOW}[start-dev] Running Django migrations...${NC}"
 cd "$BACKEND_DIR"
-python manage.py migrate --noinput
+$PYTHON manage.py migrate --noinput
 
 # ---------------------------------------------------------------------------
 # 5. Collect static files
 # ---------------------------------------------------------------------------
 echo -e "${YELLOW}[start-dev] Collecting static files...${NC}"
-python manage.py collectstatic --noinput
+$PYTHON manage.py collectstatic --noinput
 
 # ---------------------------------------------------------------------------
 # 6. Start Django development server

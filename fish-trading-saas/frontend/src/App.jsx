@@ -22,10 +22,13 @@ const OrdersPage = lazy(() => import("@/pages/orders-page"));
 const ProductsPage = lazy(() => import("@/pages/products-page"));
 const SalesPage = lazy(() => import("@/pages/sales-page"));
 const PurchasesPage = lazy(() => import("@/pages/purchases-page"));
+const PurchaseDetailPage = lazy(() => import("@/pages/purchase-detail-page"));
+const SaleDetailPage = lazy(() => import("@/pages/sale-detail-page"));
 const InventoryPage = lazy(() => import("@/pages/inventory-page"));
 const SuppliersPage = lazy(() => import("@/pages/suppliers-page"));
 const CustomersPage = lazy(() => import("@/pages/customers-page"));
 const PaymentsPage = lazy(() => import("@/pages/payments-page"));
+const PaymentDetailPage = lazy(() => import("@/pages/payment-detail-page"));
 const ReportsPage = lazy(() => import("@/pages/reports-page"));
 const ProfilePage = lazy(() => import("@/pages/profile-page"));
 const SettingsPage = lazy(() => import("@/pages/settings-page"));
@@ -117,12 +120,17 @@ export default function App() {
             <Route index element={<DashboardRoot />} />
             <Route path="orders" element={<OrdersPage />} />
             <Route path="sales" element={<SalesPage />} />
+            <Route path="sales/new" element={<SaleDetailPage />} />
+            <Route path="sales/:id" element={<SaleDetailPage />} />
             <Route path="purchases" element={<PurchasesPage />} />
+            <Route path="purchases/new" element={<PurchaseDetailPage />} />
+            <Route path="purchases/:id" element={<PurchaseDetailPage />} />
             <Route path="products" element={<ProductsPage />} />
             <Route path="inventory" element={<InventoryPage />} />
             <Route path="suppliers" element={<SuppliersPage />} />
             <Route path="customers" element={<CustomersPage />} />
             <Route path="payments" element={<PaymentsPage />} />
+            <Route path="payments/:id" element={<PaymentDetailPage />} />
             <Route path="reports" element={<ReportsPage />} />
             <Route path="profile" element={<ProfilePage />} />
             <Route path="settings" element={<SettingsPage />} />
