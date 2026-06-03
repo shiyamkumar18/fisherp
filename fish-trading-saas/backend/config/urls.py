@@ -32,8 +32,8 @@ def root(request):
     return JsonResponse({"message": "API running"})
 
 urlpatterns = [
-    # Root API health/info endpoint
-    path("", root, name="api-root"),
+    # Root API health/info endpoint (Moved to /api/)
+    path("api/", root, name="api-root"),
 
     # API Documentation
     path("api/schema/", PublicSpectacularAPIView.as_view(), name="schema"),
@@ -90,6 +90,9 @@ urlpatterns = [
     # Permissions API (RBAC role matrix, permission check)
     path("api/permissions/", include("permissions.urls")),
 
+    # Support Center API
+    path("api/support/", include("support.urls")),
+
 
     # Tenant-specific login URLs (e.g., /acme-corp/login/)
     path("<str:tenant_slug>/login/", UnifiedLoginView.as_view(), name="tenant-login"),
@@ -99,6 +102,8 @@ urlpatterns = [
     path("accounts/profile/", CustomProfileRedirectView.as_view(), name="profile-redirect"),
 
     # SPA fallback: serve Vite build index.html for frontend routes
+    # Explicitly catch the root path
+    path("", serve_spa_index, name="spa-index"),
     # Keep this at the end so it doesn't steal API/admin routes.
     path("<path:frontend_path>", serve_spa_index, name="spa-fallback"),
 

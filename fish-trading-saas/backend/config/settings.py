@@ -82,6 +82,7 @@ TENANT_APPS = [
     "dashboard",
     "saas_admin",  # Platform Manager App
     "permissions",  # New permissions app
+    "support",  # Support Center
 ]
 
 INSTALLED_APPS = SHARED_APPS + TENANT_APPS + [
@@ -291,14 +292,27 @@ _frontend_paths = [
     BASE_DIR / "frontend",
     BASE_DIR.parent / "frontend",
 ]
-STATICFILES_DIRS = [path for path in _frontend_paths if path.exists()]
+import os
+for path in _frontend_paths:
+    if "dist" in str(path) and not path.exists():
+        os.makedirs(path, exist_ok=True)
+
+STATICFILES_DIRS = _frontend_paths
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # =========================
-# CORS (DEV ONLY)
+# CORS & CSRF (DEV ONLY)
 # =========================
 
 CORS_ALLOW_ALL_ORIGINS = False
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -308,7 +322,7 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticated",
     ],
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "accounts.custom_jwt.CustomJWTAuthentication",
         "rest_framework.authentication.SessionAuthentication",
     ],
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
@@ -374,6 +388,7 @@ CORS_ALLOW_HEADERS = [
     'user-agent',
     'x-csrftoken',
     'x-requested-with',
+    'x-impersonate-tenant',
 ]
 
 # Celery Configuration
@@ -485,6 +500,7 @@ REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'] = {
     'user': '1000/day',
     'otp': '5/minute',
     'login': '10/minute',
+    'impersonate': '2/hour',
 }
 
 # =========================

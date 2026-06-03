@@ -37,6 +37,8 @@ class DashboardManager:
         """Get tenant filter based on user - returns Q object"""
         if user.is_superuser:
             return Q()
+        if getattr(user, '_impersonating', False) and user.company:
+            return Q(company=user.company)
         if user.is_platform_user:
             return Q(pk__isnull=True)
         if user.company_id:

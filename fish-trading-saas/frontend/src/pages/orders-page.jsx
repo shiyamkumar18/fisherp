@@ -205,7 +205,7 @@ export default function OrdersPage() {
       title: "",
       sortable: false,
       render: (row) => (
-        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex items-center justify-end gap-2 transition-opacity">
           <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-textSecondary/70 hover:text-primary hover:bg-primary/10" onClick={() => setSelectedOrder(row)} title="View Details">
             <Eye size={16} />
           </Button>
@@ -310,13 +310,13 @@ export default function OrdersPage() {
       </div>
 
       {/* Advanced Search & Filters Row */}
-      <div className="bg-white rounded-2xl shadow-sm border border-border p-4 flex flex-col md:flex-row gap-4 items-center justify-between relative z-20">
+      <div className="bg-card rounded-2xl shadow-sm border border-border p-4 flex flex-col md:flex-row gap-4 items-center justify-between relative z-20">
         <div className="relative w-full md:max-w-md group">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-textSecondary/70 group-focus-within:text-primary transition-colors" size={18} />
           <input 
             type="text" 
             placeholder="Search by invoice, customer, phone, status, or ₹ amount..." 
-            className="w-full h-12 pl-12 pr-10 bg-card border border-border rounded-xl font-medium text-sm text-textPrimary focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all placeholder:text-textSecondary/70"
+            className="w-full h-12 pl-12 pr-10 bg-card border border-border rounded-xl font-medium text-sm text-textPrimary focus:bg-card focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all placeholder:text-textSecondary/70"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
@@ -343,7 +343,7 @@ export default function OrdersPage() {
       
       {/* Expanded Filter Bar */}
       {showFilters && (
-        <div className="bg-white rounded-2xl shadow-sm border border-border p-5 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-5 animate-in fade-in slide-in-from-top-2 duration-200 relative z-10">
+        <div className="bg-card rounded-2xl shadow-sm border border-border p-5 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-5 animate-in fade-in slide-in-from-top-2 duration-200 relative z-10">
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-textSecondary uppercase tracking-wider">Date Range</label>
             <select 
@@ -456,7 +456,7 @@ export default function OrdersPage() {
             const pcls = PAYMENT_CLS[pKey] || PAYMENT_CLS.pending;
             
             return (
-              <div className="bg-white rounded-2xl border border-border shadow-sm p-4 relative">
+              <div className="bg-card rounded-2xl border border-border shadow-sm p-4 relative">
                 <div className="flex justify-between items-start mb-3">
                   <div>
                     <button onClick={() => setSelectedOrder(row)} className="font-black text-primary text-lg flex items-center gap-1 hover:underline">
@@ -503,7 +503,7 @@ export default function OrdersPage() {
           ></div>
           
           {/* Drawer Panel */}
-          <div className="relative w-full max-w-md h-full bg-white shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
+          <div className="relative w-full max-w-md h-full bg-card shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
             {/* Header */}
             <div className="flex items-center justify-between p-6 border-b border-border/50 bg-card">
               <div>
@@ -512,7 +512,7 @@ export default function OrdersPage() {
               </div>
               <button 
                 onClick={() => setSelectedOrder(null)}
-                className="w-10 h-10 rounded-full bg-white border border-border flex items-center justify-center text-textSecondary hover:bg-hover hover:text-textPrimary transition-colors"
+                className="w-10 h-10 rounded-full bg-card border border-border flex items-center justify-center text-textSecondary hover:bg-hover hover:text-textPrimary transition-colors"
               >
                 <X size={20} />
               </button>
@@ -608,7 +608,7 @@ export default function OrdersPage() {
             </div>
             
             {/* Actions */}
-            <div className="p-6 border-t border-border/50 bg-white grid grid-cols-2 gap-3">
+            <div className="p-6 border-t border-border/50 bg-card grid grid-cols-2 gap-3">
               <Button className="w-full font-bold h-12 rounded-xl bg-primary hover:bg-primaryHover text-white shadow-lg shadow-indigo-200">
                 Collect Payment
               </Button>

@@ -29,8 +29,7 @@ export default function SaleDetailPage() {
   const location = useLocation();
   const { push: toast } = useToast();
   
-  const { canEditForm, canViewFinancial, isTenantAdmin, session } = usePermission();
-  const role = session?.user?.role || "sales_staff";
+  const { canEditForm, canViewFinancial, isTenantAdmin, session, role } = usePermission();
   
   const isNew = !id || id === "new";
   

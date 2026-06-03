@@ -289,6 +289,8 @@ class CanViewFinancials(permissions.BasePermission):
     def has_permission(self, request, view):
         if not request.user or not request.user.is_authenticated:
             return False
+        if getattr(request.user, 'is_platform_user', False) and is_impersonating(request):
+            return True
         return request.user.is_tenant_admin or request.user.is_accountant
 
 
@@ -613,27 +615,45 @@ def check_feature_access(user, feature_name):
 # Impersonation Helpers
 # =====================
 
-def is_impersonating(request):
+def is_impersonating(request, user=None):
     """Check if current request is in impersonation mode."""
-    if not hasattr(request, 'user') or request.user is None or not request.user.is_authenticated:
+    if user is None:
+        if not hasattr(request, 'user') or request.user is None or not request.user.is_authenticated:
+            return False
+        user = request.user
+    
+    if not user.is_authenticated:
         return False
+
+    if request.META.get('HTTP_X_IMPERSONATE_TENANT'):
+        return True
     if hasattr(request, 'session') and request.session:
         return request.session.get('impersonating_tenant_id') is not None
     return False
 
 
-def get_impersonated_tenant(request):
+def get_impersonated_tenant(request, user=None):
     """Get the tenant being impersonated in current request."""
-    if not is_impersonating(request):
+    if not is_impersonating(request, user=user):
         return None
-    if not hasattr(request, 'session') or not request.session:
-        return None
+        
     from companies.models import Company
-    tenant_id = request.session.get('impersonating_tenant_id')
-    try:
-        return Company.objects.get(id=tenant_id)
-    except Company.DoesNotExist:
-        return None
+    
+    tenant_slug = request.META.get('HTTP_X_IMPERSONATE_TENANT')
+    if tenant_slug:
+        try:
+            return Company.objects.get(slug=tenant_slug)
+        except Company.DoesNotExist:
+            pass
+            
+    if hasattr(request, 'session') and request.session:
+        tenant_id = request.session.get('impersonating_tenant_id')
+        if tenant_id:
+            try:
+                return Company.objects.get(id=tenant_id)
+            except Company.DoesNotExist:
+                return None
+    return None
 
 
 def start_impersonation(request, tenant, reason):

@@ -6,13 +6,14 @@
 
 import useBranding from "../../hooks/useBranding";
 import { Home, ShoppingCart, Boxes, FileText, Users, DollarSign, Truck } from "lucide-react";
+import useAuthStore from "../../hooks/useAuthStore";
 
 export default function Sidebar() {
   const { company } = useBranding();
   const location = useLocation();
   const [open, setOpen] = useState(false);
-  const user = useAuthStore((s) => s.user);
-  const role = user?.role;
+  const { user, impersonation } = useAuthStore();
+  const role = impersonation?.role || (impersonation ? "tenant_admin" : user?.role);
 
   // Role-based menu config
   const menuConfig = {

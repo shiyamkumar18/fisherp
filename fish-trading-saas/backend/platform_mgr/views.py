@@ -20,7 +20,7 @@ class TenantActivityHeatmapView(APIView):
     Get tenant activity heatmap data.
     Shows which tenants are most active based on action counts.
     """
-    permission_classes = [permissions.IsAuthenticated, IsPlatformOperator]
+    permission_classes = [permissions.IsAuthenticated, IsPlatformOperatorOrReadOnlySupport]
     
     def get(self, request):
         # Get activity for last 30 days
@@ -61,7 +61,7 @@ class BillingHistoryView(APIView):
     Get billing history for all tenants.
     Shows subscription payments and revenue.
     """
-    permission_classes = [permissions.IsAuthenticated, IsPlatformOperator]
+    permission_classes = [permissions.IsAuthenticated, IsPlatformOperatorOrReadOnlySupport]
     
     def get(self, request):
         # Get all subscriptions with payment history
@@ -111,7 +111,7 @@ class ErrorTrackingView(APIView):
     Get error tracking data.
     Shows permission denied events and failed operations.
     """
-    permission_classes = [permissions.IsAuthenticated, IsPlatformOperator]
+    permission_classes = [permissions.IsAuthenticated, IsPlatformOperatorOrReadOnlySupport]
     
     def get(self, request):
         # Get recent permission denied events
@@ -157,7 +157,7 @@ class BackupStatusView(APIView):
     Get database backup status.
     This is a placeholder - actual implementation would connect to backup service.
     """
-    permission_classes = [permissions.IsAuthenticated, IsPlatformOperator]
+    permission_classes = [permissions.IsAuthenticated, IsPlatformOperatorOrReadOnlySupport]
     
     def get(self, request):
         # Placeholder backup status
@@ -177,7 +177,7 @@ class ImpersonationManagementView(APIView):
     Manage impersonation sessions.
     Start, end, or list active impersonations.
     """
-    permission_classes = [permissions.IsAuthenticated, IsPlatformOperator]
+    permission_classes = [permissions.IsAuthenticated, IsPlatformOperatorOrReadOnlySupport]
     
     def get(self, request):
         # List active impersonations
@@ -292,7 +292,7 @@ class AuditLogListView(APIView):
     """
     List audit logs with filtering options.
     """
-    permission_classes = [permissions.IsAuthenticated, IsPlatformOperator]
+    permission_classes = [permissions.IsAuthenticated, IsPlatformOperatorOrReadOnlySupport]
     
     def get(self, request):
         # Get filter parameters
@@ -337,7 +337,7 @@ class TenantManagementView(APIView):
     """
     Tenant management - list, create, update tenants.
     """
-    permission_classes = [permissions.IsAuthenticated, IsPlatformOperator]
+    permission_classes = [permissions.IsAuthenticated, IsPlatformOperatorOrReadOnlySupport]
     
     def get(self, request):
         """List all tenants"""
@@ -411,7 +411,7 @@ class SubscriptionManagementView(APIView):
     """
     Subscription management - view and update tenant subscriptions.
     """
-    permission_classes = [permissions.IsAuthenticated, IsPlatformOperator]
+    permission_classes = [permissions.IsAuthenticated, IsPlatformOperatorOrReadOnlySupport]
     
     def get(self, request):
         """List all subscriptions (paginated)"""
@@ -494,7 +494,7 @@ class PlatformStatisticsView(APIView):
     """
     Get platform-wide statistics.
     """
-    permission_classes = [permissions.IsAuthenticated, IsPlatformOperator]
+    permission_classes = [permissions.IsAuthenticated, IsPlatformOperatorOrReadOnlySupport]
     
     def get(self, request):
         today = timezone.now().date()

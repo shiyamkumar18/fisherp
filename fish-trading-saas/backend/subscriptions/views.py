@@ -529,3 +529,47 @@ class MyEntitlementsView(APIView):
             'entitlements': entitlements,
             'status': status_value,
         })
+
+
+class CreateCheckoutSessionView(APIView):
+    """
+    Generate a Stripe Checkout Session URL for a specific tier.
+    """
+    permission_classes = [permissions.IsAuthenticated, IsTenantAdmin]
+
+    def post(self, request):
+        tier_id = request.data.get('tier_id')
+        if not tier_id:
+            return Response({'error': 'tier_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            tier = SubscriptionTier.objects.get(id=tier_id)
+        except SubscriptionTier.DoesNotExist:
+            return Response({'error': 'Invalid tier'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            from .billing import create_checkout_session
+            url = create_checkout_session(request.user.company, tier)
+            return Response({'url': url})
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class StripeWebhookView(APIView):
+    """
+    Handle incoming Stripe Webhooks to update subscriptions.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        payload = request.body
+        sig_header = request.META.get('HTTP_STRIPE_SIGNATURE', '')
+
+        try:
+            from .billing import handle_stripe_webhook
+            success = handle_stripe_webhook(payload, sig_header)
+            if success:
+                return Response(status=status.HTTP_200_OK)
+            return Response({'error': 'Webhook signature verification failed'}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)

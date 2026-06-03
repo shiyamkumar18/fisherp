@@ -22,7 +22,6 @@ const ALL_ROLES = Object.values(ROLES);
 
 // High-privilege roles that can access most sections
 const MANAGEMENT = [
-  ROLES.PLATFORM_OPERATOR, ROLES.PLATFORM_SUPPORT,
   ROLES.TENANT_ADMIN, ROLES.BRANCH_MANAGER, ROLES.FINANCE_MANAGER,
   ROLES.SUPERVISOR,
 ];
@@ -40,7 +39,7 @@ export const routeAccess = {
   "/dashboard/payments": [...MANAGEMENT, ROLES.ACCOUNTANT],
   "/dashboard/reports": [...MANAGEMENT, ROLES.ACCOUNTANT],
   "/dashboard/profile": ALL_ROLES,
-  "/dashboard/settings": [ROLES.TENANT_ADMIN, ROLES.PLATFORM_OPERATOR, ROLES.PLATFORM_SUPPORT],
+  "/dashboard/settings": [ROLES.TENANT_ADMIN, ROLES.PLATFORM_OPERATOR, ROLES.PLATFORM_SUPPORT, "platform_super_admin"],
 };
 
 export const canAccessRoute = (role, path) => {

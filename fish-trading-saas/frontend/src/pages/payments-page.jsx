@@ -263,14 +263,14 @@ export default function PaymentsPage() {
                 key={tab}
                 onClick={() => setActiveTab(tab)}
                 className={`px-4 py-1.5 text-xs font-bold rounded-md capitalize transition-all ${
-                  activeTab === tab ? "bg-white shadow-sm text-primary" : "text-textSecondary hover:text-textPrimary"
+                  activeTab === tab ? "bg-card shadow-sm text-primary" : "text-textSecondary hover:text-textPrimary"
                 }`}
               >
                 {tab === 'inbound' ? 'Collections' : tab === 'outbound' ? 'Payouts' : 'All Payments'}
               </button>
             ))}
           </div>
-          <div className="flex items-center gap-2 mt-4 sm:mt-0 max-w-xs w-full bg-white border border-border rounded-lg px-3 py-2 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all">
+          <div className="flex items-center gap-2 mt-4 sm:mt-0 max-w-xs w-full bg-card border border-border rounded-lg px-3 py-2 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all">
             <Search size={16} className="text-textSecondary" />
             <input
               type="text"
@@ -364,7 +364,7 @@ export default function PaymentsPage() {
                       <Button 
                         variant="outline" 
                         size="sm" 
-                        className="text-xs py-1 h-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="text-xs py-1 h-8 transition-opacity"
                         onClick={() => navigate(`/dashboard/payments/${p.id}`)}
                       >
                         View Details
@@ -383,8 +383,8 @@ export default function PaymentsPage() {
         <DialogContent className="max-w-[1100px] h-[85vh] p-0 flex flex-col sm:flex-row overflow-hidden rounded-2xl shadow-2xl border-0 bg-transparent">
           
           {/* Left Side 65%: Form */}
-          <div className="w-full sm:w-[65%] flex flex-col bg-white">
-            <DialogHeader className="px-8 py-6 border-b border-border/50 bg-white/80 backdrop-blur-md sticky top-0 z-10">
+          <div className="w-full sm:w-[65%] flex flex-col bg-card">
+            <DialogHeader className="px-8 py-6 border-b border-border/50 bg-card/80 backdrop-blur-md sticky top-0 z-10">
               <DialogTitle className="text-2xl font-black tracking-tight flex items-center gap-3 text-textPrimary">
                 <div className="p-2.5 bg-primary/10 text-primary rounded-xl">
                   <CreditCard size={22} strokeWidth={2.5} />
@@ -404,7 +404,7 @@ export default function PaymentsPage() {
                     onClick={() => handleTypeChange("inbound")}
                     className={`flex-1 py-3 text-sm font-bold rounded-xl transition-all duration-300 relative z-10 ${paymentType === "inbound" ? "text-primaryHover shadow-sm" : "text-textSecondary hover:text-textPrimary"}`}
                   >
-                    {paymentType === "inbound" && <div className="absolute inset-0 bg-white rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] -z-10"></div>}
+                    {paymentType === "inbound" && <div className="absolute inset-0 bg-card rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] -z-10"></div>}
                     <ArrowDownLeft size={18} className="inline mr-2 opacity-80" strokeWidth={2.5} /> Inbound Collection
                   </button>
                   <button
@@ -412,7 +412,7 @@ export default function PaymentsPage() {
                     onClick={() => handleTypeChange("outbound")}
                     className={`flex-1 py-3 text-sm font-bold rounded-xl transition-all duration-300 relative z-10 ${paymentType === "outbound" ? "text-rose-700 shadow-sm" : "text-textSecondary hover:text-textPrimary"}`}
                   >
-                    {paymentType === "outbound" && <div className="absolute inset-0 bg-white rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] -z-10"></div>}
+                    {paymentType === "outbound" && <div className="absolute inset-0 bg-card rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] -z-10"></div>}
                     <ArrowUpRight size={18} className="inline mr-2 opacity-80" strokeWidth={2.5} /> Outbound Payout
                   </button>
                 </div>
@@ -437,7 +437,7 @@ export default function PaymentsPage() {
                       <select 
                         value={linkedPartyId}
                         onChange={(e) => setLinkedPartyId(e.target.value)}
-                        className="h-14 w-full rounded-xl border border-border bg-card/50 pl-11 pr-4 text-sm font-bold text-textPrimary outline-none focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all appearance-none cursor-pointer"
+                        className="h-14 w-full rounded-xl border border-border bg-card/50 pl-11 pr-4 text-sm font-bold text-textPrimary outline-none focus:border-primary focus:bg-card focus:ring-4 focus:ring-primary/10 transition-all appearance-none cursor-pointer"
                       >
                         <option value="">-- Choose Profile --</option>
                         {(paymentType === 'inbound' ? buyers : suppliers).map(p => (
@@ -462,7 +462,7 @@ export default function PaymentsPage() {
                               if(doc) setAmount(parseFloat(doc.pending_amount));
                             }
                           }}
-                          className="h-14 w-full rounded-xl border border-border bg-card/50 pl-11 pr-4 text-sm font-bold text-textPrimary outline-none focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all appearance-none cursor-pointer"
+                          className="h-14 w-full rounded-xl border border-border bg-card/50 pl-11 pr-4 text-sm font-bold text-textPrimary outline-none focus:border-primary focus:bg-card focus:ring-4 focus:ring-primary/10 transition-all appearance-none cursor-pointer"
                         >
                           <option value="">-- Leave Unallocated (Advance) --</option>
                           {pendingDocs.map(d => (
@@ -490,7 +490,7 @@ export default function PaymentsPage() {
                     <div className="relative max-w-md">
                       <span className="absolute left-5 top-1/2 -translate-y-1/2 text-textSecondary/70 font-extrabold text-xl group-focus-within:text-primary">₹</span>
                       <Input 
-                        className={`h-16 pl-10 bg-card/50 border-border font-black text-3xl text-textPrimary focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/10 rounded-xl transition-all ${linkedDocId && amount > parseFloat(pendingDocs.find(d => String(d.id) === linkedDocId)?.pending_amount || Infinity) ? 'border-danger focus:border-danger focus:ring-danger/20 text-danger' : ''}`} 
+                        className={`h-16 pl-10 bg-card/50 border-border font-black text-3xl text-textPrimary focus:bg-card focus:border-primary focus:ring-4 focus:ring-primary/10 rounded-xl transition-all ${linkedDocId && amount > parseFloat(pendingDocs.find(d => String(d.id) === linkedDocId)?.pending_amount || Infinity) ? 'border-danger focus:border-danger focus:ring-danger/20 text-danger' : ''}`} 
                         type="number" step="0.01" value={amount} onChange={(e) => setAmount(Math.max(0, parseFloat(e.target.value) || 0))} required 
                       />
                     </div>
@@ -529,13 +529,13 @@ export default function PaymentsPage() {
 
                   <div className="space-y-2 group">
                     <label className="text-xs font-bold text-textSecondary uppercase tracking-wider ml-1">Value Date <span className="text-danger">*</span></label>
-                    <Input className="h-14 bg-card/50 border-border font-bold text-textPrimary focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/10 rounded-xl transition-all px-4" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+                    <Input className="h-14 bg-card/50 border-border font-bold text-textPrimary focus:bg-card focus:border-primary focus:ring-4 focus:ring-primary/10 rounded-xl transition-all px-4" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
                   </div>
                   
                   <div className="space-y-2 group">
                     <label className="text-xs font-bold text-textSecondary uppercase tracking-wider ml-1">Reference ID {paymentMode !== 'cash' && <span className="text-danger">*</span>}</label>
                     <Input 
-                      className={`h-14 bg-card/50 border-border font-bold text-textPrimary placeholder:font-medium placeholder:text-textSecondary/70 focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/10 rounded-xl transition-all px-4 ${paymentMode !== 'cash' && !refNo.trim() ? 'border-amber-300 focus:border-warning' : ''}`} 
+                      className={`h-14 bg-card/50 border-border font-bold text-textPrimary placeholder:font-medium placeholder:text-textSecondary/70 focus:bg-card focus:border-primary focus:ring-4 focus:ring-primary/10 rounded-xl transition-all px-4 ${paymentMode !== 'cash' && !refNo.trim() ? 'border-amber-300 focus:border-warning' : ''}`} 
                       value={refNo} 
                       onChange={(e) => setRefNo(e.target.value)} 
                       placeholder="UTR, Cheque #, Txn ID..." 
@@ -552,7 +552,7 @@ export default function PaymentsPage() {
                       onChange={(e) => setNotes(e.target.value)} 
                       rows="2" 
                       placeholder="Add audit tracking details or billing contexts here..."
-                      className="w-full rounded-xl border border-border bg-card/50 px-4 py-4 text-sm font-medium text-textPrimary outline-none focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all resize-none"
+                      className="w-full rounded-xl border border-border bg-card/50 px-4 py-4 text-sm font-medium text-textPrimary outline-none focus:border-primary focus:bg-card focus:ring-4 focus:ring-primary/10 transition-all resize-none"
                     />
                   </div>
                 </div>

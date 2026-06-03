@@ -9,6 +9,15 @@ import uuid
 # Canonical role choices for SaaS RBAC
 ROLE_CHOICES = [
     ('platform_operator', 'Platform Operator'),
+    ('platform_devops', 'DevOps Engineer'),
+    ('platform_finance', 'Finance Manager (Platform)'),
+    ('platform_billing', 'Billing Admin'),
+    ('platform_support_manager', 'Support Manager'),
+    ('platform_customer_success', 'Customer Success'),
+    ('platform_sales_manager', 'Sales Manager (Platform)'),
+    ('platform_onboarding', 'Onboarding Specialist'),
+    ('platform_support_l2', 'Support L2'),
+    ('platform_support_l1', 'Support L1'),
     ('platform_support', 'Platform Support'),
     ('tenant_admin', 'Tenant Admin'),
     ('accountant', 'Accountant'),
@@ -27,8 +36,17 @@ ROLE_CHOICES = [
 
 # Role hierarchy (higher number = more authority)
 ROLE_HIERARCHY = {
-    'platform_operator': 15,
-    'platform_support': 14,
+    'platform_operator': 25,
+    'platform_devops': 24,
+    'platform_finance': 23,
+    'platform_sales_manager': 22,
+    'platform_support_manager': 21,
+    'platform_customer_success': 20,
+    'platform_billing': 19,
+    'platform_onboarding': 18,
+    'platform_support_l2': 17,
+    'platform_support_l1': 16,
+    'platform_support': 15,
     'tenant_admin': 13,
     'branch_manager': 12,
     'finance_manager': 11,
@@ -44,7 +62,11 @@ ROLE_HIERARCHY = {
     'viewer': 1,
 }
 
-PLATFORM_ROLES = {'platform_operator', 'platform_support'}
+PLATFORM_ROLES = {
+    'platform_operator', 'platform_support', 'platform_devops', 'platform_finance',
+    'platform_billing', 'platform_support_manager', 'platform_customer_success',
+    'platform_sales_manager', 'platform_onboarding', 'platform_support_l2', 'platform_support_l1'
+}
 TENANT_ROLES = {
     'tenant_admin', 'branch_manager', 'finance_manager', 'accountant',
     'purchase_manager', 'auction_manager', 'inventory_manager',
@@ -214,6 +236,42 @@ class User(AbstractUser):
         return self.is_superuser
     
     @property
+    def is_platform_devops(self):
+        return self.role == 'platform_devops'
+
+    @property
+    def is_platform_finance(self):
+        return self.role == 'platform_finance'
+
+    @property
+    def is_platform_billing(self):
+        return self.role == 'platform_billing'
+
+    @property
+    def is_platform_support_l1(self):
+        return self.role == 'platform_support_l1'
+
+    @property
+    def is_platform_support_l2(self):
+        return self.role == 'platform_support_l2'
+
+    @property
+    def is_platform_support_manager(self):
+        return self.role == 'platform_support_manager'
+
+    @property
+    def is_platform_customer_success(self):
+        return self.role == 'platform_customer_success'
+
+    @property
+    def is_platform_sales_manager(self):
+        return self.role == 'platform_sales_manager'
+
+    @property
+    def is_platform_onboarding(self):
+        return self.role == 'platform_onboarding'
+    
+    @property
     def is_platform_user(self):  # noqa: F811
         """Backward-compatible platform flag backed by the model field."""
         return self.__dict__.get('is_platform_user', False) or self.is_superuser or self.role in PLATFORM_ROLES
@@ -335,3 +393,33 @@ class DeviceSession(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.ip_address} ({self.device_type})"
+
+
+class PlatformStaffInvite(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('accepted', 'Accepted'),
+        ('revoked', 'Revoked'),
+    ]
+
+    email = models.EmailField(unique=True)
+    role = models.CharField(max_length=30, choices=ROLE_CHOICES)
+    department = models.CharField(max_length=100, blank=True, null=True)
+    token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
+    invited_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='sent_invites')
+    expires_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.email} - {self.role} ({self.status})"
+
+    def is_expired(self):
+        return timezone.now() >= self.expires_at
+
+    def is_valid(self):
+        return self.status == 'pending' and not self.is_expired()

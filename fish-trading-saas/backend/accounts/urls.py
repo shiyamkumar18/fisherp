@@ -22,11 +22,17 @@ from .views import (
 from .views.multi_identifier_auth import MultiIdentifierLoginView, SimpleRegistrationView
 from .views_google import GoogleLogin
 
+from .views_invite import InvitePlatformStaffView, AcceptPlatformInviteView
+
 urlpatterns = [
     # NEW MULTI-IDENTIFIER LOGIN/REGISTRATION (RECOMMENDED)
     path("login/", MultiIdentifierLoginView.as_view(), name="multi-identifier-login"),
     path("register/", SimpleRegistrationView.as_view(), name="multi-identifier-register"),
     
+    # Platform Staff Invite System
+    path("platform/invite/", InvitePlatformStaffView.as_view(), name="platform-invite"),
+    path("platform/invite/accept/", AcceptPlatformInviteView.as_view(), name="platform-invite-accept"),
+
     # Legacy endpoints (kept for backward compatibility)
     path("send-otp/", SendOTPView.as_view(), name="send-otp"),
     path("verify-otp/", VerifyOTPView.as_view(), name="verify-otp"),

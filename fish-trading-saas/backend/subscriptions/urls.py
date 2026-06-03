@@ -10,6 +10,8 @@ from .views import (
     CancelAddOnView,
     CheckFeatureAccessView,
     MyEntitlementsView,
+    CreateCheckoutSessionView,
+    StripeWebhookView,
     SubscriptionViewSet,
     SubscriptionTierViewSet,
 )
@@ -37,6 +39,10 @@ urlpatterns = [
     # Feature access
     path("subscriptions/check-feature/", CheckFeatureAccessView.as_view(), name="check-feature"),
     path("subscriptions/my-entitlements/", MyEntitlementsView.as_view(), name="my-entitlements"),
+    
+    # Billing & Payments
+    path("subscriptions/checkout/", CreateCheckoutSessionView.as_view(), name="stripe-checkout"),
+    path("subscriptions/webhook/stripe/", StripeWebhookView.as_view(), name="stripe-webhook"),
     
     # Backward-compatible CRUD endpoints
     path("", include(router.urls)),

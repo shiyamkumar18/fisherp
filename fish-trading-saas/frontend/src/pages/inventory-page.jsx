@@ -17,155 +17,20 @@ import { usePermission } from "@/hooks/usePermission";
 import { useToast } from "@/components/shared/toast-provider";
 import { motion, AnimatePresence } from "framer-motion";
 
+
+import { TempBadge } from "@/components/inventory/shared/TempBadge";
+import { ExpiryBadge } from "@/components/inventory/shared/ExpiryBadge";
+import { StockBar } from "@/components/inventory/shared/StockBar";
+import { TEMP_LOGIC, EXPIRY_LOGIC, STATUS_CLS } from "@/components/inventory/shared/constants";
 /* ─────────────────────── CONSTANTS ─────────────────────── */
 
-const STATUS_CLS = {
-  in_stock:           "bg-success/10 text-success border-success/20",
-  low_stock:          "bg-warning/10 text-warning border-warning/20",
-  reserved:           "bg-primary/10 text-primary border-primary/20",
-  out_of_stock:       "bg-danger/10 text-danger border-danger/20",
-  expired:            "bg-border/60 text-textSecondary border-border",
-  inspection_needed:  "bg-warning/15 text-warning border-warning/30",
-  temperature_warning:"bg-warning/15 text-warning border-warning/30",
-  spoilage_risk:      "bg-danger/20 text-danger border-danger/40",
-};
 
-const TEMP_LOGIC = {
-  getTempState: (temp) => {
-    if (temp <= 2 && temp >= -2) return "optimal";
-    if (temp >= 3 && temp <= 6)  return "warning";
-    return "critical";
-  },
-  getColor: (state) => {
-    if (state === "optimal") return "text-success";
-    if (state === "warning")  return "text-warning";
-    return "text-danger";
-  },
-  getBorderColor: (state) => {
-    if (state === "optimal") return "border-success/30";
-    if (state === "warning")  return "border-warning/30";
-    return "border-danger/30";
-  },
-  getGlowClass: (state) => {
-    if (state === "optimal") return "bg-success";
-    if (state === "warning")  return "bg-warning";
-    return "bg-danger";
-  },
-  getBg: (state) => {
-    if (state === "optimal") return "bg-success/10";
-    if (state === "warning")  return "bg-warning/10";
-    return "bg-danger/10";
-  },
-  getLabel: (state) => {
-    if (state === "optimal") return "Optimal Cooling";
-    if (state === "warning")  return "Warm Risk";
-    return "Critical Risk";
-  },
-  getStatusBadge: (temp) => {
-    const state = TEMP_LOGIC.getTempState(temp);
-    if (state === "optimal") return { icon: "🟢", label: "Optimal" };
-    if (state === "warning")  return { icon: "🟡", label: "Warning" };
-    return { icon: "🔴", label: "Critical" };
-  }
-};
 
-const EXPIRY_LOGIC = {
-  getDaysLeft: (expiryStr) => {
-    if (!expiryStr) return null;
-    const diff = new Date(expiryStr) - new Date();
-    return Math.ceil(diff / (1000 * 60 * 60 * 24));
-  },
-  getState: (days) => {
-    if (days === null) return "unknown";
-    if (days < 0)     return "expired";
-    if (days <= 1)    return "critical";
-    if (days <= 3)    return "warning";
-    return "healthy";
-  },
-  getColor: (state) => {
-    if (state === "healthy")  return "text-success";
-    if (state === "warning")  return "text-warning";
-    if (state === "critical") return "text-danger";
-    if (state === "expired")  return "text-danger";
-    return "text-textSecondary";
-  },
-  getBg: (state) => {
-    if (state === "healthy")  return "bg-success/10";
-    if (state === "warning")  return "bg-warning/10";
-    if (state === "critical") return "bg-danger/10";
-    if (state === "expired")  return "bg-danger/15";
-    return "bg-border/40";
-  },
-  getLabel: (days, state) => {
-    if (state === "unknown")  return "No Expiry Set";
-    if (state === "expired")  return `Expired ${Math.abs(days)}d Ago`;
-    if (days === 0)           return "Expires Today";
-    if (days === 1)           return "Expires Tomorrow";
-    return `${days} Days Left`;
-  }
-};
 
 /* ─────────────────────── SUB COMPONENTS ─────────────────────── */
 
-function TempBadge({ temp, size = "sm" }) {
-  const state = TEMP_LOGIC.getTempState(temp);
-  const isWarning = state !== "optimal";
-  return (
-    <div className={`inline-flex flex-col items-center justify-center px-3 py-1.5 rounded-lg border
-      ${state === "optimal" ? "bg-success/10 border-success/20"
-      : state === "warning"  ? "bg-warning/10 border-warning/20"
-      : "bg-danger/10 border-danger/20"}
-      ${isWarning && state === "critical" ? "animate-pulse" : ""}
-    `}>
-      <div className={`flex items-center gap-1.5 font-black ${size === "lg" ? "text-base" : "text-sm"} ${TEMP_LOGIC.getColor(state)}`}>
-        <ThermometerSnowflake size={size === "lg" ? 16 : 13} />
-        {temp?.toFixed(1)}°C
-      </div>
-      <span className={`text-[9px] font-black uppercase mt-0.5 ${TEMP_LOGIC.getColor(state)} opacity-80`}>
-        {TEMP_LOGIC.getLabel(state)}
-      </span>
-    </div>
-  );
-}
 
-function ExpiryBadge({ expiryDate }) {
-  const days  = EXPIRY_LOGIC.getDaysLeft(expiryDate);
-  const state = EXPIRY_LOGIC.getState(days);
-  return (
-    <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border
-      ${state === "healthy"  ? "bg-success/10 border-success/20"
-      : state === "warning"  ? "bg-warning/10 border-warning/20"
-      : state === "expired" || state === "critical" ? "bg-danger/10 border-danger/20"
-      : "bg-border/40 border-border"}
-    `}>
-      <div className={`w-1.5 h-1.5 rounded-full ${
-        state === "healthy"  ? "bg-success" :
-        state === "warning"  ? "bg-warning" :
-        state === "expired" || state === "critical" ? "bg-danger" : "bg-textSecondary"}`} />
-      <span className={`text-xs font-bold ${EXPIRY_LOGIC.getColor(state)}`}>
-        {EXPIRY_LOGIC.getLabel(days, state)}
-      </span>
-    </div>
-  );
-}
 
-function StockBar({ remaining, initial, weightKg }) {
-  const pct = initial ? Math.min(100, Math.round((remaining / initial) * 100)) : 0;
-  const color = pct < 10 ? "bg-danger" : pct < 30 ? "bg-warning" : "bg-success";
-  const textColor = pct < 10 ? "text-danger" : pct < 30 ? "text-warning" : "text-success";
-  return (
-    <div className="min-w-[140px]">
-      <div className="flex items-center justify-between text-xs font-bold mb-1.5">
-        <span className="text-textPrimary">{remaining} / {initial} pkg</span>
-        <span className={`font-black ${textColor}`}>{pct}%</span>
-      </div>
-      <div className="h-2 w-full bg-border/60 rounded-full overflow-hidden">
-        <div className={`h-full ${color} transition-all duration-700 rounded-full`} style={{ width: `${pct}%` }} />
-      </div>
-      <p className="text-[10px] font-bold text-textSecondary uppercase mt-1.5 tracking-wide">{weightKg} KG remaining</p>
-    </div>
-  );
-}
 
 /* ─────────────────────── MAIN PAGE ─────────────────────── */
 

@@ -24,13 +24,14 @@ import {
   Fish,
   ShoppingBag,
   BarChart3,
-  MoreHorizontal
+  MoreHorizontal,
+  Eye
 } from "lucide-react";
 import VoiceAssistant from "@/components/shared/voice-assistant";
 import { canAccessRoute } from "@/utils/permissions";
 
 export default function AppLayout() {
-  const { user, logout, entitlements = [] } = useAuthStore();
+  const { user, logout, entitlements = [], impersonation, endImpersonation } = useAuthStore();
   const { sidebarOpen, toggleSidebar, closeSidebar, theme, toggleTheme } = useUiStore();
   const location = useLocation();
   const navigate = useNavigate();
@@ -82,7 +83,7 @@ export default function AppLayout() {
     }
   ];
   
-  const role = user?.role || "guest";
+  const role = impersonation?.role || (impersonation ? "tenant_admin" : (user?.role || "guest"));
   
   // Filter nav groups based on RBAC permissions
   const navGroups = allNavGroups.map(group => ({
@@ -105,7 +106,8 @@ export default function AppLayout() {
     }
   ];
 
-  const activeNavGroups = user?.role === "platform_operator" ? operatorNavGroups : navGroups;
+  const isPlatformStaff = ["platform_operator", "platform_support", "platform_super_admin"].includes(user?.role);
+  const activeNavGroups = isPlatformStaff && !impersonation ? operatorNavGroups : navGroups;
 
   const currentPath = location.pathname;
   let currentPageLabel = "Dashboard";
@@ -223,8 +225,23 @@ export default function AppLayout() {
 
       {/* Main Layout Area */}
       <div className="flex flex-1 flex-col min-w-0">
+        {impersonation && (
+          <div className="bg-warning text-warning-foreground px-4 py-2 flex items-center justify-between text-xs font-bold shadow-md z-[60]">
+            <div className="flex items-center gap-2 text-white">
+              <Eye className="h-4 w-4" />
+              <span>You are currently impersonating tenant: {impersonation.tenant_name || impersonation.tenant_slug}</span>
+            </div>
+            <button
+              onClick={endImpersonation}
+              className="bg-black/20 text-white hover:bg-black/30 px-3 py-1 rounded transition-colors"
+            >
+              End Impersonation
+            </button>
+          </div>
+        )}
+
         {/* Top Header */}
-        <header className="flex h-16 items-center justify-between border-b border-border bg-surface/85 backdrop-blur-md px-6 sticky top-0 z-30">
+        <header className="flex h-16 items-center justify-between border-b border-border bg-surface/85 backdrop-blur-md px-6 sticky top-0 z-50">
           <div className="flex items-center gap-4">
             <button
               type="button"
@@ -290,7 +307,7 @@ export default function AppLayout() {
                       initial={{ opacity: 0, scale: 0.95, y: 10 }}
                       animate={{ opacity: 1, scale: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                      className="absolute right-0 mt-2 w-56 rounded-xl border border-border bg-elevated p-2 shadow-xl z-20"
+                      className="absolute right-0 mt-2 w-56 rounded-xl border border-border bg-elevated p-2 shadow-2xl z-50"
                     >
                       <div className="px-3 py-2 border-b border-border mb-1.5">
                         <p className="text-[10px] text-textSecondary uppercase tracking-wider font-bold">Role</p>
@@ -402,7 +419,7 @@ export default function AppLayout() {
                 animate={{ y: 0 }}
                 exit={{ y: "100%" }}
                 transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                className="md:hidden fixed bottom-0 left-0 right-0 bg-elevated rounded-t-3xl border-t border-border z-50 p-6 shadow-2xl max-h-[85vh] overflow-y-auto"
+                className="md:hidden fixed bottom-0 left-0 right-0 bg-surface rounded-t-3xl border-t border-border z-50 p-6 shadow-2xl max-h-[85vh] overflow-y-auto"
               >
                 <div className="flex justify-between items-center mb-6">
                   <h3 className="text-lg font-bold text-textPrimary">More Options</h3>

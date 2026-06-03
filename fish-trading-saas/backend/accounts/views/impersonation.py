@@ -137,6 +137,7 @@ class ImpersonationAPIView(APIView):
                 "tenant_slug": tenant.slug,
                 "tenant_name": tenant.name,
                 "impersonated_user": impersonated_user.username,
+                "role": impersonated_user.role,
                 "reason": reason,
                 "session_id": log.session_id,
                 "warning": "End session when done via DELETE",
@@ -150,7 +151,7 @@ class ImpersonationAPIView(APIView):
             return Response({"error": "Failed to start impersonation"}, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request):
-        impersonation_id = request.session.get("impersonation_log_id") or request.session.get("impersonation_id")
+        impersonation_id = request.data.get("log_id") or request.session.get("impersonation_log_id") or request.session.get("impersonation_id")
         if not impersonation_id:
             return Response({"error": "No active impersonation"}, status=status.HTTP_400_BAD_REQUEST)
 

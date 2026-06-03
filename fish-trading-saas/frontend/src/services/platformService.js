@@ -31,6 +31,15 @@ export const platformService = {
     return res.data;
   },
 
+  // Impersonate a tenant
+  impersonateTenant: async (tenantSlug, reason) => {
+    const res = await apiClient.post(`/impersonate/`, {
+      tenant_slug: tenantSlug,
+      reason,
+    });
+    return res.data;
+  },
+
   // Fetch platform-wide audit logs
   getAuditLogs: async (params = {}) => {
     const res = await apiClient.get("/platform/audit/", { params });

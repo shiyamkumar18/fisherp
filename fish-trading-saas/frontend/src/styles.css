@@ -18,13 +18,13 @@
   --color-border: var(--border);
   
   /* Layered Backgrounds */
-  --color-bgSidebar: var(--bg-sidebar);
-  --color-bgCard: var(--bg-card);
-  --color-bgElevated: var(--bg-elevated);
-  --color-bgHover: var(--bg-hover);
-  --color-bgModal: var(--bg-modal);
-  --color-bgTableHeader: var(--bg-table-header);
-  --color-bgInput: var(--bg-input);
+  --color-sidebar: var(--bg-sidebar);
+  --color-card: var(--bg-card);
+  --color-elevated: var(--bg-elevated);
+  --color-hover: var(--bg-hover);
+  --color-modal: var(--bg-modal);
+  --color-tableHeader: var(--bg-table-header);
+  --color-input: var(--bg-input);
 
   --color-textPrimary: var(--text-primary);
   --color-text-primary: var(--text-primary);

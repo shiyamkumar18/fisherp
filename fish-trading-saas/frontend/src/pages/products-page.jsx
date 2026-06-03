@@ -251,7 +251,7 @@ export default function ProductsPage() {
       title: "",
       sortable: false,
       render: (row) => (
-        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex items-center justify-end gap-1 transition-opacity">
           <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-textSecondary/70 hover:text-primary hover:bg-primary/10" onClick={() => setSelectedProduct(row)} title="View Details">
             <Eye size={16} />
           </Button>
@@ -340,13 +340,13 @@ export default function ProductsPage() {
       </div>
 
       {/* Advanced Search & Filters */}
-      <div className="bg-white rounded-2xl shadow-sm border border-border p-4 flex flex-col md:flex-row gap-4 items-center justify-between relative z-20">
+      <div className="bg-card rounded-2xl shadow-sm border border-border p-4 flex flex-col md:flex-row gap-4 items-center justify-between relative z-20">
         <div className="relative w-full md:max-w-md group">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-textSecondary/70 group-focus-within:text-primary transition-colors" size={18} />
           <input 
             type="text" 
             placeholder="Search fish name, category, trading unit..." 
-            className="w-full h-12 pl-12 pr-10 bg-card border border-border rounded-xl font-medium text-sm text-textPrimary focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all placeholder:text-textSecondary/70"
+            className="w-full h-12 pl-12 pr-10 bg-card border border-border rounded-xl font-medium text-sm text-textPrimary focus:bg-card focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all placeholder:text-textSecondary/70"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -370,7 +370,7 @@ export default function ProductsPage() {
       
       {/* Expanded Filter Bar */}
       {showFilters && (
-        <div className="bg-white rounded-2xl shadow-sm border border-border p-5 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-5 animate-in fade-in slide-in-from-top-2 duration-200 relative z-10">
+        <div className="bg-card rounded-2xl shadow-sm border border-border p-5 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-5 animate-in fade-in slide-in-from-top-2 duration-200 relative z-10">
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-textSecondary uppercase tracking-wider">Category</label>
             <select 
@@ -439,7 +439,7 @@ export default function ProductsPage() {
           onPageChange={setPage}
           loading={loading}
           renderMobileCard={(row) => (
-            <div className="bg-white rounded-2xl border border-border shadow-sm p-4 flex gap-4">
+            <div className="bg-card rounded-2xl border border-border shadow-sm p-4 flex gap-4">
               <div className="w-16 h-16 rounded-xl bg-hover flex items-center justify-center shrink-0 border border-border">
                 <ImageIcon size={24} className="text-textSecondary/70" />
               </div>
@@ -468,11 +468,11 @@ export default function ProductsPage() {
           ></div>
           
           {/* Drawer Panel */}
-          <div className="relative w-full max-w-md h-full bg-white shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
+          <div className="relative w-full max-w-md h-full bg-card shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
             {/* Header */}
             <div className="flex items-start justify-between p-6 border-b border-border/50 bg-card">
               <div className="flex gap-4">
-                <div className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center shrink-0 border border-border shadow-sm">
+                <div className="w-16 h-16 rounded-2xl bg-card flex items-center justify-center shrink-0 border border-border shadow-sm">
                   <ImageIcon size={28} className="text-textSecondary/70" />
                 </div>
                 <div>
@@ -483,7 +483,7 @@ export default function ProductsPage() {
               </div>
               <button 
                 onClick={() => setSelectedProduct(null)}
-                className="w-10 h-10 rounded-full bg-white border border-border flex items-center justify-center text-textSecondary hover:bg-hover hover:text-textPrimary transition-colors"
+                className="w-10 h-10 rounded-full bg-card border border-border flex items-center justify-center text-textSecondary hover:bg-hover hover:text-textPrimary transition-colors"
               >
                 <X size={20} />
               </button>
@@ -541,7 +541,7 @@ export default function ProductsPage() {
             </div>
             
             {/* Actions */}
-            <div className="p-6 border-t border-border/50 bg-white grid grid-cols-2 gap-3">
+            <div className="p-6 border-t border-border/50 bg-card grid grid-cols-2 gap-3">
               <Button className="w-full font-bold h-12 rounded-xl bg-primary hover:bg-primaryHover text-white shadow-lg shadow-indigo-200 gap-2">
                 <Settings size={18} /> Configure
               </Button>
@@ -558,7 +558,7 @@ export default function ProductsPage() {
       {/* Add Modal - Enterprise UI */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
         <DialogContent className="max-w-[1200px] w-full h-full sm:w-[95vw] sm:max-h-[90vh] sm:rounded-xl overflow-hidden flex flex-col p-0 bg-card">
-          <DialogHeader className="px-6 py-4 border-b border-border bg-white z-10 shadow-sm">
+          <DialogHeader className="px-6 py-4 border-b border-border bg-card z-10 shadow-sm">
             <DialogTitle className="text-xl font-extrabold flex items-center gap-2 text-textPrimary">
               <Package size={20} className="text-primary" />
               Register Product Species
@@ -570,7 +570,7 @@ export default function ProductsPage() {
               
               {/* Column 1: Classification */}
               <div className="space-y-6">
-                <Card className="p-5 shadow-sm border-border bg-white">
+                <Card className="p-5 shadow-sm border-border bg-card">
                   <h3 className="text-sm font-black text-textPrimary uppercase tracking-widest flex items-center gap-2 mb-5">
                     <Tag size={16} className="text-primary" /> Basic Information
                   </h3>
@@ -582,24 +582,24 @@ export default function ProductsPage() {
                       </div>
                       <div className="flex-1 space-y-1.5">
                         <label className="text-[10px] font-extrabold text-textSecondary uppercase tracking-wider">Fish Name (English) *</label>
-                        <Input disabled={!isEditable} className="h-10 bg-white border-border focus:border-primary" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Seer Fish" required />
+                        <Input disabled={!isEditable} className="h-10 bg-card border-border focus:border-primary" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Seer Fish" required />
                       </div>
                     </div>
                     
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1.5">
                         <label className="text-[10px] font-extrabold text-textSecondary uppercase tracking-wider">Tamil Name</label>
-                        <Input disabled={!isEditable} className="h-10 bg-white border-border focus:border-primary" value={tamilName} onChange={(e) => setTamilName(e.target.value)} placeholder="e.g. Vanjaram" />
+                        <Input disabled={!isEditable} className="h-10 bg-card border-border focus:border-primary" value={tamilName} onChange={(e) => setTamilName(e.target.value)} placeholder="e.g. Vanjaram" />
                       </div>
                       <div className="space-y-1.5">
                         <label className="text-[10px] font-extrabold text-textSecondary uppercase tracking-wider">Scientific Name</label>
-                        <Input disabled={!isEditable} className="h-10 bg-white border-border focus:border-primary" value={scientificName} onChange={(e) => setScientificName(e.target.value)} placeholder="e.g. Scomberomorus" />
+                        <Input disabled={!isEditable} className="h-10 bg-card border-border focus:border-primary" value={scientificName} onChange={(e) => setScientificName(e.target.value)} placeholder="e.g. Scomberomorus" />
                       </div>
                     </div>
 
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-extrabold text-textSecondary uppercase tracking-wider">Alias Names (Comma separated)</label>
-                      <Input disabled={!isEditable} className="h-10 bg-white border-border focus:border-primary" value={aliasNames} onChange={(e) => setAliasNames(e.target.value)} placeholder="e.g. King Mackerel, Surmai" />
+                      <Input disabled={!isEditable} className="h-10 bg-card border-border focus:border-primary" value={aliasNames} onChange={(e) => setAliasNames(e.target.value)} placeholder="e.g. King Mackerel, Surmai" />
                     </div>
                     
                     <div className="grid grid-cols-2 gap-4">
@@ -607,7 +607,7 @@ export default function ProductsPage() {
                         <label className="text-[10px] font-extrabold text-textSecondary uppercase tracking-wider">Category</label>
                         <select disabled={!isEditable} 
                           value={category} onChange={(e) => setCategory(e.target.value)}
-                          className="h-10 w-full rounded-lg border border-border bg-white px-3 text-sm text-textPrimary outline-none focus:border-primary transition-all font-semibold"
+                          className="h-10 w-full rounded-lg border border-border bg-card px-3 text-sm text-textPrimary outline-none focus:border-primary transition-all font-semibold"
                         >
                           <option value="1">Sea Fish</option>
                           <option value="2">Freshwater</option>
@@ -619,7 +619,7 @@ export default function ProductsPage() {
                         <label className="text-[10px] font-extrabold text-textSecondary uppercase tracking-wider">Status</label>
                         <select disabled={!isEditable} 
                           value={status} onChange={(e) => setStatus(e.target.value)}
-                          className="h-10 w-full rounded-lg border border-border bg-white px-3 text-sm text-textPrimary outline-none focus:border-primary transition-all font-semibold"
+                          className="h-10 w-full rounded-lg border border-border bg-card px-3 text-sm text-textPrimary outline-none focus:border-primary transition-all font-semibold"
                         >
                           <option value="active">Active</option>
                           <option value="inactive">Inactive</option>
@@ -639,7 +639,7 @@ export default function ProductsPage() {
 
               {/* Column 2: Trade & Market */}
               <div className="space-y-6">
-                <Card className="p-5 shadow-sm border-border bg-white">
+                <Card className="p-5 shadow-sm border-border bg-card">
                   <h3 className="text-sm font-black text-textPrimary uppercase tracking-widest flex items-center gap-2 mb-5">
                     <Layers size={16} className="text-primary" /> Trade Configuration
                   </h3>
@@ -649,7 +649,7 @@ export default function ProductsPage() {
                         <label className="text-[10px] font-extrabold text-textSecondary uppercase tracking-wider">Trading Unit</label>
                         <select disabled={!isEditable} 
                           value={unitType} onChange={(e) => setUnitType(e.target.value)}
-                          className="h-10 w-full rounded-lg border border-border bg-white px-3 text-sm text-textPrimary outline-none focus:border-primary transition-all font-semibold"
+                          className="h-10 w-full rounded-lg border border-border bg-card px-3 text-sm text-textPrimary outline-none focus:border-primary transition-all font-semibold"
                         >
                           <option value="kg">Weight (KG)</option>
                           <option value="box">Box</option>
@@ -670,11 +670,11 @@ export default function ProductsPage() {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1.5">
                         <label className="text-[10px] font-extrabold text-textSecondary uppercase tracking-wider">Min. Purchase Qty</label>
-                        <Input disabled={!isEditable} type="number" className="h-10 bg-white border-border focus:border-primary" value={minPurchase} onChange={(e) => setMinPurchase(parseInt(e.target.value))} />
+                        <Input disabled={!isEditable} type="number" className="h-10 bg-card border-border focus:border-primary" value={minPurchase} onChange={(e) => setMinPurchase(parseInt(e.target.value))} />
                       </div>
                       <div className="space-y-1.5">
                         <label className="text-[10px] font-extrabold text-textSecondary uppercase tracking-wider">Spoilage Threshold (%)</label>
-                        <Input disabled={!isEditable} type="number" className="h-10 bg-white border-border focus:border-primary" value={spoilage} onChange={(e) => setSpoilage(parseInt(e.target.value))} />
+                        <Input disabled={!isEditable} type="number" className="h-10 bg-card border-border focus:border-primary" value={spoilage} onChange={(e) => setSpoilage(parseInt(e.target.value))} />
                       </div>
                     </div>
                     
@@ -685,13 +685,13 @@ export default function ProductsPage() {
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" className="sr-only peer" checked={coldStorage} onChange={(e) => setColdStorage(e.target.checked)} disabled={!isEditable} />
-                        <div className="w-9 h-5 bg-border peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-border after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+                        <div className="w-9 h-5 bg-border peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-card after:border-border after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
                       </label>
                     </div>
                   </div>
                 </Card>
 
-                <Card className="p-5 shadow-sm border-border bg-white">
+                <Card className="p-5 shadow-sm border-border bg-card">
                   <h3 className="text-sm font-black text-textPrimary uppercase tracking-widest flex items-center gap-2 mb-5">
                     <Activity size={16} className="text-primary" /> Market Settings
                   </h3>
@@ -703,7 +703,7 @@ export default function ProductsPage() {
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" className="sr-only peer" checked={marketTracking} onChange={(e) => setMarketTracking(e.target.checked)} disabled={!isEditable} />
-                        <div className="w-9 h-5 bg-border peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-border after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+                        <div className="w-9 h-5 bg-border peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-card after:border-border after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
                       </label>
                     </div>
                     
@@ -711,16 +711,16 @@ export default function ProductsPage() {
                       <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
                         <div className="space-y-1.5">
                           <label className="text-[10px] font-extrabold text-textSecondary uppercase tracking-wider">Tracked Cities</label>
-                          <Input disabled={!isEditable} className="h-10 bg-white border-border focus:border-primary" value={trackedCities} onChange={(e) => setTrackedCities(e.target.value)} />
+                          <Input disabled={!isEditable} className="h-10 bg-card border-border focus:border-primary" value={trackedCities} onChange={(e) => setTrackedCities(e.target.value)} />
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-1.5">
                             <label className="text-[10px] font-extrabold text-textSecondary uppercase tracking-wider">Selling Margin (%)</label>
-                            <Input disabled={!isEditable} type="number" className="h-10 bg-white border-border focus:border-primary" value={margin} onChange={(e) => setMargin(parseInt(e.target.value))} />
+                            <Input disabled={!isEditable} type="number" className="h-10 bg-card border-border focus:border-primary" value={margin} onChange={(e) => setMargin(parseInt(e.target.value))} />
                           </div>
                           <div className="space-y-1.5">
                             <label className="text-[10px] font-extrabold text-textSecondary uppercase tracking-wider">Low Price Alert (₹)</label>
-                            <Input disabled={!isEditable} type="number" className="h-10 bg-white border-border focus:border-primary" value={lowPriceAlert} onChange={(e) => setLowPriceAlert(parseInt(e.target.value))} />
+                            <Input disabled={!isEditable} type="number" className="h-10 bg-card border-border focus:border-primary" value={lowPriceAlert} onChange={(e) => setLowPriceAlert(parseInt(e.target.value))} />
                           </div>
                         </div>
                       </div>
@@ -781,7 +781,7 @@ export default function ProductsPage() {
             </div>
           </div>
 
-          <DialogFooter className="px-6 py-4 border-t border-border bg-white">
+          <DialogFooter className="px-6 py-4 border-t border-border bg-card">
             <div className="flex w-full justify-between items-center">
               <Button type="button" variant="ghost" onClick={() => setModalOpen(false)} className="text-textSecondary hover:text-textPrimary font-bold">
                 {isEditable ? "Cancel" : "Close"}

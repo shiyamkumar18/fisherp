@@ -1,15 +1,21 @@
 import { useAuthStore } from "@/store/authStore";
 
 export function usePermission() {
-  const { user } = useAuthStore();
-  const role = user?.role || "guest";
+  const { user, impersonation } = useAuthStore();
+  const role = impersonation?.role || (impersonation ? "tenant_admin" : (user?.role || "guest"));
   const granular = user?.granular_permissions || {};
 
+  // Platform staff (non-impersonating) should NOT access tenant modules.
+  // They only get tenant-level perms when they are actively impersonating.
+  const isRawPlatformStaff = ["platform_operator", "platform_support", "platform_super_admin"].includes(user?.role) && !impersonation;
+
   const isTenantAdmin = () => role === "tenant_admin";
-  const isPlatformUser = () => ["platform_operator", "platform_support"].includes(role);
-  
+  // isPlatformUser is TRUE only while impersonating (so they get editor access during impersonation)
+  const isPlatformUser = () => !isRawPlatformStaff && ["platform_operator", "platform_support", "platform_super_admin"].includes(user?.role);
+
   // Role Hierarchy Level
   const ROLE_HIERARCHY = {
+    'platform_super_admin': 16,
     'platform_operator': 15,
     'platform_support': 14,
     'tenant_admin': 13,
@@ -46,7 +52,7 @@ export function usePermission() {
     customers: ['tenant_admin', 'branch_manager', 'supervisor', 'sales_staff', 'trader'],
     suppliers: ['tenant_admin', 'branch_manager', 'supervisor', 'purchase_manager', 'trader', 'store'],
     payments: ['tenant_admin', 'branch_manager', 'finance_manager', 'accountant'],
-    financials: ['tenant_admin', 'branch_manager', 'finance_manager', 'accountant', 'platform_operator'],
+    financials: ['tenant_admin', 'branch_manager', 'finance_manager', 'accountant'],
     catalog: ['tenant_admin', 'branch_manager', 'inventory_manager', 'purchase_manager'],
     orders: ['tenant_admin', 'branch_manager', 'supervisor', 'sales_staff', 'purchase_manager'],
     reports: ['tenant_admin', 'branch_manager', 'finance_manager', 'accountant'],
@@ -57,30 +63,47 @@ export function usePermission() {
   // Generic Edit/View checks per module
   const canEditForm = (module) => {
     if (role === 'viewer') return false;
+    // Raw platform staff (not impersonating) cannot edit tenant modules
+    if (isRawPlatformStaff) return false;
     return checkPerm(module, 'edit', () => (defaults[module] || []).includes(role) || isTenantAdmin() || isPlatformUser());
   };
 
   const canViewForm = (module) => {
     if (role === 'viewer') return true;
+    // Raw platform staff (not impersonating) cannot view tenant modules
+    if (isRawPlatformStaff) return false;
     return checkPerm(module, 'view', () => (defaults[module] || []).includes(role) || isTenantAdmin() || isPlatformUser());
   };
 
   // Delete/destructive actions: Usually Admin or specific managers only
-  const canDelete = (module) => checkPerm(module, 'delete', () => isTenantAdmin() || isPlatformUser());
+  const canDelete = (module) => {
+    if (isRawPlatformStaff) return false;
+    return checkPerm(module, 'delete', () => isTenantAdmin() || isPlatformUser());
+  };
 
   // Specific Action capabilities
-  const canViewFinancial = () => checkPerm('financials', 'view', () => defaults.financials.includes(role) || isPlatformUser());
-  const canAccessPayments = () => checkPerm('payments', 'view', () => defaults.payments.includes(role));
-  
+  const canViewFinancial = () => {
+    if (isRawPlatformStaff) return false;
+    return checkPerm('financials', 'view', () => defaults.financials.includes(role) || isPlatformUser());
+  };
+  const canAccessPayments = () => {
+    if (isRawPlatformStaff) return false;
+    return checkPerm('payments', 'view', () => defaults.payments.includes(role));
+  };
+
   // Settings tab visibility
-  const canManageCompanySettings = () => isTenantAdmin() || isPlatformUser();
-  const canManageSubscription = () => isTenantAdmin() || isPlatformUser();
-  const canManageSecurity = () => isTenantAdmin() || isPlatformUser();
-  const canManageStaff = () => checkPerm('settings', 'manage_staff', () => isTenantAdmin() || isPlatformUser());
+  const canManageCompanySettings = () => isRawPlatformStaff ? false : isTenantAdmin() || isPlatformUser();
+  const canManageSubscription = () => isRawPlatformStaff ? false : isTenantAdmin() || isPlatformUser();
+  const canManageSecurity = () => isRawPlatformStaff ? false : isTenantAdmin() || isPlatformUser();
+  const canManageStaff = () => {
+    if (isRawPlatformStaff) return false;
+    return checkPerm('settings', 'manage_staff', () => isTenantAdmin() || isPlatformUser());
+  };
 
   return {
     role,
     roleLevel,
+    isRawPlatformStaff,
     isTenantAdmin,
     isPlatformUser,
     canEditForm,

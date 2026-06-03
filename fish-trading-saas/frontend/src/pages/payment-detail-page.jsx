@@ -302,7 +302,7 @@ export default function PaymentDetailPage() {
                                 return (
                                   <div key={field} className="flex items-center gap-4">
                                     <span className="text-textSecondary/70 uppercase tracking-wider font-bold w-20 shrink-0">{field}</span>
-                                    <div className="flex items-center gap-3 bg-white px-3 py-1.5 rounded-lg border border-border flex-1">
+                                    <div className="flex items-center gap-3 bg-card px-3 py-1.5 rounded-lg border border-border flex-1">
                                       <span className="line-through text-danger font-bold">{String(vals.old) || '—'}</span>
                                       <ArrowRight size={12} className="text-textSecondary/70" />
                                       <span className="text-success font-black">{String(vals.new) || '—'}</span>
@@ -312,8 +312,8 @@ export default function PaymentDetailPage() {
                               } else if (typeof vals === 'string') {
                                 return (
                                   <div key={field} className="flex items-center gap-4">
-                                    <span className="text-textSecondary/70 uppercase tracking-wider font-bold w-20 shrink-0">{field}</span>
-                                    <span className="text-textPrimary font-bold bg-white px-3 py-1.5 rounded-lg border border-border flex-1">{vals}</span>
+                                    <span className="text-xs font-bold text-textSecondary w-32 shrink-0">{field}</span>
+                                    <span className="text-textPrimary font-bold bg-card px-3 py-1.5 rounded-lg border border-border flex-1">{vals}</span>
                                   </div>
                                 );
                               }

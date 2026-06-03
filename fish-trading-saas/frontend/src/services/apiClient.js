@@ -15,13 +15,17 @@ const normalizeError = (error) => {
 export const apiClient = axios.create({
   baseURL: config.apiBaseUrl,
   timeout: 10000,
+  withCredentials: true,
 });
 
 // Attach current access token to every outgoing request.
 apiClient.interceptors.request.use((req) => {
-  const { session } = useAuthStore.getState();
+  const { session, impersonation } = useAuthStore.getState();
   if (session?.access) {
     req.headers.Authorization = `Bearer ${session.access}`;
+  }
+  if (impersonation?.tenant_slug) {
+    req.headers['X-Impersonate-Tenant'] = impersonation.tenant_slug;
   }
   return req;
 });

@@ -31,6 +31,7 @@ from accounts.permissions import IsPlatformOperator, CanUseImpersonation, IsPlat
 from accounts.models_audit import AuditLog, ImpersonationLog, get_client_ip
 from companies.models import Company
 from subscriptions.models import Subscription, SubscriptionTier
+from support.models import SupportTicket
 
 User = get_user_model()
 
@@ -71,13 +72,13 @@ class PlatformDashboardView(APIView):
         # Get active subscriptions (distinct by company)
         active_subscriptions = Subscription.objects.filter(
             status='active',
-            expiry_date__gte=now.date()
+            expiry_date__gte=now
         )
         active_tenants = active_subscriptions.values('company').distinct().count()
         
         expired_tenants = Subscription.objects.filter(
             Q(status='expired') |  # noqa: W504
-            Q(expiry_date__lt=now.date())
+            Q(expiry_date__lt=now)
         ).values('company').distinct().count()
         
         suspended_tenants = Subscription.objects.filter(status='suspended').values('company').distinct().count()
@@ -147,11 +148,14 @@ class PlatformDashboardView(APIView):
             total=Sum('api_calls_this_month')
         )['total'] or 0
         
+        # Support Incidents
+        active_incidents = SupportTicket.objects.filter(status__in=['open', 'in_progress', 'escalated']).count()
+        
         # ===== SUBSCRIPTION TIERS BREAKDOWN =====
         # Distinct companies per tier to avoid inflating stats
         tier_breakdown_query = Subscription.objects.filter(
             status='active',
-            expiry_date__gte=now.date(),
+            expiry_date__gte=now,
             tier__is_active=True,
         ).values('tier__name', 'tier__price_monthly').annotate(count=Count('company', distinct=True)).order_by('tier__name')
         
@@ -180,7 +184,28 @@ class PlatformDashboardView(APIView):
                 'subscription_status': sub_status,
                 'expiry_date': expiry.isoformat() if expiry else None,
             })
-        
+        # ===== RECENT TICKETS =====
+        recent_tickets_qs = SupportTicket.objects.select_related('tenant', 'assignee').order_by('-created_at')[:5]
+        recent_tickets = []
+        for t in recent_tickets_qs:
+            time_remaining = "Breached"
+            if t.sla_breach_at:
+                if t.sla_breach_at > now:
+                    delta = t.sla_breach_at - now
+                    hours = int(delta.total_seconds() / 3600)
+                    time_remaining = f"{hours}h"
+            else:
+                time_remaining = "N/A"
+                
+            recent_tickets.append({
+                'id': f"TCK-{t.id}",
+                'tenant': t.tenant.name,
+                'agent': t.assignee.username if t.assignee else 'Unassigned',
+                'priority': t.priority.capitalize(),
+                'status': t.status.capitalize(),
+                'timeRemaining': time_remaining,
+            })
+            
         return Response({
             # Tenant Stats
             'total_tenants': total_tenants,
@@ -202,6 +227,10 @@ class PlatformDashboardView(APIView):
             'avg_users_per_tenant': avg_users_per_tenant,
             'total_storage_mb': float(total_storage_mb),
             'total_api_calls': total_api_calls,
+            
+            # Support Stats
+            'active_incidents': active_incidents,
+            'recent_tickets': recent_tickets,
             
             # Breakdown
             'tier_breakdown': tier_breakdown,
@@ -257,12 +286,12 @@ class TenantListView(APIView):
             if status_filter == 'active':
                 companies = companies.filter(
                     subscription__status='active',
-                    subscription__expiry_date__gte=timezone.now().date()
+                    subscription__expiry_date__gte=timezone.now()
                 ).distinct()
             elif status_filter == 'expired':
                 companies = companies.filter(
                     Q(subscription__status='expired') |  # noqa: W504
-                    Q(subscription__expiry_date__lt=timezone.now().date())
+                    Q(subscription__expiry_date__lt=timezone.now())
                 ).distinct()
             elif status_filter == 'suspended':
                 companies = companies.filter(subscription__status='suspended').distinct()
@@ -478,7 +507,7 @@ class TenantSuspendView(APIView):
     """
     Suspend or activate a tenant subscription.
     """
-    permission_classes = [permissions.IsAuthenticated, IsPlatformOperator]
+    permission_classes = [permissions.IsAuthenticated, IsPlatformOperatorOrReadOnlySupport]
     
     def post(self, request, tenant_id):
         action = request.data.get('action')  # 'suspend' or 'activate'
@@ -561,7 +590,7 @@ class SubscriptionManagementView(APIView):
     - Grant temporary extension
     - View billing history
     """
-    permission_classes = [permissions.IsAuthenticated, IsPlatformOperator]
+    permission_classes = [permissions.IsAuthenticated, IsPlatformOperatorOrReadOnlySupport]
     
     def post(self, request):
         """Create or update subscription"""
@@ -636,7 +665,7 @@ class ExtendSubscriptionView(APIView):
     """
     Grant temporary extension to a subscription.
     """
-    permission_classes = [permissions.IsAuthenticated, IsPlatformOperator]
+    permission_classes = [permissions.IsAuthenticated, IsPlatformOperatorOrReadOnlySupport]
     
     def post(self, request, tenant_id):
         days = request.data.get('days', 0)
@@ -769,7 +798,7 @@ class FeatureFlagUpdateView(APIView):
     """
     Enable/disable specific features for a tenant.
     """
-    permission_classes = [permissions.IsAuthenticated, IsPlatformOperator]
+    permission_classes = [permissions.IsAuthenticated, IsPlatformOperatorOrReadOnlySupport]
     
     def post(self, request, tenant_id):
         feature_name = request.data.get('feature_name')
@@ -1086,7 +1115,7 @@ class ResetPasswordView(APIView):
     """
     Reset tenant admin password.
     """
-    permission_classes = [permissions.IsAuthenticated, IsPlatformOperator]
+    permission_classes = [permissions.IsAuthenticated, IsPlatformOperatorOrReadOnlySupport]
     
     def post(self, request, tenant_id):
         reason = request.data.get('reason', '').strip()
@@ -1155,7 +1184,7 @@ class ForceLogoutView(APIView):
     """
     Force logout all users of a tenant.
     """
-    permission_classes = [permissions.IsAuthenticated, IsPlatformOperator]
+    permission_classes = [permissions.IsAuthenticated, IsPlatformOperatorOrReadOnlySupport]
     
     def post(self, request, tenant_id):
         reason = request.data.get('reason', '').strip()
@@ -1200,7 +1229,7 @@ class SendNotificationView(APIView):
     """
     Send system notification to a tenant.
     """
-    permission_classes = [permissions.IsAuthenticated, IsPlatformOperator]
+    permission_classes = [permissions.IsAuthenticated, IsPlatformOperatorOrReadOnlySupport]
     
     def post(self, request, tenant_id):
         title = request.data.get('title', '').strip()

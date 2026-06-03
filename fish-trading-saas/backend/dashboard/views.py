@@ -41,6 +41,8 @@ class DashboardView(APIView):
 def _tenant_scope_kwargs(user):
     if user.is_superuser:
         return {}
+    if getattr(user, '_impersonating', False) and user.company:
+        return {'company': user.company}
     if user.is_platform_user:
         return {'pk__isnull': True}
     if user.company_id:
@@ -70,7 +72,8 @@ class FinancialOverviewView(APIView):
     
     def get(self, request):
         user = request.user
-        if user.is_platform_user:
+        from accounts.permissions import is_impersonating
+        if getattr(user, 'is_platform_user', False) and not is_impersonating(request):
             return Response(
                 {'error': 'Platform users cannot access tenant business dashboards directly.'},
                 status=status.HTTP_403_FORBIDDEN
