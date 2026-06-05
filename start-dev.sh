@@ -48,6 +48,9 @@ cleanup() {
     "$PG_BIN/pg_ctl" -D "$PG_DATA" stop -m fast -s 2>/dev/null && info "PostgreSQL stopped." || true
   fi
   rm -f "$DJANGO_SOCK"
+  if [ -d "$PROJECT_DIR/frontend/node_modules_moved" ]; then
+    mv "$PROJECT_DIR/frontend/node_modules_moved" "$PROJECT_DIR/frontend/node_modules" 2>/dev/null || true
+  fi
   success "All services stopped. Goodbye."
 }
 trap cleanup SIGINT SIGTERM EXIT
@@ -213,6 +216,11 @@ PYEOF
 start_frontend() {
   info "Starting Vite frontend..."
 
+  if [ -d "$PROJECT_DIR/frontend/node_modules" ]; then
+    info "Moving local node_modules to node_modules_moved to prevent SIGBUS..."
+    mv "$PROJECT_DIR/frontend/node_modules" "$PROJECT_DIR/frontend/node_modules_moved"
+  fi
+
   local VITE_WS="/tmp/vite-workspace"
 
   # Set up a writable workspace in /tmp so we can symlink node_modules.
@@ -240,7 +248,8 @@ start_frontend() {
   "$FRONTEND_MODULES/node_modules/.bin/vite" \
     --host 0.0.0.0 \
     --port 5173 \
-    --config "$VITE_WS/vite.config.js" &
+    --config "$VITE_WS/vite.config.js" \
+    --configLoader native &
   FRONTEND_PID=$!
 
   # Wait up to 10s for Vite process to stay alive

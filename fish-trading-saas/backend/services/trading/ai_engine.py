@@ -2,7 +2,7 @@ import datetime
 from decimal import Decimal
 from django.db.models import Avg, Sum
 from django.utils import timezone
-from trading.models import Inventory, Sale, Supplier, Buyer, MarketFishPrice, Fish
+from business.trading.models import Inventory, Sale, Supplier, Buyer, MarketFishPrice, Fish
 
 class AISuggestionEngine:
     def __init__(self, company, user):

@@ -56,7 +56,7 @@ def make_company(slug=None, name=None, **kwargs):
     uid = uuid.uuid4().hex[:8]
     slug = slug or f"company-{uid}"
     name = name or f"Company {uid}"
-    from companies.models import Company
+    from saas_platform.companies.models import Company
 
     return Company.objects.create(slug=slug, name=name, is_active=True, **kwargs)
 
@@ -94,7 +94,7 @@ def make_user(username=None, role="tenant_admin", company=None, password="testpa
 def make_fish_category(name=None, category_type="saltwater", **kwargs):
     import uuid
     name = name or f"Category-{uuid.uuid4().hex[:6]}"
-    from trading.models import FishCategory
+    from business.trading.models import FishCategory
 
     return FishCategory.objects.create(name=name, category_type=category_type, **kwargs)
 
@@ -106,7 +106,7 @@ def make_fish(name=None, category=None, tenant=None, company=None, **kwargs):
     if tenant is None:
         tenant = make_user(role="tenant_admin")
     company = company or tenant.company
-    from trading.models import Fish
+    from business.trading.models import Fish
 
     return Fish.objects.create(
         name=name, category=category, unit_type="kg", tenant=tenant, company=company, **kwargs
@@ -119,7 +119,7 @@ def make_supplier(name=None, tenant=None, company=None, **kwargs):
     if tenant is None:
         tenant = make_user(role="tenant_admin")
     company = company or tenant.company
-    from trading.models import Supplier
+    from business.trading.models import Supplier
 
     return Supplier.objects.create(name=name, tenant=tenant, company=company, **kwargs)
 
@@ -130,13 +130,13 @@ def make_buyer(name=None, tenant=None, company=None, **kwargs):
     if tenant is None:
         tenant = make_user(role="tenant_admin")
     company = company or tenant.company
-    from trading.models import Buyer
+    from business.trading.models import Buyer
 
     return Buyer.objects.create(name=name, tenant=tenant, company=company, **kwargs)
 
 
 def make_purchase_batch(fish=None, tenant=None, company=None, **kwargs):
-    from trading.models import PurchaseBatch
+    from business.trading.models import PurchaseBatch
 
     if tenant is None:
         tenant = make_user(role="tenant_admin")

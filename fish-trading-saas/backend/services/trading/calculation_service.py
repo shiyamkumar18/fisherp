@@ -32,24 +32,24 @@ class CalculationService:
         other_cost = other_cost or Decimal("0.00")
         amount_paid = amount_paid or Decimal("0.00")
 
-        total_weight = Decimal(str(packages)) * package_weight
-        fish_cost = total_weight * price_per_kg
+        total_weight = round(Decimal(str(packages)) * package_weight, 2)
+        fish_cost = round(total_weight * price_per_kg, 2)
 
-        total_expense = (fish_cost + labour_cost + ice_cost
-                         + transport_cost + commission_cost + other_cost)
+        total_expense = round(fish_cost + labour_cost + ice_cost
+                             + transport_cost + commission_cost + other_cost, 2)
 
         actual_cost_per_kg = Decimal("0.00")
         if total_weight > 0:
-            actual_cost_per_kg = total_expense / total_weight
+            actual_cost_per_kg = round(total_expense / total_weight, 2)
 
-        cost_per_package = actual_cost_per_kg * package_weight
+        cost_per_package = round(actual_cost_per_kg * package_weight, 2)
         
-        pending_amount = total_expense - amount_paid
+        pending_amount = round(total_expense - amount_paid, 2)
         
         # Apply explicit pending override if provided
         if explicit_pending is not None and explicit_pending >= 0:
-            pending_amount = explicit_pending
-            amount_paid = total_expense - explicit_pending
+            pending_amount = round(explicit_pending, 2)
+            amount_paid = round(total_expense - explicit_pending, 2)
 
         status = 'pending'
         if pending_amount <= 0 and total_expense > 0:
@@ -91,25 +91,25 @@ class CalculationService:
         discount_percent = discount_percent or Decimal("0.00")
         tax_percent = tax_percent or Decimal("0.00")
 
-        total_weight_sold = Decimal(str(packages_sold)) * selling_weight_per_package
-        total_revenue = total_weight_sold * selling_price_per_kg
-        total_cost = total_weight_sold * batch_buy_price
+        total_weight_sold = round(Decimal(str(packages_sold)) * selling_weight_per_package, 2)
+        total_revenue = round(total_weight_sold * selling_price_per_kg, 2)
+        total_cost = round(total_weight_sold * batch_buy_price, 2)
 
-        profit = total_revenue - total_cost
+        profit = round(total_revenue - total_cost, 2)
         
         profit_margin_percent = Decimal("0.00")
         if total_revenue > 0:
-            profit_margin_percent = (profit / total_revenue) * 100
+            profit_margin_percent = round((profit / total_revenue) * 100, 2)
 
         discounted_amount = total_revenue
         if discount_amount > 0:
-            discounted_amount -= discount_amount
+            discounted_amount = round(discounted_amount - discount_amount, 2)
         elif discount_percent > 0:
-            discounted_amount -= total_revenue * discount_percent / Decimal("100.00")
+            discounted_amount = round(discounted_amount - round(total_revenue * discount_percent / Decimal("100.00"), 4), 2)
 
-        tax_amount = discounted_amount * tax_percent / Decimal("100.00")
-        final_amount = discounted_amount + tax_amount
-        pending_amount = final_amount - amount_received
+        tax_amount = round(discounted_amount * tax_percent / Decimal("100.00"), 2)
+        final_amount = round(discounted_amount + tax_amount, 2)
+        pending_amount = round(final_amount - amount_received, 2)
 
         return {
             'total_revenue': total_revenue,

@@ -1,3 +1,4 @@
+import { isForbiddenKey } from "@/utils/security/safeAccess";
 import { useState, useMemo, memo } from "react";
 import { ArrowDown, ArrowUp, Zap, Clock } from "lucide-react";
 import Card from "@/components/ui/card";
@@ -21,11 +22,15 @@ export function FishSalesTrendChart({ data = [] }) {
   const paddingX = 40;
   const paddingY = 20;
 
+
+
   // Group by date
   const dateMap = {};
   const products = new Set();
   
   data.forEach(d => {
+    if (isForbiddenKey(d.date) || isForbiddenKey(d.product)) return;
+    
     products.add(d.product);
     if (!dateMap[d.date]) dateMap[d.date] = { date: d.date, raw: {} };
     dateMap[d.date][d.product] = d.kg_sold;

@@ -2,7 +2,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from rest_framework.test import APIClient
 
-from companies.models import Company
+from saas_platform.companies.models import Company
 
 
 User = get_user_model()

@@ -1,6 +1,6 @@
 from django.db import transaction
 from django.core.exceptions import ValidationError
-from trading.models import PurchaseBatch, PurchaseBatchHistory
+from business.trading.models import PurchaseBatch, PurchaseBatchHistory
 from services.trading.inventory_service import InventoryService
 from services.base import BaseService
 
@@ -85,7 +85,7 @@ class PurchaseBatchService(BaseService):
                 inventory_service = InventoryService(user=self.user)
                 # Ensure the inventory gets correctly adjusted (adding or subtracting difference)
                 # Wait, adjust_stock handles delta, so pass the diff.
-                from trading.models import Inventory
+                from business.trading.models import Inventory
                 inventory = Inventory.objects.get(purchase_batch=instance)
                 inventory.adjust_stock(
                     packages_delta=packages_diff,

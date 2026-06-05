@@ -27,8 +27,10 @@ import {
   MoreHorizontal,
   Eye
 } from "lucide-react";
-import VoiceAssistant from "@/components/shared/voice-assistant";
+import VoiceAssistantDrawer from "@/features/voice/components/VoiceAssistantDrawer";
+import { useVoiceStore } from "@/store/voiceStore";
 import { canAccessRoute } from "@/utils/permissions";
+import NotificationBell from "@/components/shared/notifications/NotificationBell";
 
 export default function AppLayout() {
   const { user, logout, entitlements = [], impersonation, endImpersonation } = useAuthStore();
@@ -262,6 +264,9 @@ export default function AppLayout() {
           </div>
 
           <div className="flex items-center gap-4">
+            {/* Notification Bell */}
+            <NotificationBell />
+
             {/* Theme Toggle */}
             <button
               type="button"
@@ -362,7 +367,27 @@ export default function AppLayout() {
             <Outlet />
           </motion.div>
         </main>
-        {entitlements.includes("voice_ai") && <VoiceAssistant />}
+        
+        {entitlements.includes("voice_ai") && (
+          <>
+            {/* Global Voice Assistant Drawer */}
+            <VoiceAssistantDrawer />
+            
+            {/* Global FAB */}
+            <button
+              onClick={() => {
+                 // Import useVoiceStore to open
+                 // wait, I can just use a local import or define it above
+                 const toggle = useVoiceStore.getState().setIsOpen;
+                 const isOpen = useVoiceStore.getState().isOpen;
+                 toggle(!isOpen);
+              }}
+              className="fixed bottom-[88px] md:bottom-8 right-6 z-40 bg-primary text-white w-14 h-14 rounded-full flex items-center justify-center shadow-lg shadow-primary/30 hover:scale-105 active:scale-95 transition-all"
+            >
+              <Mic className="w-6 h-6" />
+            </button>
+          </>
+        )}
         
         {/* Mobile Bottom Navigation */}
         <div className="md:hidden fixed bottom-0 left-0 right-0 min-h-[72px] bg-surface/95 backdrop-blur-xl border-t border-border z-40 flex items-center justify-around pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_24px_rgba(0,0,0,0.05)]">

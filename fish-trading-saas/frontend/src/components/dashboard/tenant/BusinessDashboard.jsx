@@ -1,12 +1,16 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  ShoppingCart, TrendingUp, Truck, DollarSign, ChevronRight, TrendingDown, Layers, Inbox, Package, Activity, Fish, PieChart, LineChart, LifeBuoy, CreditCard
+  ShoppingCart, TrendingUp, Truck, DollarSign, ChevronRight, TrendingDown, Layers, Inbox, Package, Activity, Fish, PieChart, LineChart, LifeBuoy, CreditCard,
+  Calendar, ShoppingBag, Mic, Search, ArrowUp, AlertTriangle
 } from "lucide-react";
 import Card from "@/components/ui/card";
 import Skeleton from "@/components/ui/skeleton";
 import Button from "@/components/ui/button";
 import { usePermission } from "@/hooks/usePermission";
+import { useAuthStore } from "@/store/authStore";
+import { useVoiceStore } from "@/store/voiceStore";
+import { useToast } from "@/components/shared/toast-provider";
 import { KpiCard } from "../kpi/KpiCard";
 import { DashboardSkeleton } from "../shared/DashboardSkeleton";
 import { FishSalesTrendChart } from "../charts/FishSalesTrendChart";
@@ -17,6 +21,8 @@ import { DailyPurchaseVsSalesChart } from "../charts/DailyPurchaseVsSalesChart";
 import { PaymentCollectionTrendChart } from "../charts/PaymentCollectionTrendChart";
 import { MarketPriceTrendChart } from "../charts/MarketPriceTrendChart";
 import { fetchDashboardOverview, fetchFishSalesTrend, fetchOutstandingCollections, fetchInventoryHealth, fetchDailyPurchaseVsSales, fetchPaymentCollectionTrend, fetchMarketPriceTrend } from "@/services/dashboardService";
+import { safeObjectAccess, safeArrayAccess } from "@/utils/security/safeAccess";
+import { sanitizeNavigationUrl } from "@/utils/security/safeNavigation";
 
 const formatINR = (n) =>
   new Intl.NumberFormat("en-IN", {
@@ -250,7 +256,10 @@ export function BusinessDashboard() {
           </div>
         </button>
 
-        <button onClick={() => { const v = document.getElementById("voice-assistant-btn"); if (v) v.click(); else push({ message: "Voice Assistant is not enabled.", variant: "error" }); }}
+        <button onClick={() => {
+            const { setIsOpen } = useVoiceStore.getState();
+            setIsOpen(true);
+          }}
           className="group relative flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-surface border border-border shadow-sm hover:border-info/50 hover:shadow-md hover:shadow-info/5 hover:-translate-y-1 active:scale-95 transition-all duration-200 cursor-pointer min-h-[104px] overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-1 bg-info/20 opacity-0 group-hover:opacity-100 transition-opacity" />
           <div className="relative">
@@ -274,11 +283,28 @@ export function BusinessDashboard() {
             <span className="text-[10px] font-black text-white bg-danger px-2 py-0.5 rounded-full">{actionAlerts.length}</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {actionAlerts.map((a) => {
-              const colorMap = { danger: "border-danger/30 bg-danger/5 hover:border-danger/60", warning: "border-warning/30 bg-warning/5 hover:border-warning/60", amber: "border-amber-500/30 bg-amber-500/5 hover:border-amber-500/60", info: "border-info/30 bg-info/5 hover:border-info/60" };
-              const ctaCls  = { danger: "bg-danger/10 text-danger hover:bg-danger/20", warning: "bg-warning/10 text-warning hover:bg-warning/20", amber: "bg-amber-500/10 text-amber-500 hover:bg-amber-500/20", info: "bg-info/10 text-info hover:bg-info/20" };
+            {actionAlerts.map(a => {
+              const colorMap = {
+                danger: "bg-red-500/10 border-red-500/20 text-red-600 hover:bg-red-500/20",
+                warning: "bg-orange-500/10 border-orange-500/20 text-orange-600 hover:bg-orange-500/20",
+                info: "bg-blue-500/10 border-blue-500/20 text-blue-600 hover:bg-blue-500/20"
+              };
+              const ctaCls = {
+                danger: "bg-danger/10 text-danger hover:bg-danger/20", 
+                warning: "bg-warning/10 text-warning hover:bg-warning/20", 
+                amber: "bg-amber-500/10 text-amber-500 hover:bg-amber-500/20", 
+                info: "bg-info/10 text-info hover:bg-info/20"
+              };
+              
+              const safeColor = safeObjectAccess(colorMap, a.color, colorMap.info);
+              const safeCtaClass = safeObjectAccess(ctaCls, a.color, ctaCls.info);
+              
               return (
-                <div key={a.id} className={`rounded-xl border p-4 flex flex-col gap-3 transition-all cursor-pointer ${colorMap[a.color]}`} onClick={() => navigate(a.route)}>
+                <div
+                  key={a.id}
+                  className={`rounded-xl border p-4 flex flex-col gap-3 transition-all cursor-pointer ${safeColor}`}
+                  onClick={() => navigate(sanitizeNavigationUrl(a.route))}
+                >
                   <div className="flex items-start gap-2">
                     <span className="text-xl">{a.icon}</span>
                     <div>
@@ -286,7 +312,7 @@ export function BusinessDashboard() {
                       <p className="text-xs text-textSecondary font-semibold mt-0.5">{a.body}</p>
                     </div>
                   </div>
-                  <button className={`mt-auto w-full py-1.5 rounded-lg text-xs font-black uppercase tracking-wide transition-colors ${ctaCls[a.color]}`}>{a.cta} →</button>
+                  <button className={`mt-auto w-full py-1.5 rounded-lg text-xs font-black uppercase tracking-wide transition-colors ${safeCtaClass}`}>{a.cta} →</button>
                 </div>
               );
             })}
@@ -487,7 +513,7 @@ export function BusinessDashboard() {
                 {topFish.map((item, idx) => {
                   const pct = Math.round((item.revenue / maxRevenue) * 100);
                   const badges = ["🔥 High Demand", "📈 Rising", "✅ Stable", "📦 Moderate", "⚠ Slow"];
-                  const badge  = badges[idx] || "✅ Stable";
+                  const badge = safeArrayAccess(badges, idx, "✅ Stable");
                   const profit = Math.floor(Math.random() * 15 + 2);
                   const kgSold = Math.floor(Math.random() * 200 + 50);
                   return (

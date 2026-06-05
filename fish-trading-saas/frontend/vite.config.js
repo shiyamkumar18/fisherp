@@ -28,7 +28,8 @@ function djangoUnixSocketProxy() {
       server.middlewares.use((req, res, next) => {
         const proxied =
           req.url.startsWith("/api") ||
-          req.url.startsWith("/admin") ||
+          req.url.startsWith("/django-admin") ||
+          req.url.startsWith("/platform-admin") ||
           req.url.startsWith("/auth") ||
           req.url.startsWith("/static/django");
 

@@ -35,8 +35,8 @@ from typing import Any
 from django.db import transaction
 from django.utils import timezone
 
-from accounts.models_audit import AuditLog
-from trading.models import Fish, Inventory, PurchaseBatch, Supplier
+from saas_platform.accounts.models_audit import AuditLog
+from business.trading.models import Fish, Inventory, PurchaseBatch, Supplier
 
 logger = logging.getLogger(__name__)
 
@@ -515,7 +515,7 @@ class PurchaseService:
             company=company,
         )
 
-        from trading.models.stock_movement import StockMovement
+        from business.trading.models.stock_movement import StockMovement
         StockMovement.objects.create(
             fish=fish,
             purchase_batch=batch,

@@ -1,6 +1,6 @@
 # Deferred imports to avoid circular import
 def is_impersonating(user_or_request):
-    from accounts.permissions import is_impersonating
+    from saas_platform.accounts.permissions import is_impersonating
     # If it's a request, use the original function
     if hasattr(user_or_request, 'user'):
         return is_impersonating(user_or_request)
@@ -9,17 +9,17 @@ def is_impersonating(user_or_request):
 
 
 def get_impersonated_tenant(user_or_request):
-    from accounts.permissions import get_impersonated_tenant
+    from saas_platform.accounts.permissions import get_impersonated_tenant
     if hasattr(user_or_request, 'user'):
         return get_impersonated_tenant(user_or_request)
     return None
 
 
-from trading.helpers import _user_company  # noqa: E402
+from business.trading.helpers import _user_company  # noqa: E402
 
 
 def _get_create_scope(user_dict):
-    from trading.views import _get_create_scope
+    from business.trading.views import _get_create_scope
     return _get_create_scope(user_dict)
 
 

@@ -7,32 +7,34 @@ import { ToastProvider } from "@/components/shared/toast-provider";
 import { useAuthStore } from "@/store/authStore";
 import { useUiStore } from "@/store/uiStore";
 import Skeleton from "@/components/ui/skeleton";
+import { adminRoutes } from "@/features/platform/admin/routes";
 
-const LoginPage = lazy(() => import("@/pages/login-page"));
-const RegisterPage = lazy(() => import("@/pages/register-page"));
-const LandingPage = lazy(() => import("@/pages/landing-page"));
-const DashboardPage = lazy(() => import("@/pages/dashboard-page"));
-const HomePortal = lazy(() => import("@/pages/home-portal"));
+const LoginPage = lazy(() => import("@/features/platform/auth/pages/LoginPage"));
+const RegisterPage = lazy(() => import("@/features/platform/auth/pages/RegisterPage"));
+const LandingPage = lazy(() => import("@/features/core/landing/pages/LandingPage"));
+const DashboardPage = lazy(() => import("@/features/business/dashboard/pages/DashboardPage"));
+const HomePortal = lazy(() => import("@/features/business/dashboard/pages/HomePortal"));
 
 function DashboardRoot() {
   const isSimple = localStorage.getItem("is_simple_ux") === "true";
   return isSimple ? <HomePortal /> : <DashboardPage />;
 }
-const OrdersPage = lazy(() => import("@/pages/orders-page"));
-const ProductsPage = lazy(() => import("@/pages/products-page"));
-const SalesPage = lazy(() => import("@/pages/sales-page"));
-const PurchasesPage = lazy(() => import("@/pages/purchases-page"));
-const PurchaseDetailPage = lazy(() => import("@/pages/purchase-detail-page"));
-const SaleDetailPage = lazy(() => import("@/pages/sale-detail-page"));
-const InventoryPage = lazy(() => import("@/pages/inventory-page"));
-const SuppliersPage = lazy(() => import("@/pages/suppliers-page"));
-const CustomersPage = lazy(() => import("@/pages/customers-page"));
-const PaymentsPage = lazy(() => import("@/pages/payments-page"));
-const PaymentDetailPage = lazy(() => import("@/pages/payment-detail-page"));
-const ReportsPage = lazy(() => import("@/pages/reports-page"));
-const ProfilePage = lazy(() => import("@/pages/profile-page"));
-const SettingsPage = lazy(() => import("@/pages/settings-page"));
-const NotFoundPage = lazy(() => import("@/pages/not-found-page"));
+const OrdersPage = lazy(() => import("@/features/business/orders/pages/OrdersPage"));
+const ProductsPage = lazy(() => import("@/features/business/products/pages/ProductsPage"));
+const SalesPage = lazy(() => import("@/features/business/sales/pages/SalesPage"));
+const PurchasesPage = lazy(() => import("@/features/business/purchases/pages/PurchasesPage"));
+const PurchaseDetailPage = lazy(() => import("@/features/business/purchases/pages/PurchaseDetailPage"));
+const SaleDetailPage = lazy(() => import("@/features/business/sales/pages/SaleDetailPage"));
+const InventoryPage = lazy(() => import("@/features/business/inventory/pages/InventoryPage"));
+const SuppliersPage = lazy(() => import("@/features/business/suppliers/pages/SuppliersPage"));
+const CustomersPage = lazy(() => import("@/features/business/customers/pages/CustomersPage"));
+const PaymentsPage = lazy(() => import("@/features/business/payments/pages/PaymentsPage"));
+const PaymentDetailPage = lazy(() => import("@/features/business/payments/pages/PaymentDetailPage"));
+const ReportsPage = lazy(() => import("@/features/business/reports/pages/ReportsPage"));
+const ProfilePage = lazy(() => import("@/features/platform/profile/pages/ProfilePage"));
+const SettingsPage = lazy(() => import("@/features/platform/settings/pages/SettingsPage"));
+const TenantSupportPage = lazy(() => import("@/features/platform/support/pages/TenantSupportPage"));
+const NotFoundPage = lazy(() => import("@/features/core/errors/pages/NotFoundPage"));
 
 function Fallback() {
   return (
@@ -134,7 +136,22 @@ export default function App() {
             <Route path="reports" element={<ReportsPage />} />
             <Route path="profile" element={<ProfilePage />} />
             <Route path="settings" element={<SettingsPage />} />
+            <Route path="support" element={<TenantSupportPage />} />
           </Route>
+          
+          {/* Map Admin Routes */}
+          {adminRoutes.map((route, i) => (
+            <Route key={i} path={route.path} element={route.element}>
+              {route.children?.map((child, j) => (
+                <Route key={j} path={child.path} element={child.element}>
+                  {child.children?.map((sub, k) => (
+                    <Route key={k} path={sub.path} element={sub.element} />
+                  ))}
+                </Route>
+              ))}
+            </Route>
+          ))}
+
           <Route path="/404" element={<NotFoundPage />} />
           <Route path="*" element={<Navigate to="/404" replace />} />
         </Routes>

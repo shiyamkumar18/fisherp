@@ -88,19 +88,19 @@ class PostgresModelReadTests(TestCase):
     """Validation tests for reading core models after PostgreSQL migration."""
 
     def test_company_model_readable(self):
-        from companies.models import Company  # noqa: PLC0415
+        from saas_platform.companies.models import Company  # noqa: PLC0415
 
         count = Company.objects.count()
         self.assertGreaterEqual(count, 0)
 
     def test_user_model_readable(self):
-        from accounts.models import User  # noqa: PLC0415
+        from saas_platform.accounts.models import User  # noqa: PLC0415
 
         count = User.objects.count()
         self.assertGreaterEqual(count, 0)
 
     def test_purchase_batch_model_readable(self):
-        from trading.models import PurchaseBatch  # noqa: PLC0415
+        from business.trading.models import PurchaseBatch  # noqa: PLC0415
 
         count = PurchaseBatch.objects.count()
         self.assertGreaterEqual(count, 0)
@@ -162,7 +162,7 @@ class PostgresHealthCheckTests(TestCase):
     """Validation tests for PostgreSQL health check utilities."""
 
     def test_postgres_connection_check_returns_ok(self):
-        from health.postgres_health import connection_check  # noqa: PLC0415
+        from core.health.postgres_health import connection_check  # noqa: PLC0415
 
         result = connection_check()
         self.assertEqual(result["status"], "ok", f"connection_check() failed: {result}")
@@ -170,7 +170,7 @@ class PostgresHealthCheckTests(TestCase):
         self.assertGreaterEqual(result["latency_ms"], 0)
 
     def test_postgres_full_health_check_structure(self):
-        from health.postgres_health import full_health_check  # noqa: PLC0415
+        from core.health.postgres_health import full_health_check  # noqa: PLC0415
 
         result = full_health_check()
 

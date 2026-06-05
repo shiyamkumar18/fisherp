@@ -8,6 +8,7 @@ const variants = {
   outline: "bg-transparent text-textPrimary border border-border hover:bg-hover shadow-sm",
   ghost: "bg-transparent text-textPrimary hover:bg-hover border border-transparent",
   danger: "bg-danger text-white hover:bg-danger/90 border border-transparent shadow-sm",
+  success: "bg-success text-white hover:bg-success/90 border border-transparent shadow-sm",
 };
 
 const sizes = {
@@ -15,6 +16,7 @@ const sizes = {
   md: "h-10 px-4 py-2 text-sm",
   lg: "h-12 px-8 text-base",
   icon: "h-10 w-10",
+  iconSm: "h-8 w-8 p-0 shrink-0",
 };
 
 export default function Button({

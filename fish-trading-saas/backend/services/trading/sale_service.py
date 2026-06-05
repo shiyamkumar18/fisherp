@@ -3,8 +3,8 @@ from django.utils import timezone
 from django.db import transaction
 from django.core.exceptions import ValidationError
 from ..base import BaseService
-from trading.models import Sale, Payment, Inventory
-from trading.helpers import _user_company
+from business.trading.models import Sale, Payment, Inventory
+from business.trading.helpers import _user_company
 
 class SaleService(BaseService):
     def __init__(self, user):
@@ -15,7 +15,7 @@ class SaleService(BaseService):
         """Create sale with scoping and atomic guarantees."""
         company = data.get('company')
         if not company:
-            from trading.helpers import _user_company
+            from business.trading.helpers import _user_company
             company = _user_company(self.user)
             data['company'] = company
             data['tenant'] = self.user
@@ -133,6 +133,6 @@ class SaleService(BaseService):
     
     def get_queryset(self):
         """Scoped sales for user."""
-        from trading.models import Sale
+        from business.trading.models import Sale
         manager = getattr(Sale, 'objects')
         return manager.for_user(self.user)

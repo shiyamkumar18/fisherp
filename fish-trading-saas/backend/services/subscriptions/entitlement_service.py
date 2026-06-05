@@ -1,8 +1,8 @@
 import logging
 from django.utils import timezone
-from subscriptions.models import Subscription, SubscriptionAddOnPurchase
-from subscriptions.features import LEGACY_TIER_MAPPING
-from accounts.models import User
+from saas_platform.subscriptions.models import Subscription, SubscriptionAddOnPurchase
+from saas_platform.subscriptions.features import LEGACY_TIER_MAPPING
+from saas_platform.accounts.models import User
 
 logger = logging.getLogger(__name__)
 

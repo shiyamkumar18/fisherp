@@ -29,7 +29,7 @@ if not hasattr(datetime, 'UTC'):
 # -----------------------------------------------------------
 
 # Use custom allauth adapter for Google login
-SOCIALACCOUNT_ADAPTER = "accounts.adapters.CustomSocialAccountAdapter"
+SOCIALACCOUNT_ADAPTER = "saas_platform.accounts.adapters.CustomSocialAccountAdapter"
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -56,8 +56,8 @@ ALLOWED_HOSTS = DEFAULT_ALLOWED_HOSTS + [
 # =========================
 
 SHARED_APPS = [
-    "accounts",
-    "companies",
+    "saas_platform.accounts",
+    "saas_platform.companies",
 
     "django.contrib.admin",
     "django.contrib.auth",
@@ -76,13 +76,17 @@ TENANT_APPS = [
     "drf_spectacular",
     "corsheaders",
     "django_filters",
-    "trading",
-    "voice",  # Voice Assistant
-    "subscriptions",
-    "dashboard",
-    "saas_admin",  # Platform Manager App
-    "permissions",  # New permissions app
-    "support",  # Support Center
+    "business.trading",
+    "core.voice",  # Voice Assistant
+    "saas_platform.subscriptions",
+    "business.dashboard",
+    "saas_platform.saas_admin",  # Platform Manager App
+    "saas_platform.platform_mgr", # New Operations Console
+    "saas_platform.permissions",  # New permissions app
+    "saas_platform.support",  # Support Center
+    "tenant_apps.organization",  # Organization & Staff Management
+    "core.notifications",  # Notification & Communication Engine
+    "core.audit",  # Enterprise Audit Trail
 ]
 
 INSTALLED_APPS = SHARED_APPS + TENANT_APPS + [
@@ -114,15 +118,16 @@ MIDDLEWARE = [
     "allauth.account.middleware.AccountMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
-    "accounts.middleware.ImpersonationMiddleware",
+    "saas_platform.accounts.middleware.ImpersonationMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
-    "permissions.middleware.PermissionCheckMiddleware",
+    "saas_platform.permissions.middleware.PermissionCheckMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "subscriptions.middleware.SubscriptionEnforcementMiddleware",
+    "saas_platform.subscriptions.middleware.SubscriptionEnforcementMiddleware",
     "config.middleware_security.SecurityHeadersMiddleware",
+    "core.audit.middleware.AuditContextMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -226,7 +231,7 @@ LOGIN_URL = "/api-auth/login/"
 
 # Custom authentication backend: accepts email or username
 AUTHENTICATION_BACKENDS = [
-    "accounts.authentication.EmailOrUsernameBackend",
+    "saas_platform.accounts.authentication.EmailOrUsernameBackend",
     "django.contrib.auth.backends.ModelBackend",
 ]
 
@@ -322,7 +327,7 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticated",
     ],
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "accounts.custom_jwt.CustomJWTAuthentication",
+        "saas_platform.accounts.custom_jwt.CustomJWTAuthentication",
         "rest_framework.authentication.SessionAuthentication",
     ],
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
@@ -404,7 +409,7 @@ CELERY_TIMEZONE = 'UTC'
 CELERY_TASK_TRACK_STARTED = True
 CELERY_BEAT_SCHEDULE = {
     'check-overdue-suppliers': {
-        'task': 'trading.tasks.check_overdue_suppliers',
+        'task': 'business.trading.tasks.check_overdue_suppliers',
         'schedule': 3600.0,  # Hourly
     },
 }
@@ -514,3 +519,4 @@ X_FRAME_OPTIONS = 'DENY'
 # SECURE_HSTS_SECONDS = 31536000
 # SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 # SECURE_HSTS_PRELOAD = True
+TEST_RUNNER = 'fix_test_runner.CustomTestRunner'

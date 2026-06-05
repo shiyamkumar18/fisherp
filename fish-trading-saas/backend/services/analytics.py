@@ -13,8 +13,8 @@ from django.db.models import Sum, Count, F, DecimalField, Value, Case, When
 from django.db.models.functions import TruncDate, Coalesce
 from django.utils import timezone
 from datetime import timedelta
-from trading.models import PurchaseBatch, Sale
-from trading.models.inventory import Inventory
+from business.trading.models import PurchaseBatch, Sale
+from business.trading.models.inventory import Inventory
 
 
 class AnalyticsService:

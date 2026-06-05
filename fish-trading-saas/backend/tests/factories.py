@@ -7,9 +7,9 @@ import uuid
 from decimal import Decimal
 from django.contrib.auth import get_user_model
 
-from companies.models import Company
-from trading.models import FishCategory, Fish, Supplier, Buyer, PurchaseBatch, Inventory
-from subscriptions.models import SubscriptionTier, Subscription
+from saas_platform.companies.models import Company
+from business.trading.models import FishCategory, Fish, Supplier, Buyer, PurchaseBatch, Inventory
+from saas_platform.subscriptions.models import SubscriptionTier, Subscription
 
 User = get_user_model()
 

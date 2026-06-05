@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import {
   AlertTriangle, ArrowDown, ArrowUp, Users, Shield, CheckCircle, XCircle, X,
-  Plus, RefreshCw, Clock, Eye, Settings, Mail, Building2, MapPin, Calendar, Lock, Database, Target, Server, Zap
+  Plus, RefreshCw, Clock, Eye, Settings, Mail, Building2, MapPin, Calendar, Lock, Database, Target, Server, Zap,
+  Activity, DollarSign, LifeBuoy, CreditCard, Search
 } from "lucide-react";
 import Card from "@/components/ui/card";
 import Skeleton from "@/components/ui/skeleton";
@@ -15,6 +16,7 @@ import { PlatformKpiCard } from "../kpi/PlatformKpiCard";
 import { PlatformMrrChart } from "../charts/PlatformMrrChart";
 import { PlatformFunnelChart } from "../charts/PlatformFunnelChart";
 import { PlatformMixChart } from "../charts/PlatformMixChart";
+import { PlatformTrafficChart } from "../charts/PlatformTrafficChart";
 import { generateMockFunnel, generateMockMrrTrend } from "@/utils/platform-mocks";
 
 const formatINR = (n) =>
@@ -933,32 +935,6 @@ export function PlatformOperatorDashboard() {
                 className="w-full rounded-xl border border-border bg-surface p-3 text-sm text-textPrimary outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 resize-none font-medium"
               />
             </div>
-
-            {/* Audit Reason Modal */}
-            <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-              <DialogContent className="max-w-md">
-                <DialogHeader>
-                  <DialogTitle>Admin Audit Required</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <p className="text-sm text-textSecondary">
-                    You are taking an administrative action on a tenant's account. Please log the reason for this action for security audit purposes.
-                  </p>
-                  <Input 
-                    placeholder="e.g., Resolving support ticket #TCK-8022" 
-                    value={actionReason}
-                    onChange={(e) => setActionReason(e.target.value)}
-                    disabled={modalLoading}
-                  />
-                  {modalError && <p className="text-xs text-danger font-bold">{modalError}</p>}
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setModalOpen(false)} disabled={modalLoading}>Cancel</Button>
-                  <Button onClick={handleModalSubmit} loading={modalLoading}>Proceed</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-
 
             {modalError && <p className="text-xs text-red-500 font-bold">{modalError}</p>}
 

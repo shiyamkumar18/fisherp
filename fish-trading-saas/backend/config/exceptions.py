@@ -20,8 +20,14 @@ def custom_exception_handler(exc, context):
     
     # Fallback
     import traceback
-    return Response({
+    from django.conf import settings
+    
+    response_data = {
         'error': 'Internal server error',
         'code': 'INTERNAL_ERROR',
-        'traceback': traceback.format_exc(),
-    }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    }
+    
+    if settings.DEBUG:
+        response_data['traceback'] = traceback.format_exc()
+        
+    return Response(response_data, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

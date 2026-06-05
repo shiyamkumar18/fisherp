@@ -6,6 +6,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Mic, Square, Play } from 'lucide-react';
 import WaveformDisplay from './WaveformDisplay';
+import { safeArrayAccess } from '@/utils/security/safeAccess';
 import '../styles/voice.css';
 
 export default function VoiceRecorder({ sessionId, onProcess, language = 'tamil' }) {
@@ -112,7 +113,8 @@ export default function VoiceRecorder({ sessionId, onProcess, language = 'tamil'
     const samples = [];
     const step = Math.floor(dataArray.length / 50);
     for (let i = 0; i < dataArray.length; i += step) {
-      samples.push(dataArray[i] / 255);
+      const val = safeArrayAccess(dataArray, i, 0);
+      samples.push(val / 255);
     }
 
     setWaveform(samples);

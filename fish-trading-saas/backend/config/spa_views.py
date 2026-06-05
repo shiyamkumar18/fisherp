@@ -8,6 +8,9 @@ def serve_spa_index(request, frontend_path=None):
     matched by the backend API. This allows client-side routing (e.g. React Router)
     to handle the request.
     """
+    if request.path.startswith("/api/"):
+        from django.http import JsonResponse
+        return JsonResponse({"detail": "Not found."}, status=404)
     possible_paths = [
         settings.BASE_DIR / "frontend" / "dist" / "index.html",
         settings.BASE_DIR.parent / "frontend" / "dist" / "index.html",

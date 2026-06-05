@@ -3,7 +3,7 @@ from django.db import transaction
 from django.utils import timezone
 from datetime import timedelta
 from ..base import BaseService
-from trading.models import Inventory
+from business.trading.models import Inventory
 
 
 class InventoryService(BaseService):
@@ -54,11 +54,11 @@ class InventoryService(BaseService):
     @transaction.atomic
     def deduct_stock_for_sale(self, sale):
         """Deduct inventory stock when a Sale is created or finalized."""
-        from trading.models import Inventory, StockMovement
-        from trading.tasks import inventory_low_stock_whatsapp_task
+        from business.trading.models import Inventory, StockMovement
+        from business.trading.tasks import inventory_low_stock_whatsapp_task
         
         try:
-            inventory = Inventory.objects.get(purchase_batch=sale.batch)
+            inventory = Inventory.objects.select_for_update().get(purchase_batch=sale.batch)
         except Inventory.DoesNotExist:
             return None
 
@@ -89,10 +89,10 @@ class InventoryService(BaseService):
     @transaction.atomic
     def restore_stock_for_sale(self, sale, movement_type='return'):
         """Restore inventory stock when a Sale is cancelled, returned, or deleted."""
-        from trading.models import Inventory, StockMovement
+        from business.trading.models import Inventory, StockMovement
         
         try:
-            inventory = Inventory.objects.get(purchase_batch=sale.batch)
+            inventory = Inventory.objects.select_for_update().get(purchase_batch=sale.batch)
         except Inventory.DoesNotExist:
             return None
 

@@ -6,7 +6,7 @@ from django.db.models.functions import Lower
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend.settings')
 django.setup()
 
-from trading.models import PurchaseBatch, Supplier
+from business.trading.models import PurchaseBatch, Supplier
 from fuzzywuzzy import fuzz
 
 def run_audit():

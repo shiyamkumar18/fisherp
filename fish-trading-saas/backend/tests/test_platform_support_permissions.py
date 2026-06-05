@@ -4,8 +4,8 @@ from rest_framework.test import APIClient
 from django.contrib.auth import get_user_model
 from tests.factories import UserFactory, CompanyFactory, SubscriptionFactory
 from django.utils import timezone
-from accounts.models_audit import ImpersonationLog
-from trading.models import Supplier
+from saas_platform.accounts.models_audit import ImpersonationLog
+from business.trading.models import Supplier
 
 User = get_user_model()
 pytestmark = pytest.mark.django_db

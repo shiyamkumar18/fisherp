@@ -1,11 +1,11 @@
 import React, { Suspense } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import { dashboardRoutes } from "@/features/dashboard/routes";
-import { supplierRoutes } from "@/features/suppliers/routes";
-import { orderRoutes } from "@/features/orders/routes";
+import { dashboardRoutes } from "@/features/business/dashboard/routes";
+import { supplierRoutes } from "@/features/business/suppliers/routes";
+import { orderRoutes } from "@/features/business/orders/routes";
 import Loader from "../components/ui/Loader";
-import AuthCallback from "@/features/auth/pages/AuthCallback";
-import ProtectedRoute from "@/features/auth/components/ProtectedRoute";
+import AuthCallback from "@/features/platform/platform/auth/pages/AuthCallback";
+import ProtectedRoute from "@/features/platform/platform/auth/components/ProtectedRoute";
 import MainLayout from "../components/layout/MainLayout";
 import { ErrorBoundary } from "../components/shared/ErrorBoundary";
 

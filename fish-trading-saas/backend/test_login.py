@@ -9,7 +9,7 @@ os.environ.setdefault('DB_PORT', '5432')
 django.setup()
 
 from django.contrib.auth import authenticate
-from accounts.models import User
+from saas_platform.accounts.models import User
 
 user = authenticate(username='admin@fishapp.com', password='admin123')
 print("Authenticate admin@fishapp.com:", user)

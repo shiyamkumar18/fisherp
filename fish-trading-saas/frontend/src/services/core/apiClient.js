@@ -1,17 +1,6 @@
-import axios from "axios";
+import { apiClient as api } from "../apiClient";
+import { config } from "@/config";
 
-// Simple API client used by frontend services.
-// The previous file contained merge-corruption / stray blocks that broke Vite parsing.
-
-export const config = {
-  apiBaseUrl: import.meta.env.VITE_API_URL || "/api",
-};
-
-export const apiClient = axios.create({
-  baseURL: config.apiBaseUrl,
-});
-
-// Compatibility: many services import { api } from core/apiClient.
-export const api = apiClient;
-
-
+// Re-export the main apiClient so that services importing from `core/apiClient` 
+// will correctly use the interceptors (and JWT tokens) attached to the main client.
+export { config, api };

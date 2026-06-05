@@ -7,10 +7,10 @@ from django.views.decorators.http import require_GET
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 from rest_framework.permissions import AllowAny
 
-from accounts.admin_sites import platform_admin_site
-from accounts.views import CustomProfileRedirectView, PlatformLoginView, TenantRegisterView, UnifiedLoginView
-from companies.views import CompanyDetailsView
-from dashboard.admin import dashboard_site
+from saas_platform.accounts.admin_sites import platform_admin_site
+from saas_platform.accounts.views import CustomProfileRedirectView, PlatformLoginView, TenantRegisterView, UnifiedLoginView
+from saas_platform.companies.views import CompanyDetailsView
+from business.dashboard.admin import dashboard_site
 from .spa_views import serve_spa_index
 
 class PublicSpectacularAPIView(SpectacularAPIView):
@@ -41,7 +41,7 @@ urlpatterns = [
     path("api/redoc/", PublicSpectacularRedocView.as_view(url_name="schema"), name="redoc"),
 
     # Main Django admin (for superusers only)
-    path("admin/", admin.site.urls),
+    path("django-admin/", admin.site.urls),
 
     # Platform Admin - For platform operators ONLY (uses _admin suffix)
     path("platform-admin/", platform_admin_site.urls),
@@ -61,38 +61,47 @@ urlpatterns = [
     path("api-auth/", include("rest_framework.urls")),
 
     # Accounts API (Auth, User Management)
-    path("api/", include("accounts.urls")),
+    path("api/", include("saas_platform.accounts.urls")),
 
     # Companies API (Company/Shop Settings)
     path("api/companies/", CompanyDetailsView.as_view(), name="company-details"),
     path("api/companies/details/", CompanyDetailsView.as_view(), name="company-details-endpoint"),
 
     # Trading API (Fish, Buyers, Purchase, Sales)
-    path("api/", include("trading.urls")),
+    path("api/", include("business.trading.urls")),
     # Backward-compatible trading prefix
-    path("api/trading/", include("trading.urls")),
+    path("api/trading/", include("business.trading.urls")),
 
     # Voice Assistant API
-    path("api/voice/", include("voice.urls")),
+    path("api/voice/", include("core.voice.urls")),
 
     # Dashboard API (Analytics, Reports)
-    path("api/", include("dashboard.urls")),
+    path("api/", include("business.dashboard.urls")),
 
     # Subscriptions API (Plans, Billing)
-    path("api/", include("subscriptions.urls")),
+    path("api/", include("saas_platform.subscriptions.urls")),
 
     # Health checks (k8s readiness/liveness)
-    path('health/', include('health.urls')),
+    path('health/', include('core.health.urls')),
 
     # Platform Manager API (SaaS-level management)
-    path("api/platform/", include("saas_admin.urls")),
+    path("api/platform/", include("saas_platform.saas_admin.urls")),
+    path("api/platform/", include("saas_platform.platform_mgr.urls")),
 
     # Permissions API (RBAC role matrix, permission check)
-    path("api/permissions/", include("permissions.urls")),
+    path("api/permissions/", include("saas_platform.permissions.urls")),
 
     # Support Center API
-    path("api/support/", include("support.urls")),
+    path("api/support/", include("saas_platform.support.urls")),
 
+    # Organization & Staff Management API
+    path("api/organization/", include("tenant_apps.organization.urls")),
+
+    # Notification & Communication API
+    path("api/notifications/", include("core.notifications.urls")),
+
+    # Enterprise Audit Trail API
+    path("api/audit/", include("core.audit.urls")),
 
     # Tenant-specific login URLs (e.g., /acme-corp/login/)
     path("<str:tenant_slug>/login/", UnifiedLoginView.as_view(), name="tenant-login"),
