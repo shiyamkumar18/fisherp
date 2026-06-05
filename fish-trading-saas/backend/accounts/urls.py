@@ -14,14 +14,26 @@ from .views import (
     UnifiedLoginView,
     PlatformLoginView,
     ImpersonationAPIView,
+    SendOTPView,
+    VerifyOTPView,
+    ChangePasswordView,
 )
+from .views.multi_identifier_auth import MultiIdentifierLoginView, SimpleRegistrationView
 
 urlpatterns = [
+    # NEW MULTI-IDENTIFIER LOGIN/REGISTRATION (RECOMMENDED)
+    path("login/", MultiIdentifierLoginView.as_view(), name="multi-identifier-login"),
+    path("register/", SimpleRegistrationView.as_view(), name="multi-identifier-register"),
+    
+    # Legacy endpoints (kept for backward compatibility)
+    path("send-otp/", SendOTPView.as_view(), name="send-otp"),
+    path("verify-otp/", VerifyOTPView.as_view(), name="verify-otp"),
     path("auth/login/", UnifiedLoginView.as_view(), name="user-login"),
     path("auth/logout/", LogoutView.as_view(), name="user-logout"),
     path("auth/logout/session/", auth_views.LogoutView.as_view(next_page='/'), name="session-logout"),
     path("auth/register/", UserRegistrationView.as_view(), name="user-register"),
     path("auth/profile/", UserProfileView.as_view(), name="user-profile"),
+    path("auth/change-password/", ChangePasswordView.as_view(), name="change-password"),
     path("auth/users/", UserListView.as_view(), name="user-list"),
     path("auth/tenant-users/", TenantUserManagementView.as_view(), name="tenant-user-management"),
     path("impersonate/", ImpersonationAPIView.as_view(), name="impersonation"),

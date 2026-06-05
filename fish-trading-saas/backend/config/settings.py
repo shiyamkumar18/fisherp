@@ -29,10 +29,9 @@ ALLOWED_HOSTS = DEFAULT_ALLOWED_HOSTS + [
 ]
 
 # =========================
-# MULTI-TENANT CONFIG (SQLite - Remove django_tenants)
+# MULTI-TENANT CONFIG
 # =========================
 
-# SQLite with standard Django (no multi-tenancy)
 SHARED_APPS = [
     "accounts",
     "companies",
@@ -60,10 +59,8 @@ TENANT_APPS = [
 
 INSTALLED_APPS = SHARED_APPS + TENANT_APPS
 
-# TENANT_MODEL = "accounts.User"  # Commented out for SQLite
-
 # =========================
-# MIDDLEWARE (Standard Django)
+# MIDDLEWARE
 # =========================
 
 MIDDLEWARE = [
@@ -85,7 +82,11 @@ ROOT_URLCONF = "config.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [BASE_DIR / "templates", BASE_DIR.parent / "frontend"],
+        "DIRS": [
+            BASE_DIR / "templates", 
+            BASE_DIR / "frontend",  # Docker path
+            BASE_DIR.parent / "frontend",  # Local development path
+        ],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -100,64 +101,49 @@ TEMPLATES = [
 WSGI_APPLICATION = "config.wsgi.application"
 
 # =========================
-# DATABASE (Auto-detect: PostgreSQL for production, SQLite for development)
+# DATABASE (PostgreSQL only)
 # =========================
 
-_db_engine = os.getenv("DB_ENGINE", "")
+_db_name = os.getenv("DB_NAME", "fisherp_dev")
+_db_user = os.getenv("DB_USER", "fisherp_user")
+_db_password = os.getenv("DB_PASSWORD", "fisherp_pass")
 
-if _db_engine == "postgresql":
-    # Validate that all required PostgreSQL env vars are present.
-    _db_name = os.getenv("DB_NAME")
-    _db_user = os.getenv("DB_USER")
-    _db_password = os.getenv("DB_PASSWORD")
-
-    _missing_db_env_vars = [
-        var_name
-        for var_name, var_value in [
-            ("DB_NAME", _db_name),
-            ("DB_USER", _db_user),
-            ("DB_PASSWORD", _db_password),
-        ]
-        if not var_value
+_missing_db_env_vars = [
+    var_name
+    for var_name, var_value in [
+        ("DB_NAME", _db_name),
+        ("DB_USER", _db_user),
+        ("DB_PASSWORD", _db_password),
     ]
+    if not var_value
+]
 
-    if _missing_db_env_vars:
-        raise ValueError(
-            "Missing required database environment variable(s) for PostgreSQL: "
-            + ", ".join(_missing_db_env_vars)
-        )
+if _missing_db_env_vars:
+    raise ValueError(
+        "Missing required database environment variable(s) for PostgreSQL: "
+        + ", ".join(_missing_db_env_vars)
+    )
 
-    # When routing through PgBouncer in transaction mode, persistent connections
-    # must be disabled (CONN_MAX_AGE=0); honour the USE_PGBOUNCER flag here.
-    _use_pgbouncer = os.getenv("USE_PGBOUNCER", "").lower() in ("1", "true", "yes")
-    _conn_max_age = 0 if _use_pgbouncer else int(os.getenv("DB_CONN_MAX_AGE", "600"))
+# When routing through PgBouncer in transaction mode, persistent connections
+# must be disabled (CONN_MAX_AGE=0); honour the USE_PGBOUNCER flag here.
+_use_pgbouncer = os.getenv("USE_PGBOUNCER", "").lower() in ("1", "true", "yes")
+_conn_max_age = 0 if _use_pgbouncer else int(os.getenv("DB_CONN_MAX_AGE", "600"))
 
-    # PostgreSQL configuration (production/staging)
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.postgresql",
-            "NAME": _db_name,
-            "USER": _db_user,
-            "PASSWORD": _db_password,
-            "HOST": os.getenv("DB_HOST", "localhost"),
-            "PORT": os.getenv("DB_PORT", "5432"),
-            # Connection pooling & resilience
-            "CONN_MAX_AGE": _conn_max_age,
-            "OPTIONS": {
-                "connect_timeout": int(os.getenv("DB_CONNECT_TIMEOUT", "10")),
-                "application_name": "fisherp",
-                "options": "-c default_transaction_isolation='read committed'",
-            },
-        }
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": _db_name,
+        "USER": _db_user,
+        "PASSWORD": _db_password,
+        "HOST": os.getenv("DB_HOST", "localhost"),
+        "PORT": os.getenv("DB_PORT", "5432"),
+        "CONN_MAX_AGE": _conn_max_age,
+        "OPTIONS": {
+            "connect_timeout": int(os.getenv("DB_CONNECT_TIMEOUT", "10")),
+            "application_name": "fisherp",
+        },
     }
-else:
-    # SQLite configuration (local development only)
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / "db.sqlite3",
-        }
-    }
+}
 
 # =========================
 # AUTHENTICATION
@@ -221,7 +207,13 @@ USE_TZ = True
 # =========================
 
 STATIC_URL = '/static/'
-STATICFILES_DIRS = [BASE_DIR.parent / "frontend"]
+# Only include frontend in STATICFILES_DIRS if it exists (may not in Docker)
+# In Docker, frontend is mounted at /app/frontend, outside Docker at BASE_DIR.parent / "frontend"
+_frontend_paths = [
+    BASE_DIR / "frontend",  # Docker path
+    BASE_DIR.parent / "frontend",  # Local development path
+]
+STATICFILES_DIRS = [path for path in _frontend_paths if path.exists()]
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # =========================

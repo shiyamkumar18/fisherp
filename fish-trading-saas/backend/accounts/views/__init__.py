@@ -4,6 +4,8 @@ from .auth import (  # noqa: F401
     TenantRegisterView,
     PlatformLoginView,
     UserLoginView,
+    SendOTPView,
+    VerifyOTPView,
 )
 from .users import (  # noqa: F401
     UserRegistrationView,
@@ -11,10 +13,13 @@ from .users import (  # noqa: F401
     UserListView,
     TenantUserManagementView,
     CustomProfileRedirectView,
+    ChangePasswordView,
 )
 from .two_factor import (  # noqa: F401
-    TwoFactorSetupView,
     TwoFactorVerifyView,
+    TwoFactorSetupView,
     TwoFactorDisableView,
 )
-from .impersonation import ImpersonationAPIView  # noqa: F401
+from .impersonation import (  # noqa: F401
+    ImpersonationAPIView,
+)

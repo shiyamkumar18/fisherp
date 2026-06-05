@@ -30,8 +30,6 @@ DATABASES = {
             "connect_timeout": int(os.getenv("DB_CONNECT_TIMEOUT", "10")),
             # Helps identify this app's connections in pg_stat_activity
             "application_name": "fisherp",
-            # Use read-committed isolation (PostgreSQL default, safe for most ops)
-            "options": "-c default_transaction_isolation='read committed'",
         },
     }
 }

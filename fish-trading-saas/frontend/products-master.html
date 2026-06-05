@@ -1,0 +1,219 @@
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Product Master</h1>
+        <p class="page-subtitle">Manage fish types, categories, and default pricing</p>
+    </div>
+</div>
+
+<div style="display: flex; gap: 1rem; margin-bottom: 2rem; align-items: center;">
+    <button class="btn btn-primary" onclick="showAddProductModal()"><i class="fas fa-plus"></i> Add Product</button>
+    <div style="flex: 1;">
+        <input type="text" class="form-input" id="productSearch" placeholder="Search products..." 
+               style="margin: 0;" onkeyup="filterProductTable()">
+    </div>
+</div>
+
+<div class="data-grid">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Product Name</th>
+                <th>Category</th>
+                <th>Default Price</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="productsTableBody">
+            <tr>
+                <td colspan="5" style="text-align: center; padding: 2rem; color: #999;">
+                    <i class="fas fa-spinner fa-spin"></i> Loading products...
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- Add/Edit Product Modal -->
+<div id="productModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div style="background: white; border-radius: 8px; padding: 2rem; width: 90%; max-width: 500px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+        <h2>Add New Product</h2>
+        <form id="productForm">
+            <div class="form-group">
+                <label class="form-label" for="productName">Product Name</label>
+                <input class="form-input" type="text" id="productName" placeholder="e.g., Vanjaram" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="productCategory">Category</label>
+                <select class="form-input" id="productCategory" required>
+                    <option value="">Select category...</option>
+                    <option value="marine">Marine Fish</option>
+                    <option value="freshwater">Freshwater Fish</option>
+                    <option value="shellfish">Shellfish</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="productPrice">Default Price (₹/kg)</label>
+                <input class="form-input" type="number" id="productPrice" placeholder="0.00" step="0.01" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="productStatus">Status</label>
+                <select class="form-input" id="productStatus">
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                </select>
+            </div>
+
+            <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
+                <button class="btn btn-ghost" type="button" onclick="closeProductModal()">Cancel</button>
+                <button class="btn btn-primary" type="submit">Save Product</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+let allProducts = [];
+let editingProductId = null;
+
+async function loadProducts() {
+    const products = await apiCall('/trading/fish/', 'GET');
+    if (products) {
+        allProducts = Array.isArray(products) ? products : (products.results || []);
+        renderProductsTable();
+    }
+}
+
+function renderProductsTable() {
+    const tbody = document.getElementById('productsTableBody');
+    if (!allProducts.length) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2rem; color: #999;">No products found. Add one to get started.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = allProducts.map(product => `
+        <tr>
+            <td><strong>${sanitize(product.name)}</strong></td>
+            <td>${sanitize(product.category || '-')}</td>
+            <td>₹${Number(product.default_price || 0).toFixed(2)}/kg</td>
+            <td>
+                <span style="padding: 0.25rem 0.75rem; border-radius: 4px; font-size: 0.85rem; 
+                    ${product.status === 'active' ? 'background: #d4edda; color: #155724;' : 'background: #f8d7da; color: #721c24;'}">
+                    ${product.status === 'active' ? 'Active' : 'Inactive'}
+                </span>
+            </td>
+            <td>
+                <div class="row-actions">
+                    <button class="btn btn-secondary btn-sm" onclick="editProduct(${product.id})">Edit</button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteProduct(${product.id})">Delete</button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function filterProductTable() {
+    const searchTerm = document.getElementById('productSearch').value.toLowerCase();
+    const filtered = allProducts.filter(p => p.name.toLowerCase().includes(searchTerm));
+    
+    const tbody = document.getElementById('productsTableBody');
+    if (!filtered.length) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2rem; color: #999;">No products match your search.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = filtered.map(product => `
+        <tr>
+            <td><strong>${sanitize(product.name)}</strong></td>
+            <td>${sanitize(product.category || '-')}</td>
+            <td>₹${Number(product.default_price || 0).toFixed(2)}/kg</td>
+            <td>
+                <span style="padding: 0.25rem 0.75rem; border-radius: 4px; font-size: 0.85rem; 
+                    ${product.status === 'active' ? 'background: #d4edda; color: #155724;' : 'background: #f8d7da; color: #721c24;'}">
+                    ${product.status === 'active' ? 'Active' : 'Inactive'}
+                </span>
+            </td>
+            <td>
+                <div class="row-actions">
+                    <button class="btn btn-secondary btn-sm" onclick="editProduct(${product.id})">Edit</button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteProduct(${product.id})">Delete</button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function showAddProductModal() {
+    editingProductId = null;
+    document.getElementById('productForm').reset();
+    document.querySelector('#productModal h2').textContent = 'Add New Product';
+    document.getElementById('productModal').style.display = 'flex';
+}
+
+function closeProductModal() {
+    document.getElementById('productModal').style.display = 'none';
+    editingProductId = null;
+}
+
+async function editProduct(productId) {
+    const product = allProducts.find(p => p.id === productId);
+    if (!product) return;
+
+    editingProductId = productId;
+    document.getElementById('productName').value = product.name;
+    document.getElementById('productCategory').value = product.category || '';
+    document.getElementById('productPrice').value = product.default_price || 0;
+    document.getElementById('productStatus').value = product.status || 'active';
+    document.querySelector('#productModal h2').textContent = 'Edit Product';
+    document.getElementById('productModal').style.display = 'flex';
+}
+
+async function deleteProduct(productId) {
+    if (!confirm('Are you sure you want to delete this product?')) return;
+
+    const result = await apiCall(`/trading/fish/${productId}/`, 'DELETE');
+    if (result !== null) {
+        showAlert('Product deleted successfully', 'success');
+        loadProducts();
+    } else {
+        showAlert('Failed to delete product', 'danger');
+    }
+}
+
+document.getElementById('productForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const data = {
+        name: document.getElementById('productName').value,
+        category: document.getElementById('productCategory').value,
+        default_price: parseFloat(document.getElementById('productPrice').value),
+        status: document.getElementById('productStatus').value
+    };
+
+    let result;
+    if (editingProductId) {
+        result = await apiCall(`/trading/fish/${editingProductId}/`, 'PUT', data);
+    } else {
+        result = await apiCall('/trading/fish/', 'POST', data);
+    }
+
+    if (result) {
+        showAlert(editingProductId ? 'Product updated successfully' : 'Product created successfully', 'success');
+        closeProductModal();
+        loadProducts();
+    } else {
+        showAlert('Failed to save product', 'danger');
+    }
+});
+
+// Close modal on outside click
+document.getElementById('productModal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'productModal') closeProductModal();
+});
+
+loadProducts();
+</script>

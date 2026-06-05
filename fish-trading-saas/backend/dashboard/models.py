@@ -1,4 +1,5 @@
-from django.db.models import Sum, Count, F, Q, Min
+from django.db.models import Sum, Count, F, Q, Min, Case, When, Value, DecimalField
+from django.db.models.functions import TruncDay, TruncWeek, TruncMonth
 from django.utils import timezone
 from datetime import timedelta
 from decimal import Decimal
@@ -145,13 +146,14 @@ class DashboardManager:
         
         net_cash_position = payments_received - payments_made
         
-        # Inventory Value (remaining packages * cost per package)
-        inventory_value = Decimal('0.00')
-        inventories = Inventory.objects.filter(tenant_filter).select_related('purchase_batch')
-        for inv in inventories:
-            if inv.purchase_batch:
-                cost = inv.purchase_batch.cost_per_package or Decimal('0.00')
-                inventory_value += inv.remaining_packages * cost
+        # Inventory Value (remaining packages * cost per package) — single DB query
+        inventory_value = Inventory.objects.filter(
+            tenant_filter,
+            purchase_batch__isnull=False,
+            remaining_packages__gt=0,
+        ).aggregate(
+            total=Sum(F('remaining_packages') * F('purchase_batch__cost_per_package'))
+        )['total'] or Decimal('0.00')
         
         # Active Buyers Count
         active_buyers_count = Buyer.objects.filter(tenant_filter, is_active=True).count()
@@ -186,29 +188,38 @@ class DashboardManager:
         # Apply additional filters if provided
         additional_filters = DashboardManager._build_filters(filters or {})
         
-        daily_sales = []
-        current_date = start_date
-        
-        while current_date <= end_date:
-            day_sales = Sale.objects.filter(
+        # Single query using TruncDay instead of per-day loop
+        rows = (
+            Sale.objects.filter(
                 tenant_filter,
                 additional_filters,
-                date=current_date,
-            ).aggregate(
+                date__gte=start_date,
+                date__lte=end_date,
+            )
+            .annotate(day=TruncDay('date'))
+            .values('day')
+            .annotate(
                 revenue=Sum('total_revenue'),
                 profit=Sum('profit'),
-                count=Count('id')
+                count=Count('id'),
             )
-            
+            .order_by('day')
+        )
+
+        # Build a dict for O(1) lookup, then fill gaps with zeros
+        row_map = {r['day'].date() if r['day'] else None: r for r in rows}
+        daily_sales = []
+        current_date = start_date
+        while current_date <= end_date:
+            r = row_map.get(current_date)
             daily_sales.append({
                 'date': current_date,
-                'revenue': day_sales['revenue'] or Decimal('0.00'),
-                'profit': day_sales['profit'] or Decimal('0.00'),
-                'count': day_sales['count'] or 0,
+                'revenue': (r['revenue'] or Decimal('0.00')) if r else Decimal('0.00'),
+                'profit': (r['profit'] or Decimal('0.00')) if r else Decimal('0.00'),
+                'count': (r['count'] or 0) if r else 0,
             })
-            
             current_date += timedelta(days=1)
-        
+
         return daily_sales
     
     @staticmethod
@@ -253,29 +264,31 @@ class DashboardManager:
         end_date = timezone.now().date()
         start_date = end_date - timedelta(days=days - 1)
         
+        # Single query using TruncDay instead of per-day loop
+        rows = (
+            Sale.objects.filter(tenant_filter, date__gte=start_date, date__lte=end_date)
+            .annotate(day=TruncDay('date'))
+            .values('day')
+            .annotate(revenue=Sum('total_revenue'), profit=Sum('profit'))
+            .order_by('day')
+        )
+
+        row_map = {r['day'].date() if r['day'] else None: r for r in rows}
         daily_margins = []
         current_date = start_date
-        
         while current_date <= end_date:
-            sales = Sale.objects.filter(tenant_filter, date=current_date).aggregate(
-                revenue=Sum('total_revenue'),
-                profit=Sum('profit')
-            )
-            
-            revenue = sales['revenue'] or Decimal('0.00')
-            profit = sales['profit'] or Decimal('0.00')
-            
+            r = row_map.get(current_date)
+            revenue = (r['revenue'] or Decimal('0.00')) if r else Decimal('0.00')
+            profit = (r['profit'] or Decimal('0.00')) if r else Decimal('0.00')
             margin_percent = (profit / revenue * 100) if revenue > 0 else Decimal('0.00')
-            
             daily_margins.append({
                 'date': current_date,
                 'margin_percent': margin_percent,
                 'revenue': revenue,
                 'profit': profit,
             })
-            
             current_date += timedelta(days=1)
-        
+
         return daily_margins
     
     @staticmethod
@@ -313,27 +326,162 @@ class DashboardManager:
     
     @staticmethod
     def get_sales_by_payment_method(user=None):
-        """Get sales breakdown by payment method"""
+        """Get sales breakdown by actual payment mode (cash, upi, credit, etc.)"""
         tenant_filter = DashboardManager._get_tenant_filter(user) if user else Q()
-        
-        # This would be derived from Payment model linked to Sales
-        # For now, we'll use sales payment_status as proxy
+
         result = []
-        for status, label in Sale.PAYMENT_STATUS_CHOICES:
-            sales = Sale.objects.filter(tenant_filter, payment_status=status).aggregate(
-                total=Sum('total_revenue'),
-                count=Count('id')
+        for mode, label in Payment.PAYMENT_MODE_CHOICES:
+            payments = Payment.objects.filter(
+                tenant_filter,
+                payment_mode=mode,
+                payment_type__in=['sale', 'credit'],
+            ).aggregate(
+                total=Sum('amount'),
+                count=Count('id'),
             )
-            
+
             result.append({
-                'payment_status': status,
+                'payment_mode': mode,
                 'label': label,
-                'total': sales['total'] or Decimal('0.00'),
-                'count': sales['count'] or 0,
+                'total': payments['total'] or Decimal('0.00'),
+                'count': payments['count'] or 0,
             })
-        
+
         return result
     
+    # ============================================================
+    # CHART SYSTEM — NEW MVP ENDPOINTS
+    # ============================================================
+
+    @staticmethod
+    def get_profit_loss_receivable(user=None, days=30, period='day'):
+        """
+        Profit / Loss / Receivable per time bucket.
+        period: 'day', 'week', or 'month'
+        Returns [{label, profit, loss, receivable}]
+        """
+        tenant_filter = DashboardManager._get_tenant_filter(user) if user else Q()
+        end_date = timezone.now().date()
+        start_date = end_date - timedelta(days=days - 1)
+
+        trunc_map = {
+            'day': TruncDay('date'),
+            'week': TruncWeek('date'),
+            'month': TruncMonth('date'),
+        }
+        trunc_fn = trunc_map.get(period, TruncDay('date'))
+
+        buckets = (
+            Sale.objects.filter(tenant_filter, date__gte=start_date, date__lte=end_date)
+            .annotate(bucket=trunc_fn)
+            .values('bucket')
+            .annotate(
+                total_profit=Sum(Case(
+                    When(profit__gt=0, then=F('profit')),
+                    default=Value(Decimal('0.00')),
+                    output_field=DecimalField(),
+                )),
+                total_loss=Sum(Case(
+                    When(profit__lt=0, then=F('profit')),
+                    default=Value(Decimal('0.00')),
+                    output_field=DecimalField(),
+                )),
+                total_receivable=Sum(Case(
+                    When(payment_status__in=['pending', 'partial', 'overdue'],
+                         then=F('pending_amount')),
+                    default=Value(Decimal('0.00')),
+                    output_field=DecimalField(),
+                )),
+            )
+            .order_by('bucket')
+        )
+
+        result = []
+        for row in buckets:
+            label = row['bucket'].strftime('%Y-%m-%d') if row['bucket'] else ''
+            result.append({
+                'label': label,
+                'profit': row['total_profit'] or Decimal('0.00'),
+                'loss': abs(row['total_loss'] or Decimal('0.00')),
+                'receivable': row['total_receivable'] or Decimal('0.00'),
+            })
+        return result
+
+    @staticmethod
+    def get_sold_vs_remaining(user=None):
+        """
+        Per-fish sold vs remaining packages (active inventory only).
+        Returns [{product, sold, remaining}]
+        """
+        tenant_filter = DashboardManager._get_tenant_filter(user) if user else Q()
+
+        data = (
+            Inventory.objects.filter(
+                tenant_filter,
+                remaining_packages__gte=0,
+            )
+            .exclude(status='expired')
+            .values('fish__name')
+            .annotate(
+                sold=Sum(F('initial_packages') - F('remaining_packages')),
+                remaining=Sum('remaining_packages'),
+            )
+            .order_by('-sold')
+        )
+
+        return [
+            {
+                'product': row['fish__name'] or 'Unknown',
+                'sold': row['sold'] or 0,
+                'remaining': row['remaining'] or 0,
+            }
+            for row in data
+        ]
+
+    @staticmethod
+    def get_fish_demand_trend(user=None, days=14, limit=5):
+        """
+        Per-fish daily sales quantity over the last N days.
+        Returns [{date, product, sold_qty}]
+        """
+        tenant_filter = DashboardManager._get_tenant_filter(user) if user else Q()
+        end_date = timezone.now().date()
+        start_date = end_date - timedelta(days=days - 1)
+
+        # Find top N fish by total packages sold in the period
+        top_fish = (
+            Sale.objects.filter(tenant_filter, date__gte=start_date, date__lte=end_date)
+            .values('batch__fish__name')
+            .annotate(total=Sum('number_of_packages_sold'))
+            .order_by('-total')[:limit]
+        )
+        top_fish_names = [f['batch__fish__name'] for f in top_fish if f['batch__fish__name']]
+
+        if not top_fish_names:
+            return []
+
+        # Get daily breakdown for those fish
+        rows = (
+            Sale.objects.filter(
+                tenant_filter,
+                date__gte=start_date,
+                date__lte=end_date,
+                batch__fish__name__in=top_fish_names,
+            )
+            .values('date', 'batch__fish__name')
+            .annotate(sold_qty=Sum('number_of_packages_sold'))
+            .order_by('date', 'batch__fish__name')
+        )
+
+        return [
+            {
+                'date': row['date'],
+                'product': row['batch__fish__name'],
+                'sold_qty': row['sold_qty'] or 0,
+            }
+            for row in rows
+        ]
+
     # ============================================================
     # INVENTORY OVERVIEW
     # ============================================================
@@ -383,13 +531,14 @@ class DashboardManager:
             last_moved_at__lt=seven_days_ago
         ).values('fish__name', 'remaining_packages', 'last_moved_at')
         
-        # Inventory value
-        inventory_value = Decimal('0.00')
-        inventories = Inventory.objects.filter(tenant_filter, remaining_packages__gt=0)
-        for inv in inventories:
-            if inv.purchase_batch:
-                cost = inv.purchase_batch.cost_per_package or Decimal('0.00')
-                inventory_value += inv.remaining_packages * cost
+        # Inventory value — single DB aggregation instead of Python loop
+        inventory_value = Inventory.objects.filter(
+            tenant_filter,
+            remaining_packages__gt=0,
+            purchase_batch__isnull=False,
+        ).aggregate(
+            total=Sum(F('remaining_packages') * F('purchase_batch__cost_per_package'))
+        )['total'] or Decimal('0.00')
         
         return {
             'total_packages': total_packages,
@@ -402,34 +551,30 @@ class DashboardManager:
     
     @staticmethod
     def get_inventory_by_category(user=None):
-        """Get inventory breakdown by fish category"""
+        """Get inventory breakdown by fish category — single query"""
         tenant_filter = DashboardManager._get_tenant_filter(user) if user else Q()
-        
-        from trading.models import FishCategory
-        
-        categories = FishCategory.objects.all()
-        result = []
-        
-        for category in categories:
-            inv = Inventory.objects.filter(
-                tenant_filter,
-                fish__category=category,
-                remaining_packages__gt=0
-            ).aggregate(
+
+        rows = (
+            Inventory.objects.filter(tenant_filter, remaining_packages__gt=0)
+            .values('fish__category__id', 'fish__category__name')
+            .annotate(
                 total_packages=Sum('remaining_packages'),
                 total_weight=Sum('remaining_weight_kg'),
-                item_count=Count('id')
+                item_count=Count('id'),
             )
-            
-            result.append({
-                'category_id': category.id,
-                'category_name': category.name,
-                'total_packages': inv['total_packages'] or 0,
-                'total_weight': inv['total_weight'] or Decimal('0.00'),
-                'item_count': inv['item_count'] or 0,
-            })
-        
-        return result
+            .order_by('fish__category__name')
+        )
+
+        return [
+            {
+                'category_id': r['fish__category__id'],
+                'category_name': r['fish__category__name'] or 'Uncategorized',
+                'total_packages': r['total_packages'] or 0,
+                'total_weight': r['total_weight'] or Decimal('0.00'),
+                'item_count': r['item_count'] or 0,
+            }
+            for r in rows
+        ]
     
     @staticmethod
     def get_batch_profit_margin(user=None):

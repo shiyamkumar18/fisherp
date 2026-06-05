@@ -1,12 +1,14 @@
 // Unified application shell and page router
 
+const AppState = { charts: {} };
+
 let currentUserRole = localStorage.getItem('userRole') || 'tenant_admin';
 let isPlatformUser = localStorage.getItem('isPlatformUser') === 'true';
 let currentPage = 'dashboard';
 let platformDashboardMarkup = '';
 
 const pages = {
-    dashboard: 'dashboard.html',
+    dashboard: 'dashboard-content.html',
     fish: 'fish.html',
     fishCategories: 'fishCategories.html',
     suppliers: 'suppliers.html',
@@ -19,15 +21,19 @@ const pages = {
     analytics: 'analytics.html',
     users: 'users.html',
     subscription: 'subscriptions.html',
-    settings: 'settings.html'
+    settings: 'settings.html',
+    companySettings: 'company-settings.html',
+    productsMaster: 'products-master.html',
+    customersMgmt: 'customers-mgmt.html',
+    suppliersMgmt: 'suppliers-mgmt.html'
 };
 
 const roleMenus = {
     admin: Object.keys(pages),
     tenant_admin: Object.keys(pages),
-    accountant: ['dashboard', 'purchases', 'sales', 'payments', 'reports', 'subscription'],
-    trader: ['dashboard', 'sales', 'buyers', 'inventory'],
-    store: ['dashboard', 'fish', 'fishCategories', 'purchases', 'inventory'],
+    accountant: ['dashboard', 'purchases', 'sales', 'payments', 'reports', 'subscription', 'settings', 'customersMgmt'],
+    trader: ['dashboard', 'sales', 'buyers', 'inventory', 'settings', 'productsMaster', 'customersMgmt'],
+    store: ['dashboard', 'fish', 'fishCategories', 'purchases', 'inventory', 'settings', 'productsMaster'],
     platform_operator: ['dashboard', 'reports', 'users', 'subscription'],
     platform_support: ['dashboard', 'users', 'subscription']
 };
@@ -63,7 +69,11 @@ const tenantMenuSections = [
             { id: 'reports', label: 'Reports', icon: 'fa-chart-pie', caption: 'Business reporting' },
             { id: 'users', label: 'Users', icon: 'fa-users-gear', caption: 'Team access' },
             { id: 'subscription', label: 'Subscription', icon: 'fa-crown', caption: 'Plan and billing' },
-            { id: 'settings', label: 'Settings', icon: 'fa-sliders', caption: 'Workspace preferences' }
+            { id: 'companySettings', label: 'Shop Settings', icon: 'fa-store', caption: 'Business identity' },
+            { id: 'productsMaster', label: 'Products', icon: 'fa-fish', caption: 'Product catalog' },
+            { id: 'customersMgmt', label: 'Customers', icon: 'fa-users', caption: 'Customer management' },
+            { id: 'suppliersMgmt', label: 'Suppliers', icon: 'fa-truck', caption: 'Vendor management' },
+            { id: 'settings', label: 'Account Settings', icon: 'fa-sliders', caption: 'Personal preferences' }
         ]
     }
 ];
@@ -108,8 +118,8 @@ function resolveElement(...ids) {
 }
 
 function sanitize(value) {
-    return String(value ?? '').replace(/[&<>"]/g, (char) => {
-        const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' };
+    return String(value ?? '').replace(/[&<>"']/g, (char) => {
+        const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
         return map[char] || char;
     });
 }
@@ -214,9 +224,30 @@ async function apiCall(endpoint, method = 'GET', body = null) {
 }
 
 function resolvePagePath(pageName) {
-    const isNestedShell = window.location.pathname.includes('/app/') || window.location.pathname.includes('/platform/');
-    const prefix = isNestedShell ? '../' : './';
-    return `${prefix}${pages[pageName] || 'dashboard.html'}`;
+    const pagePath = pages[pageName] || 'dashboard.html';
+    return pagePath.startsWith('/') ? pagePath : `/${pagePath}`;
+}
+
+function getShellBasePath() {
+    return isPlatformShell() ? '/platform/dashboard.html' : '/dashboard.html';
+}
+
+function getPageFromLocation() {
+    const params = new URLSearchParams(window.location.search);
+    const requestedPage = params.get('page');
+    if (requestedPage && pages[requestedPage]) {
+        return requestedPage;
+    }
+    return 'dashboard';
+}
+
+function syncBrowserURL(pageName, mode = 'push') {
+    const targetPage = pages[pageName] ? pageName : 'dashboard';
+    const nextUrl = targetPage === 'dashboard'
+        ? getShellBasePath()
+        : `${getShellBasePath()}?page=${encodeURIComponent(targetPage)}`;
+    const historyMethod = mode === 'replace' ? 'replaceState' : 'pushState';
+    window.history[historyMethod]({ page: targetPage }, '', nextUrl);
 }
 
 function syncShellMeta(pageName = currentPage) {
@@ -234,9 +265,14 @@ function syncShellMeta(pageName = currentPage) {
         inventory: 'Inventory',
         payments: 'Payments',
         reports: 'Reports',
+        analytics: 'Analytics',
         users: 'Users',
         subscription: 'Subscriptions',
-        settings: 'Settings'
+        settings: 'Account Settings',
+        companySettings: 'Shop Settings',
+        productsMaster: 'Product Master',
+        customersMgmt: 'Customer Management',
+        suppliersMgmt: 'Supplier Management'
     };
 
     const roleTargets = ['user-role', 'userRole'];
@@ -270,7 +306,7 @@ function renderSidebar() {
 
     sidebar.innerHTML = `
         <div class="sidebar-brand">
-            <div class="brand-mark">${isPlatformShell() ? 'PO' : 'FT'}</div>
+            <div class="brand-mark">${isPlatformShell() ? '<i class="fas fa-satellite-dish"></i>' : '<i class="fas fa-fish"></i>'}</div>
             <div class="brand-copy">
                 <strong>${isPlatformShell() ? 'Platform Ops' : 'Fish Trading'}</strong>
                 <span>${isPlatformShell() ? 'Multi-tenant oversight' : 'Operational workspace'}</span>
@@ -292,6 +328,14 @@ function renderSidebar() {
                     `).join('')}
                 </section>
             `).join('')}
+        </div>
+
+        <div class="sidebar-user">
+            <div class="sidebar-user-avatar">${(localStorage.getItem('username') || 'U').charAt(0).toUpperCase()}</div>
+            <div class="sidebar-user-info">
+                <strong>${sanitize(localStorage.getItem('username') || 'User')}</strong>
+                <small>${friendlyRole(localStorage.getItem('userRole') || currentUserRole)}</small>
+            </div>
         </div>
 
         <div class="sidebar-footer">
@@ -349,6 +393,8 @@ function bindShellInteractions() {
 function initShell() {
     currentUserRole = localStorage.getItem('userRole') || currentUserRole;
     isPlatformUser = localStorage.getItem('isPlatformUser') === 'true';
+    currentPage = getPageFromLocation();
+    syncCompatibilityGlobals();
 
     const mainContent = document.getElementById('main-content');
     if (isPlatformShell() && mainContent && !platformDashboardMarkup) {
@@ -358,6 +404,15 @@ function initShell() {
     renderSidebar();
     bindShellInteractions();
     syncShellMeta(currentPage);
+    syncBrowserURL(currentPage, 'replace');
+    if (isPlatformShell()) {
+        loadPlatformHomeData();
+    }
+    
+    // Load initial dashboard page
+    if (mainContent && mainContent.textContent.includes('Loading')) {
+        loadPage(currentPage, { updateHistory: false });
+    }
 }
 
 function filterSidebarByRole() {
@@ -371,9 +426,13 @@ function removeInjectedPageStyles() {
 
 function parsePageDocument(html) {
     const documentParser = new DOMParser().parseFromString(html, 'text/html');
-    const fragmentSource =
+    const mainSource =
         documentParser.querySelector('main.main-content') ||
-        documentParser.querySelector('main') ||
+        documentParser.querySelector('main');
+    const fragmentSource =
+        mainSource?.querySelector(':scope > .content') ||
+        mainSource?.querySelector('.content') ||
+        mainSource ||
         documentParser.querySelector('#app') ||
         documentParser.body;
 
@@ -421,6 +480,8 @@ function restoreHomePage() {
         mainContent.innerHTML = platformDashboardMarkup;
         updateActiveNav('dashboard');
         syncShellMeta('dashboard');
+        syncBrowserURL('dashboard');
+        loadPlatformHomeData();
         closeSidebar();
         return;
     }
@@ -428,10 +489,266 @@ function restoreHomePage() {
     loadPage('dashboard');
 }
 
+function syncCompatibilityGlobals() {
+    window.Trading = {
+        ...(window.Trading || {}),
+        loadFish: loadFishData,
+        loadFishCategories: loadFishCategoriesData,
+        loadSuppliers: loadSuppliersData,
+        loadBuyers: loadBuyersData,
+        loadPurchases: loadPurchasesData,
+        loadSales: loadSalesData,
+        loadInventory: loadInventoryData,
+        loadPayments: loadPaymentsData
+    };
+
+    if (window.ManagementPages) {
+        window.Management = window.ManagementPages;
+    }
+
+    window.showAddFishModal = () => window.Forms?.showAddFishModal?.();
+    window.showAddCategoryModal = () => window.Forms?.showAddFishCategoryModal?.();
+    window.showAddSupplierModal = () => window.Forms?.showAddSupplierModal?.();
+    window.showAddBuyerModal = () => window.Forms?.showAddBuyerModal?.();
+    window.showAddPurchaseModal = () => window.Forms?.showAddPurchaseModal?.();
+    window.showAddSaleModal = () => window.Forms?.showAddSaleModal?.();
+    window.showPaymentModal = () => window.Forms?.showAddPaymentModal?.();
+    window.showInviteUserModal = () => window.ManagementPages?.showAddUserModal?.();
+}
+
+function renderManagedChart(key, canvasId, config) {
+    if (typeof Chart === 'undefined') return;
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+
+    if (AppState.charts[key] && typeof AppState.charts[key].destroy === 'function') {
+        AppState.charts[key].destroy();
+    }
+
+    AppState.charts[key] = new Chart(canvas.getContext('2d'), config);
+}
+
+function renderCanvasFallback(canvasId, title, svgMarkup = '', emptyMessage = 'No chart data available yet.') {
+    const canvas = document.getElementById(canvasId);
+    const wrapper = canvas?.parentElement;
+    if (!wrapper) return;
+
+    wrapper.innerHTML = `
+        <div class="chart-fallback" style="height:100%;display:flex;flex-direction:column;padding:0.25rem 0.1rem;">
+            <div style="font-size:0.78rem;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;margin-bottom:0.75rem;">${sanitize(title)}</div>
+            ${svgMarkup || `<div style="color:#64748b;font-size:0.92rem;">${sanitize(emptyMessage)}</div>`}
+        </div>
+    `;
+}
+
+function renderSvgStackedBars(rows) {
+    if (!rows.length) return '';
+    const width = 640;
+    const height = 240;
+    const left = 44;
+    const right = 16;
+    const top = 12;
+    const bottom = 34;
+    const plotWidth = width - left - right;
+    const plotHeight = height - top - bottom;
+    const maxValue = Math.max(...rows.map((row) => Number(row.profit || 0) + Number(row.loss || 0) + Number(row.receivable || 0)), 1);
+    const step = plotWidth / rows.length;
+    const barWidth = Math.min(52, step * 0.62);
+
+    const bars = rows.map((row, index) => {
+        const x = left + index * step + (step - barWidth) / 2;
+        const profit = Number(row.profit || 0);
+        const loss = Number(row.loss || 0);
+        const receivable = Number(row.receivable || 0);
+        let cursorY = top + plotHeight;
+        const parts = [];
+
+        [
+            { value: profit, fill: '#22c55e' },
+            { value: loss, fill: '#ef4444' },
+            { value: receivable, fill: '#f59e0b' },
+        ].forEach((part) => {
+            const barHeight = (part.value / maxValue) * plotHeight;
+            cursorY -= barHeight;
+            parts.push(`<rect x="${x}" y="${cursorY}" width="${barWidth}" height="${barHeight}" rx="4" fill="${part.fill}"></rect>`);
+        });
+
+        parts.push(`<text x="${x + barWidth / 2}" y="${height - 10}" text-anchor="middle" font-size="11" fill="#64748b">${sanitize(String(row.label || '-'))}</text>`);
+        return parts.join('');
+    }).join('');
+
+    return `
+        <svg viewBox="0 0 ${width} ${height}" width="100%" height="100%" preserveAspectRatio="none" aria-label="Stacked bar chart">
+            <line x1="${left}" y1="${top + plotHeight}" x2="${width - right}" y2="${top + plotHeight}" stroke="#cbd5e1" stroke-width="1"></line>
+            ${bars}
+        </svg>
+    `;
+}
+
+function renderSvgHorizontalBars(rows) {
+    if (!rows.length) return '';
+    const width = 640;
+    const rowHeight = 42;
+    const height = Math.max(220, rows.length * rowHeight + 26);
+    const left = 120;
+    const right = 18;
+    const top = 10;
+    const plotWidth = width - left - right;
+    const maxValue = Math.max(...rows.map((row) => Number(row.sold || 0) + Number(row.remaining || 0)), 1);
+
+    const bars = rows.map((row, index) => {
+        const y = top + index * rowHeight;
+        const soldWidth = (Number(row.sold || 0) / maxValue) * plotWidth;
+        const remainingWidth = (Number(row.remaining || 0) / maxValue) * plotWidth;
+        return `
+            <text x="8" y="${y + 18}" font-size="12" fill="#475569">${sanitize(String(row.product || '-'))}</text>
+            <rect x="${left}" y="${y}" width="${soldWidth}" height="12" rx="4" fill="#0f766e"></rect>
+            <rect x="${left + soldWidth}" y="${y}" width="${remainingWidth}" height="12" rx="4" fill="#93c5fd"></rect>
+            <text x="${left}" y="${y + 28}" font-size="11" fill="#64748b">${Number(row.sold || 0)} sold / ${Number(row.remaining || 0)} left</text>
+        `;
+    }).join('');
+
+    return `
+        <svg viewBox="0 0 ${width} ${height}" width="100%" height="100%" preserveAspectRatio="none" aria-label="Horizontal bar chart">
+            ${bars}
+        </svg>
+    `;
+}
+
+function renderSvgLines(rows) {
+    if (!rows.length) return '';
+    const width = 640;
+    const height = 240;
+    const left = 42;
+    const right = 14;
+    const top = 10;
+    const bottom = 34;
+    const plotWidth = width - left - right;
+    const plotHeight = height - top - bottom;
+    const dates = Array.from(new Set(rows.map((row) => row.date).filter(Boolean))).sort();
+    const productMap = {};
+    const palette = ['#2563eb', '#14b8a6', '#f97316', '#8b5cf6', '#ef4444'];
+
+    rows.forEach((row) => {
+        const product = row.product || 'Unknown';
+        if (!productMap[product]) productMap[product] = {};
+        productMap[product][row.date] = Number(row.sold_qty || 0);
+    });
+
+    const allValues = rows.map((row) => Number(row.sold_qty || 0));
+    const maxValue = Math.max(...allValues, 1);
+    const step = dates.length > 1 ? plotWidth / (dates.length - 1) : plotWidth / 2;
+
+    const series = Object.keys(productMap).map((product, index) => {
+        const points = dates.map((date, pointIndex) => {
+            const x = left + pointIndex * step;
+            const y = top + plotHeight - ((productMap[product][date] || 0) / maxValue) * plotHeight;
+            return `${x},${y}`;
+        }).join(' ');
+        const color = palette[index % palette.length];
+        return `<polyline fill="none" stroke="${color}" stroke-width="3" points="${points}"></polyline>`;
+    }).join('');
+
+    const labels = dates.map((date, index) => {
+        const x = left + index * step;
+        return `<text x="${x}" y="${height - 10}" text-anchor="middle" font-size="11" fill="#64748b">${sanitize(formatDate(date))}</text>`;
+    }).join('');
+
+    return `
+        <svg viewBox="0 0 ${width} ${height}" width="100%" height="100%" preserveAspectRatio="none" aria-label="Line chart">
+            <line x1="${left}" y1="${top + plotHeight}" x2="${width - right}" y2="${top + plotHeight}" stroke="#cbd5e1" stroke-width="1"></line>
+            ${series}
+            ${labels}
+        </svg>
+    `;
+}
+
+function getSeriesValue(item, keys) {
+    return keys.reduce((value, key) => {
+        if (value !== null && value !== undefined) return value;
+        return item?.[key];
+    }, null);
+}
+
+async function loadPlatformHomeData() {
+    if (!isPlatformShell()) return;
+
+    try {
+        const [stats, tenantsPayload] = await Promise.all([
+            apiCall('/platform/dashboard/'),
+            apiCall('/platform/tenants/?page_size=5'),
+        ]);
+
+        const queue = Number(stats?.expired_tenants || 0) + Number(stats?.suspended_tenants || 0);
+        const metrics = {
+            platformMetricActiveTenants: String(Number(stats?.active_tenants || 0)),
+            platformMetricTrialAccounts: String(Number(stats?.new_signups_this_month || 0)),
+            platformMetricMrr: formatCurrency(stats?.mrr || 0),
+            platformMetricQueue: String(queue),
+        };
+
+        Object.entries(metrics).forEach(([id, value]) => {
+            const element = document.getElementById(id);
+            if (element) element.textContent = value;
+        });
+
+        const renewalAttention = document.getElementById('platformRenewalAttention');
+        if (renewalAttention) {
+            renewalAttention.textContent = queue
+                ? `${queue} tenant${queue === 1 ? '' : 's'} need billing or suspension follow-up.`
+                : 'No urgent renewals or suspensions right now.';
+        }
+
+        const supportFocus = document.getElementById('platformSupportFocus');
+        if (supportFocus) {
+            supportFocus.textContent = `${Number(stats?.total_users || 0)} users are active across the platform right now.`;
+        }
+
+        const growthFeed = document.getElementById('platformGrowthFeed');
+        if (growthFeed) {
+            const tenants = Array.isArray(tenantsPayload?.tenants) ? tenantsPayload.tenants.slice(0, 3) : [];
+            growthFeed.innerHTML = tenants.length
+                ? tenants.map((tenant) => `
+                    <div class="platform-feed-item">
+                        <i class="fas ${tenant.subscription_status === 'active' ? 'fa-chart-line' : tenant.subscription_status === 'suspended' ? 'fa-life-ring' : 'fa-triangle-exclamation'}"></i>
+                        <div>
+                            <strong>${sanitize(tenant.name || 'Tenant')}</strong>
+                            <p>${sanitize(String(tenant.tier || 'No tier'))} plan, ${tenant.user_count || 0} users, status ${sanitize(tenant.subscription_status || 'unknown')}.</p>
+                        </div>
+                    </div>
+                `).join('')
+                : `
+                    <div class="platform-feed-item">
+                        <i class="fas fa-circle-info"></i>
+                        <div>
+                            <strong>No tenant activity yet</strong>
+                            <p>Seed demo data or onboard a tenant to populate this platform feed.</p>
+                        </div>
+                    </div>
+                `;
+        }
+    } catch (error) {
+        console.error('Platform home loading error:', error);
+    }
+}
+
 async function loadSuppliersData() {
     const data = await apiCall('/trading/suppliers/');
     const tbody = resolveElement('supplierTable');
     if (!tbody) return;
+
+    // Update KPI values dynamically
+    const supplierList = Array.isArray(data) ? data : [];
+    const activeCount = supplierList.filter(s => s.is_active).length;
+    const totalPayable = supplierList.reduce((sum, s) => sum + parseFloat(s.outstanding_amount ?? 0), 0);
+    const types = new Set(supplierList.map(s => s.supplier_type || s.type).filter(Boolean));
+
+    const kpiCards = document.querySelectorAll('.kpi-card .kpi-value');
+    if (kpiCards.length >= 3) {
+        kpiCards[0].textContent = String(activeCount);
+        kpiCards[1].textContent = formatCurrency(totalPayable);
+        if (kpiCards[2]) kpiCards[2].textContent = String(types.size);
+    }
 
     if (!Array.isArray(data) || data.length === 0) {
         tbody.innerHTML = '<tr><td colspan="7" class="text-center">No suppliers found. Add your first supplier to start purchase tracking.</td></tr>';
@@ -456,6 +773,19 @@ async function loadFishData() {
     const tbody = resolveElement('fishTable', 'fish-table-body');
     if (!tbody) return;
 
+    // Update KPI values dynamically
+    const fishList = Array.isArray(data) ? data : [];
+    const activeCount = fishList.filter(f => f.is_active !== false).length;
+    const categories = new Set(fishList.map(f => f.category_name || f.category?.name).filter(Boolean));
+    const units = new Set(fishList.map(f => f.unit_type).filter(Boolean));
+
+    const kpiCards = document.querySelectorAll('.kpi-card .kpi-value');
+    if (kpiCards.length >= 3) {
+        kpiCards[0].textContent = String(activeCount);
+        kpiCards[1].textContent = String(categories.size);
+        kpiCards[2].textContent = String(units.size);
+    }
+
     if (!Array.isArray(data) || data.length === 0) {
         tbody.innerHTML = '<tr><td colspan="7" class="text-center">No fish configured yet. Add fish types to unlock purchase and sales entry.</td></tr>';
         return;
@@ -478,6 +808,20 @@ async function loadFishCategoriesData() {
     const data = await apiCall('/trading/fish-categories/');
     const tbody = resolveElement('fishCategoryTable');
     if (!tbody) return;
+
+    // Update KPI values dynamically
+    const catList = Array.isArray(data) ? data : [];
+    const featuredCount = catList.filter(c => c.is_featured).length;
+    const priorities = new Set(catList.map(c => c.priority).filter(p => p != null));
+    const activeCount = catList.filter(c => c.is_active !== false).length;
+    const activeRate = catList.length > 0 ? Math.round((activeCount / catList.length) * 100) : 0;
+
+    const kpiCards = document.querySelectorAll('.kpi-card .kpi-value');
+    if (kpiCards.length >= 3) {
+        kpiCards[0].textContent = String(featuredCount);
+        kpiCards[1].textContent = String(priorities.size);
+        kpiCards[2].textContent = `${activeRate}%`;
+    }
 
     if (!Array.isArray(data) || data.length === 0) {
         tbody.innerHTML = '<tr><td colspan="7" class="text-center">No fish categories created yet. Add categories to improve reporting and pricing clarity.</td></tr>';
@@ -502,6 +846,20 @@ async function loadBuyersData() {
     const tbody = resolveElement('buyerTable', 'buyers-table-body');
     if (!tbody) return;
 
+    // Update KPI values dynamically
+    const buyerList = Array.isArray(data) ? data : [];
+    const activeCount = buyerList.filter(b => b.is_active).length;
+    const totalOutstanding = buyerList.reduce((sum, b) => sum + parseFloat(b.current_credit_balance ?? b.outstanding_amount ?? 0), 0);
+    const repeatBuyers = buyerList.filter(b => (b.total_orders ?? b.order_count ?? 0) > 1).length;
+    const repeatRate = buyerList.length > 0 ? Math.round((repeatBuyers / buyerList.length) * 100) : 0;
+
+    const kpiCards = document.querySelectorAll('.kpi-card .kpi-value');
+    if (kpiCards.length >= 3) {
+        kpiCards[0].textContent = String(activeCount);
+        kpiCards[1].textContent = formatCurrency(totalOutstanding);
+        kpiCards[2].textContent = `${repeatRate}%`;
+    }
+
     if (!Array.isArray(data) || data.length === 0) {
         tbody.innerHTML = '<tr><td colspan="8" class="text-center">No buyers found. Add buyer accounts to start invoice tracking.</td></tr>';
         return;
@@ -525,6 +883,19 @@ async function loadPurchasesData() {
     const data = await apiCall('/trading/purchase-batches/');
     const tbody = resolveElement('purchaseTable', 'purchases-table-body');
     if (!tbody) return;
+
+    // Update KPI values dynamically
+    const purchaseList = Array.isArray(data) ? data : [];
+    const totalSpend = purchaseList.reduce((sum, p) => sum + parseFloat(p.total_expense ?? p.total_cost ?? 0), 0);
+    const activeBatches = purchaseList.filter(p => (p.status || '').toLowerCase() !== 'cancelled').length;
+    const uniqueSuppliers = new Set(purchaseList.map(p => p.supplier_name).filter(Boolean)).size;
+
+    const kpiCards = document.querySelectorAll('.kpi-card .kpi-value');
+    if (kpiCards.length >= 3) {
+        kpiCards[0].textContent = formatCurrency(totalSpend);
+        kpiCards[1].textContent = String(activeBatches);
+        if (kpiCards[2]) kpiCards[2].textContent = String(uniqueSuppliers);
+    }
 
     if (!Array.isArray(data) || data.length === 0) {
         tbody.innerHTML = '<tr><td colspan="9" class="text-center">No purchases found. Create a purchase batch to begin inventory flow.</td></tr>';
@@ -551,6 +922,21 @@ async function loadSalesData() {
     const tbody = resolveElement('saleTable', 'sales-table-body');
     if (!tbody) return;
 
+    // Update KPI values dynamically
+    const salesList = Array.isArray(data) ? data : [];
+    const totalRevenue = salesList.reduce((sum, s) => sum + parseFloat(s.total_revenue ?? 0), 0);
+    const paidCount = salesList.filter(s => (s.payment_status || '').toLowerCase() === 'paid').length;
+    const collectionRate = salesList.length > 0 ? Math.round((paidCount / salesList.length) * 100) : 0;
+    const totalProfit = salesList.reduce((sum, s) => sum + parseFloat(s.profit ?? 0), 0);
+    const avgMargin = totalRevenue > 0 ? Math.round((totalProfit / totalRevenue) * 100) : 0;
+
+    const kpiCards = document.querySelectorAll('.kpi-card .kpi-value');
+    if (kpiCards.length >= 3) {
+        kpiCards[0].textContent = formatCurrency(totalRevenue);
+        kpiCards[1].textContent = `${collectionRate}%`;
+        kpiCards[2].textContent = `${avgMargin}%`;
+    }
+
     if (!Array.isArray(data) || data.length === 0) {
         tbody.innerHTML = '<tr><td colspan="9" class="text-center">No sales found. Create invoices to track revenue and collections.</td></tr>';
         return;
@@ -575,6 +961,25 @@ async function loadInventoryData() {
     const data = await apiCall('/trading/inventory/');
     const tbody = resolveElement('inventoryTable', 'inventoryTableBody');
     if (!tbody) return;
+
+    // Update KPI values dynamically
+    const inventoryList = Array.isArray(data) ? data : [];
+    const totalPackages = inventoryList.reduce((sum, i) => sum + parseInt(i.remaining_packages ?? i.packages ?? 0, 10), 0);
+    const totalValue = inventoryList.reduce((sum, i) => sum + parseFloat(i.remaining_stock_value ?? i.stock_value ?? 0), 0);
+    const lowStockCount = inventoryList.filter(i => ['low_stock', 'expiring', 'expired'].includes((i.status || '').toLowerCase())).length;
+    const inStockCount = inventoryList.filter(i => (i.status || '').toLowerCase() === 'in_stock').length;
+
+    const kpiCards = document.querySelectorAll('.kpi-card .kpi-value');
+    if (kpiCards.length >= 4) {
+        kpiCards[0].textContent = String(totalPackages);
+        kpiCards[1].textContent = formatCurrency(totalValue);
+        kpiCards[2].textContent = String(inStockCount);
+        kpiCards[3].textContent = String(lowStockCount);
+    } else if (kpiCards.length >= 3) {
+        kpiCards[0].textContent = String(totalPackages);
+        kpiCards[1].textContent = formatCurrency(totalValue);
+        kpiCards[2].textContent = String(lowStockCount);
+    }
 
     if (!Array.isArray(data) || data.length === 0) {
         tbody.innerHTML = '<tr><td colspan="8" class="text-center">No inventory records found. Add purchase batches to populate stock.</td></tr>';
@@ -646,79 +1051,271 @@ function renderDashboardAlerts({ sales, purchases, inventory }) {
     `).join('');
 }
 
+function renderDashboardCharts(financialData) {
+    Object.values(AppState.charts).forEach((chart) => {
+        if (chart && typeof chart.destroy === 'function') chart.destroy();
+    });
+    AppState.charts = {};
+
+    const profitLossData = Array.isArray(financialData?.profitLossData) ? financialData.profitLossData : [];
+    const soldRemainingData = Array.isArray(financialData?.soldRemainingData) ? financialData.soldRemainingData : [];
+    const demandTrendData = Array.isArray(financialData?.demandTrendData) ? financialData.demandTrendData : [];
+
+    if (typeof Chart === 'undefined') {
+        renderCanvasFallback(
+            'profitLossChart',
+            'Profit / Loss / Receivables',
+            renderSvgStackedBars(profitLossData),
+            'Chart library unavailable. Showing a compact data summary instead.'
+        );
+        renderCanvasFallback(
+            'soldRemainingChart',
+            'Sold vs Remaining',
+            renderSvgHorizontalBars(soldRemainingData),
+            'Chart library unavailable. Showing current stock movement instead.'
+        );
+        renderCanvasFallback(
+            'demandTrendChart',
+            'Fish Demand Trend',
+            renderSvgLines(demandTrendData),
+            'Chart library unavailable. Showing demand totals instead.'
+        );
+        return;
+    }
+
+    if (profitLossData.length) {
+        renderManagedChart('profitLoss', 'profitLossChart', {
+            type: 'bar',
+            data: {
+                labels: profitLossData.map((row) => row.label || '-'),
+                datasets: [
+                    {
+                        label: 'Profit',
+                        data: profitLossData.map((row) => Number(row.profit || 0)),
+                        backgroundColor: '#22c55e',
+                        borderRadius: 4,
+                    },
+                    {
+                        label: 'Loss',
+                        data: profitLossData.map((row) => Number(row.loss || 0)),
+                        backgroundColor: '#ef4444',
+                        borderRadius: 4,
+                    },
+                    {
+                        label: 'Receivable',
+                        data: profitLossData.map((row) => Number(row.receivable || 0)),
+                        backgroundColor: '#f59e0b',
+                        borderRadius: 4,
+                    }
+                ]
+            },
+            options: {
+                plugins: { legend: { position: 'bottom' } },
+                scales: {
+                    x: { stacked: true },
+                    y: {
+                        stacked: true,
+                        beginAtZero: true,
+                        ticks: {
+                            callback: (value) => `₹${Number(value).toLocaleString('en-IN')}`
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    if (soldRemainingData.length) {
+        renderManagedChart('soldRemaining', 'soldRemainingChart', {
+            type: 'bar',
+            data: {
+                labels: soldRemainingData.map((row) => row.product || '-'),
+                datasets: [
+                    {
+                        label: 'Sold',
+                        data: soldRemainingData.map((row) => Number(row.sold || 0)),
+                        backgroundColor: '#0f766e',
+                    },
+                    {
+                        label: 'Remaining',
+                        data: soldRemainingData.map((row) => Number(row.remaining || 0)),
+                        backgroundColor: '#93c5fd',
+                    }
+                ]
+            },
+            options: {
+                indexAxis: 'y',
+                plugins: { legend: { position: 'bottom' } },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: (value) => `${value} pkg`
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    if (demandTrendData.length) {
+        const dates = Array.from(new Set(demandTrendData.map((row) => row.date).filter(Boolean))).sort();
+        const productMap = {};
+        const palette = ['#2563eb', '#14b8a6', '#f97316', '#8b5cf6', '#ef4444'];
+
+        demandTrendData.forEach((row) => {
+            const product = row.product || 'Unknown';
+            if (!productMap[product]) productMap[product] = {};
+            productMap[product][row.date] = Number(row.sold_qty || 0);
+        });
+
+        renderManagedChart('demandTrend', 'demandTrendChart', {
+            type: 'line',
+            data: {
+                labels: dates.map((date) => formatDate(date)),
+                datasets: Object.keys(productMap).map((product, index) => ({
+                    label: product,
+                    data: dates.map((date) => productMap[product][date] || 0),
+                    borderColor: palette[index % palette.length],
+                    backgroundColor: `${palette[index % palette.length]}22`,
+                    fill: false,
+                    tension: 0.35,
+                }))
+            },
+            options: {
+                plugins: { legend: { position: 'bottom' } },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: (value) => `${value} pkg`
+                        }
+                    }
+                }
+            }
+        });
+    }
+}
+
 async function loadDashboardData() {
-    const [financialData, salesData, purchaseData, inventoryData] = await Promise.all([
-        apiCall('/dashboard/financial-overview/'),
-        apiCall('/trading/sales/'),
-        apiCall('/trading/purchase-batches/'),
-        apiCall('/trading/inventory/')
-    ]);
+    const unwrapSettled = (result, fallback) => (
+        result?.status === 'fulfilled' && result.value !== null && result.value !== undefined
+            ? result.value
+            : fallback
+    );
 
-    if (!financialData) return;
+    try {
+        const results = await Promise.allSettled([
+            apiCall('/dashboard/financial-overview/'),
+            apiCall('/trading/sales/'),
+            apiCall('/trading/purchase-batches/'),
+            apiCall('/trading/inventory/'),
+            apiCall('/dashboard/profit-loss-receivable/?days=30&period=day'),
+            apiCall('/dashboard/sold-vs-remaining/'),
+            apiCall('/dashboard/fish-demand-trend/?days=14&limit=5'),
+        ]);
 
-    const todaySales = financialData.today_sales ?? financialData.total_sales_amount ?? 0;
-    const todayPurchases = financialData.today_purchases ?? financialData.total_purchase_amount ?? 0;
-    const todayProfit = financialData.today_profit ?? financialData.profit ?? 0;
-    const totalStock = financialData.stock_packages ?? financialData.inventory_total ?? 0;
+        const financialData = unwrapSettled(results[0], {});
+        const salesData = unwrapSettled(results[1], []);
+        const purchaseData = unwrapSettled(results[2], []);
+        const inventoryData = unwrapSettled(results[3], []);
+        const profitLossData = unwrapSettled(results[4], []);
+        const soldRemainingData = unwrapSettled(results[5], []);
+        const demandTrendData = unwrapSettled(results[6], []);
 
-    const textTargets = {
-        'sales-today': formatCurrency(todaySales),
-        todaySales: formatCurrency(todaySales),
-        'purchases-today': formatCurrency(todayPurchases),
-        todayPurchases: formatCurrency(todayPurchases),
-        profit: formatCurrency(todayProfit),
-        todayProfit: formatCurrency(todayProfit),
-        stock: String(totalStock),
-        stockPackages: String(totalStock)
-    };
+        const finalFinancialData = {
+            ...financialData,
+            profitLossData: Array.isArray(profitLossData) ? profitLossData : [],
+            soldRemainingData: Array.isArray(soldRemainingData) ? soldRemainingData : [],
+            demandTrendData: Array.isArray(demandTrendData) ? demandTrendData : [],
+        };
+        const finalSalesData = Array.isArray(salesData) ? salesData : [];
+        const finalPurchaseData = Array.isArray(purchaseData) ? purchaseData : [];
+        const finalInventoryData = Array.isArray(inventoryData) ? inventoryData : [];
 
-    Object.entries(textTargets).forEach(([id, value]) => {
-        const element = document.getElementById(id);
-        if (element) element.textContent = value;
-    });
+        const todaySales = finalFinancialData.today_sales ?? finalFinancialData.total_sales_amount ?? 0;
+        const todayPurchases = finalFinancialData.today_purchases ?? finalFinancialData.total_purchase_amount ?? 0;
+        const todayProfit = finalFinancialData.today_profit ?? finalFinancialData.profit ?? 0;
+        const totalStock = finalInventoryData.reduce((sum, item) => sum + Number(item.remaining_packages || 0), 0);
 
-    const recentSales = Array.isArray(salesData) ? salesData.slice(0, 4) : [];
-    const recentPurchases = Array.isArray(purchaseData) ? purchaseData.slice(0, 4) : [];
-    const inventory = Array.isArray(inventoryData) ? inventoryData : [];
+        const textTargets = {
+            'sales-today': formatCurrency(todaySales),
+            todaySales: formatCurrency(todaySales),
+            'purchases-today': formatCurrency(todayPurchases),
+            todayPurchases: formatCurrency(todayPurchases),
+            profit: formatCurrency(todayProfit),
+            todayProfit: formatCurrency(todayProfit),
+            stock: String(totalStock),
+            stockPackages: String(totalStock)
+        };
 
-    const salesTable = document.getElementById('dashboardRecentSales');
-    if (salesTable) {
-        salesTable.innerHTML = recentSales.length
-            ? recentSales.map((sale) => `
-                <tr>
-                    <td>${sanitize(sale.invoice_number || '-')}</td>
-                    <td>${sanitize(sale.buyer_name || '-')}</td>
-                    <td>${formatCurrency(sale.total_revenue ?? 0)}</td>
-                    <td><span class="status-badge ${sale.payment_status || 'pending'}">${sanitize(sale.payment_status || 'pending')}</span></td>
-                </tr>
-            `).join('')
-            : '<tr><td colspan="4" class="text-center">No recent sales yet.</td></tr>';
+        Object.entries(textTargets).forEach(([id, value]) => {
+            const element = document.getElementById(id);
+            if (element) element.textContent = value;
+        });
+
+        const recentSales = finalSalesData.slice(0, 4);
+        const recentPurchases = finalPurchaseData.slice(0, 4);
+
+        const salesTable = document.getElementById('dashboardRecentSales');
+        if (salesTable) {
+            salesTable.innerHTML = recentSales.length
+                ? recentSales.map((sale) => `
+                    <tr>
+                        <td>${sanitize(sale.invoice_number || '-')}</td>
+                        <td>${sanitize(sale.buyer_name || '-')}</td>
+                        <td>${formatCurrency(sale.total_revenue ?? 0)}</td>
+                        <td><span class="status-badge ${sale.payment_status || 'pending'}">${sanitize(sale.payment_status || 'pending')}</span></td>
+                    </tr>
+                `).join('')
+                : '<tr><td colspan="4" class="text-center">No recent sales yet.</td></tr>';
+        }
+
+        const purchaseTable = document.getElementById('dashboardRecentPurchases');
+        if (purchaseTable) {
+            purchaseTable.innerHTML = recentPurchases.length
+                ? recentPurchases.map((purchase) => `
+                    <tr>
+                        <td>${sanitize(purchase.batch_number || '-')}</td>
+                        <td>${sanitize(purchase.fish_name || '-')}</td>
+                        <td>${sanitize(purchase.supplier_name || '-')}</td>
+                        <td>${formatCurrency(purchase.total_expense ?? 0)}</td>
+                    </tr>
+                `).join('')
+                : '<tr><td colspan="4" class="text-center">No recent purchases yet.</td></tr>';
+        }
+
+        renderDashboardAlerts({
+            sales: finalSalesData,
+            purchases: recentPurchases,
+            inventory: finalInventoryData
+        });
+
+        renderDashboardCharts(finalFinancialData);
+    } catch (error) {
+        console.error('Dashboard loading error:', error);
+        showAlert('Dashboard data could not be loaded completely.', 'danger');
     }
-
-    const purchaseTable = document.getElementById('dashboardRecentPurchases');
-    if (purchaseTable) {
-        purchaseTable.innerHTML = recentPurchases.length
-            ? recentPurchases.map((purchase) => `
-                <tr>
-                    <td>${sanitize(purchase.batch_number || '-')}</td>
-                    <td>${sanitize(purchase.fish_name || '-')}</td>
-                    <td>${sanitize(purchase.supplier_name || '-')}</td>
-                    <td>${formatCurrency(purchase.total_expense ?? 0)}</td>
-                </tr>
-            `).join('')
-            : '<tr><td colspan="4" class="text-center">No recent purchases yet.</td></tr>';
-    }
-
-    renderDashboardAlerts({
-        sales: Array.isArray(salesData) ? salesData : [],
-        purchases: recentPurchases,
-        inventory
-    });
 }
 
 async function loadPaymentsData() {
     const data = await apiCall('/trading/payments/');
     if (!Array.isArray(data)) return;
+
+    // Update KPI values dynamically
+    const received = data.filter(p => p.payment_type === 'sale');
+    const made = data.filter(p => p.payment_type === 'purchase');
+    const pending = data.filter(p => ['pending', 'partial'].includes((p.payment_status || p.approval_status || '').toLowerCase()));
+
+    const totalCollections = received.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
+    const totalOutgoing = made.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
+
+    const kpiCollections = document.getElementById('kpiCollections');
+    const kpiOutgoing = document.getElementById('kpiOutgoing');
+    const kpiPending = document.getElementById('kpiPending');
+    if (kpiCollections) kpiCollections.textContent = formatCurrency(totalCollections);
+    if (kpiOutgoing) kpiOutgoing.textContent = formatCurrency(totalOutgoing);
+    if (kpiPending) kpiPending.textContent = String(pending.length);
 
     const receivedTbody = resolveElement('paymentsReceivedTable');
     const madeTbody = resolveElement('paymentsMadeTable');
@@ -772,7 +1369,10 @@ async function loadPaymentsData() {
 }
 
 async function loadUsersData() {
-    const data = await apiCall('/auth/users/');
+    const endpoint = (localStorage.getItem('userRole') || currentUserRole) === 'tenant_admin'
+        ? '/auth/tenant-users/'
+        : '/auth/users/';
+    const data = await apiCall(endpoint);
     const tbody = resolveElement('userTable');
     if (!tbody) return;
 
@@ -794,11 +1394,195 @@ async function loadUsersData() {
     `).join('');
 }
 
+async function loadReportsData() {
+    const noDataState = document.getElementById('reportNoDataState');
+    const topBuyersTable = document.getElementById('reportsTopBuyersTable');
+    const riskContainer = document.getElementById('reportsRiskSummary');
+
+    try {
+        const [financial, inventory, topBuyers, paymentMix, performanceTrend, riskAlerts] = await Promise.all([
+            apiCall('/dashboard/financial-overview/'),
+            apiCall('/dashboard/inventory-overview/'),
+            apiCall('/dashboard/top-buyers/?limit=5'),
+            apiCall('/dashboard/sales-by-payment/'),
+            apiCall('/dashboard/profit-loss-receivable/?days=30&period=week'),
+            apiCall('/dashboard/risk-alerts/')
+        ]);
+
+        const grossSales = financial?.today_sales
+            ?? financial?.total_sales_amount
+            ?? financial?.current_year?.total_sales_amount
+            ?? 0;
+        const grossProfit = financial?.today_profit
+            ?? financial?.profit
+            ?? financial?.current_year?.total_profit
+            ?? 0;
+        const inventoryValue = inventory?.total_value
+            ?? inventory?.inventory_value
+            ?? inventory?.total_stock_value
+            ?? 0;
+
+        const valueTargets = {
+            reportsGrossSales: formatCurrency(grossSales),
+            reportsGrossProfit: formatCurrency(grossProfit),
+            reportsInventoryValue: formatCurrency(inventoryValue),
+            reportsRiskAlerts: `${Array.isArray(riskAlerts) ? riskAlerts.length : 0} alerts`
+        };
+
+        Object.entries(valueTargets).forEach(([id, value]) => {
+            const element = document.getElementById(id);
+            if (element) element.textContent = value;
+        });
+
+        if (topBuyersTable) {
+            const rows = Array.isArray(topBuyers) ? topBuyers : [];
+            topBuyersTable.innerHTML = rows.length
+                ? rows.map((buyer) => `
+                    <tr>
+                        <td>${sanitize(buyer.buyer__name || buyer.name || '-')}</td>
+                        <td>${sanitize(String(buyer.order_count || buyer.total_orders || 0))}</td>
+                        <td>${formatCurrency(buyer.total_revenue || buyer.revenue || 0)}</td>
+                    </tr>
+                `).join('')
+                : '<tr><td colspan="3" class="text-center">No buyer data available.</td></tr>';
+        }
+
+        if (riskContainer) {
+            const alerts = Array.isArray(riskAlerts) ? riskAlerts.slice(0, 3) : [];
+            riskContainer.innerHTML = alerts.length
+                ? alerts.map((alert) => `
+                    <div class="insight-item">
+                        <i class="fas fa-triangle-exclamation"></i>
+                        <div>
+                            <strong>${sanitize(alert.title || alert.name || 'Risk alert')}</strong>
+                            <p>${sanitize(alert.message || alert.detail || 'Attention needed in the current reporting window.')}</p>
+                        </div>
+                    </div>
+                `).join('')
+                : `
+                    <div class="insight-item">
+                        <i class="fas fa-circle-check"></i>
+                        <div>
+                            <strong>No active risk alerts</strong>
+                            <p>Backend checks did not flag urgent reporting issues right now.</p>
+                        </div>
+                    </div>
+                `;
+        }
+
+        const trendRows = Array.isArray(performanceTrend) ? performanceTrend : [];
+        const trendLabels = trendRows.map((row, index) =>
+            row.label || row.period || row.bucket || row.date || row.month || `Point ${index + 1}`
+        );
+        const salesSeries = trendRows.map((row) => Number(getSeriesValue(row, ['sales', 'revenue', 'total_sales', 'total_revenue'])) || 0);
+        const profitSeries = trendRows.map((row) => Number(getSeriesValue(row, ['profit', 'net_profit', 'total_profit'])) || 0);
+
+        renderManagedChart('reportsSales', 'sales-report-chart', {
+            type: 'bar',
+            data: {
+                labels: trendLabels.length ? trendLabels : ['No data'],
+                datasets: [
+                    {
+                        label: 'Sales',
+                        data: trendLabels.length ? salesSeries : [0],
+                        backgroundColor: '#14b8a6'
+                    },
+                    {
+                        label: 'Profit',
+                        data: trendLabels.length ? profitSeries : [0],
+                        backgroundColor: '#0f766e'
+                    }
+                ]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+
+        const paymentRows = Array.isArray(paymentMix) ? paymentMix : [];
+        renderManagedChart('reportsPaymentMix', 'profit-report-chart', {
+            type: 'doughnut',
+            data: {
+                labels: paymentRows.length
+                    ? paymentRows.map((row) => row.payment_mode || row.payment_method || row.label || 'Unknown')
+                    : ['No data'],
+                datasets: [{
+                    data: paymentRows.length
+                        ? paymentRows.map((row) => Number(getSeriesValue(row, ['total', 'amount', 'value'])) || 0)
+                        : [1],
+                    backgroundColor: ['#0f766e', '#14b8a6', '#f59e0b', '#2563eb', '#ef4444']
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+
+        if (noDataState) {
+            noDataState.hidden = trendRows.length > 0 || paymentRows.length > 0;
+        }
+    } catch (error) {
+        console.error('Reports loading error:', error);
+        if (noDataState) noDataState.hidden = false;
+        showAlert('Unable to load report data right now.', 'warning');
+    }
+}
+
+async function loadSettingsData() {
+    const profile = await apiCall('/auth/profile/');
+    const emailInput = document.getElementById('settingsEmail');
+    const phoneInput = document.getElementById('settingsPhone');
+    const profileForm = document.getElementById('profileForm');
+    const passwordForm = document.getElementById('passwordForm');
+
+    if (emailInput) emailInput.value = profile?.email || '';
+    if (phoneInput) phoneInput.value = profile?.phone || '';
+
+    if (profileForm && !profileForm.dataset.bound) {
+        profileForm.dataset.bound = 'true';
+        profileForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const result = await apiCall('/auth/profile/', 'PUT', {
+                email: emailInput?.value?.trim() || '',
+                phone: phoneInput?.value?.trim() || ''
+            });
+
+            if (result) {
+                showAlert('Profile updated successfully.', 'success');
+                return;
+            }
+
+            showAlert(window.API?.lastError?.detail || 'Failed to update profile.', 'danger');
+        });
+    }
+
+    if (passwordForm && !passwordForm.dataset.bound) {
+        passwordForm.dataset.bound = 'true';
+        passwordForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+            const newPassword = document.getElementById('newPassword')?.value || '';
+            const confirmPassword = document.getElementById('confirmPassword')?.value || '';
+
+            if (!newPassword || !confirmPassword) {
+                showAlert('Enter and confirm the new password first.', 'danger');
+                return;
+            }
+
+            if (newPassword !== confirmPassword) {
+                showAlert('Passwords do not match.', 'danger');
+                return;
+            }
+
+            showAlert('Password change endpoint is not available yet. Contact platform admin.', 'info');
+            passwordForm.reset();
+        });
+    }
+
+    await window.ManagementPages?.loadSecurity?.();
+}
+
 function isPageAllowed(page) {
     return getAllowedPages(localStorage.getItem('userRole') || currentUserRole).includes(page);
 }
 
-async function loadPage(pageName) {
+async function loadPage(pageName, options = {}) {
+    const { updateHistory = true } = options;
     if (!isPageAllowed(pageName)) {
         showAlert('Access denied for this page.', 'danger');
         return;
@@ -807,6 +1591,9 @@ async function loadPage(pageName) {
     currentPage = pageName;
     syncShellMeta(pageName);
     updateActiveNav(pageName);
+    if (updateHistory) {
+        syncBrowserURL(pageName);
+    }
 
     const mainContent = document.getElementById('main-content');
     if (!mainContent) return;
@@ -814,16 +1601,22 @@ async function loadPage(pageName) {
     mainContent.innerHTML = '<div class="page-loading"><div class="loading-spinner">Loading page...</div></div>';
 
     try {
-        const response = await fetch(resolvePagePath(pageName));
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+        
+        const response = await fetch(resolvePagePath(pageName), { signal: controller.signal });
+        clearTimeout(timeoutId);
+        
         const html = await response.text();
         injectPageMarkup(mainContent, html);
+        syncCompatibilityGlobals();
         if (pageLoaders[pageName]) {
             await pageLoaders[pageName]();
         }
         closeSidebar();
     } catch (error) {
         console.error('Page load failed:', error);
-        mainContent.innerHTML = '<div class="empty-state">Page load failed. Please try again.</div>';
+        mainContent.innerHTML = '<div class="empty-state">⚠ Page load failed. ' + (error.name === 'AbortError' ? 'Request timed out.' : 'Please try again.') + '</div>';
     }
 }
 
@@ -834,11 +1627,15 @@ const pageLoaders = {
     suppliers: loadSuppliersData,
     buyers: loadBuyersData,
     purchases: loadPurchasesData,
+    purchase_create: () => {}, // No data loading needed for form page
     sales: loadSalesData,
     inventory: loadInventoryData,
     payments: loadPaymentsData,
     users: loadUsersData,
-    reports: () => window.ReportsPage?.init?.()
+    subscription: () => window.ManagementPages?.loadSubscription?.(),
+    reports: loadReportsData,
+    analytics: () => window.AnalyticsPage?.init?.(),
+    settings: loadSettingsData
 };
 
 const showModal = (...args) => window.UI?.showModal?.(...args);
@@ -847,8 +1644,23 @@ const closeModal = (...args) => window.UI?.closeModal?.(...args);
 window.showModal = showModal;
 window.closeModal = closeModal;
 window.loadPage = loadPage;
+window.apiCall = apiCall;
+window.showAlert = showAlert;
+window.sanitize = sanitize;
+window.formatCurrency = formatCurrency;
+window.formatDate = formatDate;
+
+window.addEventListener('popstate', () => {
+    const requestedPage = getPageFromLocation();
+    if (requestedPage !== currentPage) {
+        loadPage(requestedPage, { updateHistory: false });
+    }
+});
+
+syncCompatibilityGlobals();
 
 window.App = {
+    init: initShell,
     initShell,
     loadPage,
     restoreHomePage,
@@ -862,5 +1674,9 @@ window.App = {
     isPageAllowed,
     protectRoute,
     filterSidebarByRole,
-    logout
+    logout,
+    toggleSidebar: () => {
+        const sidebar = document.querySelector('.sidebar');
+        if (sidebar) sidebar.classList.toggle('mobile-open');
+    }
 };

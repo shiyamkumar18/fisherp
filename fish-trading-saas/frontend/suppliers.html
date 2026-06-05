@@ -3,7 +3,7 @@
         <h1 class="page-title">Suppliers</h1>
         <p class="page-subtitle">Track who you buy from, what they supply, and where outstanding payables need attention.</p>
     </div>
-    <button class="btn btn-primary" onclick="showAddSupplierModal()">
+    <button class="btn btn-primary" onclick="window.showAddSupplierModal?.()">
         <i class="fas fa-truck-field"></i>
         Add Supplier
     </button>
@@ -11,19 +11,22 @@
 
 <section class="kpi-row">
     <article class="kpi-card">
+        <div class="kpi-card-icon"><i class="fas fa-truck-field"></i></div>
         <div class="metric-eyebrow">Active Suppliers</div>
-        <div class="kpi-value">18</div>
-        <div class="kpi-label">Reliable partners currently supporting purchasing operations.</div>
+        <div class="kpi-value">—</div>
+        <div class="kpi-label">Reliable partners supporting purchasing</div>
     </article>
     <article class="kpi-card">
+        <div class="kpi-card-icon kpi-icon-amber"><i class="fas fa-money-bill-transfer"></i></div>
         <div class="metric-eyebrow">Outstanding Payables</div>
-        <div class="kpi-value">₹2.1L</div>
-        <div class="kpi-label">Balance to monitor before the next buying cycle.</div>
+        <div class="kpi-value">—</div>
+        <div class="kpi-label">Balance to monitor before next cycle</div>
     </article>
     <article class="kpi-card">
-        <div class="metric-eyebrow">Fresh Sources</div>
-        <div class="kpi-value">5</div>
-        <div class="kpi-label">Newer suppliers available for negotiation and diversification.</div>
+        <div class="kpi-card-icon kpi-icon-blue"><i class="fas fa-tags"></i></div>
+        <div class="metric-eyebrow">Supplier Types</div>
+        <div class="kpi-value">—</div>
+        <div class="kpi-label">Distinct supplier categories</div>
     </article>
 </section>
 

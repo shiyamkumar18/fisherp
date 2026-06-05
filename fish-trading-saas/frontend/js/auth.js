@@ -41,12 +41,12 @@ const Auth = {
     getRoleName: (role) => Auth.roleNames[role] || role,
     
     // Login function
-    login: async (username, password) => {
+    login: async (username, password, companyName = '') => {
         try {
             const response = await fetch(`${window.API.baseUrl}/auth/login/`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password })
+                body: JSON.stringify({ username, password, company_name: companyName })
             });
             
             if (response.ok) {
@@ -54,15 +54,34 @@ const Auth = {
                 const accessToken = data.token || data.access;
                 localStorage.setItem('token', accessToken);
                 localStorage.setItem('access_token', accessToken);
-                localStorage.setItem('username', username);
+                localStorage.setItem('username', data.username || username);
                 localStorage.setItem('userRole', data.role || 'tenant_admin');
                 localStorage.setItem('role', data.role || 'tenant_admin');
+                localStorage.setItem(
+                    'isPlatformUser',
+                    ['platform_operator', 'platform_support', 'platform_maintainer', 'platform_super_admin'].includes(data.role)
+                        || data.is_platform_user
+                        ? 'true'
+                        : 'false'
+                );
                 if (data.user_id) {
                     localStorage.setItem('user_id', data.user_id);
                 }
+                if (data.tenant_slug) {
+                    localStorage.setItem('tenant_slug', data.tenant_slug);
+                } else {
+                    localStorage.removeItem('tenant_slug');
+                }
+                if (data.company_name) {
+                    localStorage.setItem('company_name', data.company_name);
+                } else if (companyName) {
+                    localStorage.setItem('company_name', companyName);
+                } else {
+                    localStorage.removeItem('company_name');
+                }
                 localStorage.setItem('two_factor_enabled', data.two_factor_enabled ? '1' : '0');
                 Auth.currentUser = { 
-                    username, 
+                    username: data.username || username,
                     role: data.role || 'tenant_admin',
                     subscriptionTier: 'basic',
                     features: {}

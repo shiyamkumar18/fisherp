@@ -3,68 +3,690 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fish ERP - Login</title>
-    <link rel="stylesheet" href="css/auth-modern.css">
+    <title>FisherP — Sign In</title>
+    <meta name="description" content="Sign in to FisherP — the complete fish trading management platform">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+        html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+        img,svg{display:block;max-width:100%}
+        button,input,select{font:inherit}
+        a{color:inherit;text-decoration:none}
+
+        :root{
+            --font:"Inter",system-ui,-apple-system,sans-serif;
+            --teal:#0f766e;--teal-bright:#14b8a6;--teal-dark:#115e59;--teal-50:#f0fdfa;--teal-100:#ccfbf1;
+            --navy:#0c1d2e;--ink:#1e293b;--muted:#64748b;--subtle:#94a3b8;
+            --border:#e2e8f0;--border-focus:var(--teal);
+            --bg:#f8fafb;--surface:#fff;
+            --danger:#dc2626;--danger-bg:#fef2f2;
+            --success:#059669;--success-bg:#ecfdf5;
+            --warning:#d97706;--warning-bg:#fffbeb;
+            --info:#0284c7;--info-bg:#f0f9ff;
+            --shadow-sm:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+            --shadow-lg:0 10px 15px -3px rgba(0,0,0,.08),0 4px 6px -4px rgba(0,0,0,.04);
+            --radius-sm:6px;--radius-md:10px;--radius-lg:14px;--radius-xl:20px;
+            --motion:200ms cubic-bezier(.4,0,.2,1);--motion-fast:150ms cubic-bezier(.4,0,.2,1);
+        }
+
+        body{
+            font-family:var(--font);color:var(--ink);
+            min-height:100vh;display:flex;background:var(--bg);
+            -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
+        }
+
+        .login-split{display:flex;width:100%;min-height:100vh}
+
+        /* ── Brand panel ─────────────────────────── */
+        .brand-panel{
+            flex:0 0 46%;max-width:620px;
+            display:flex;flex-direction:column;
+            justify-content:center;align-items:center;
+            padding:3.5rem 3rem;
+            background:linear-gradient(165deg,#0d4f4a 0%,#0a3d38 25%,#0c2d28 55%,#091f1c 100%);
+            color:#fff;position:relative;overflow:hidden;
+        }
+        .brand-panel::before{
+            content:"";position:absolute;inset:0;
+            background:
+                radial-gradient(ellipse 600px 500px at 20% 15%,rgba(20,184,166,.18),transparent),
+                radial-gradient(ellipse 500px 600px at 85% 85%,rgba(6,182,212,.1),transparent);
+            pointer-events:none;
+        }
+        .brand-panel::after{
+            content:"";position:absolute;inset:0;
+            background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none'%3E%3Cg fill='%2314b8a6' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+            pointer-events:none;opacity:.5;
+        }
+        .brand-inner{position:relative;z-index:1;max-width:420px}
+        .brand-logo{display:flex;align-items:center;gap:14px;margin-bottom:3rem}
+        .brand-logo-icon{
+            width:52px;height:52px;
+            background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);
+            border-radius:14px;display:flex;align-items:center;justify-content:center;
+            font-size:1.5rem;backdrop-filter:blur(12px);
+        }
+        .brand-logo-text{font-size:1.5rem;font-weight:800;letter-spacing:-.03em}
+        .brand-inner h1{font-size:2.5rem;font-weight:900;line-height:1.1;letter-spacing:-.04em;margin-bottom:1rem}
+        .brand-inner h1 span{
+            background:linear-gradient(135deg,#5eead4,#2dd4bf);
+            -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+        }
+        .brand-inner>p{font-size:1.05rem;line-height:1.7;color:rgba(255,255,255,.65);margin-bottom:2.5rem}
+        .features-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+        .feature-chip{
+            display:flex;align-items:center;gap:10px;padding:12px 14px;
+            background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);
+            border-radius:12px;font-size:.84rem;font-weight:500;color:rgba(255,255,255,.8);
+            transition:background var(--motion-fast),border-color var(--motion-fast);
+        }
+        .feature-chip:hover{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.12)}
+        .feature-chip i{
+            width:32px;height:32px;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+            background:rgba(20,184,166,.15);color:#5eead4;border-radius:8px;font-size:.8rem;
+        }
+        .brand-trust{
+            display:flex;align-items:center;gap:24px;margin-top:3rem;padding-top:2rem;
+            border-top:1px solid rgba(255,255,255,.08);
+        }
+        .trust-item{display:flex;align-items:center;gap:8px;font-size:.78rem;color:rgba(255,255,255,.5);font-weight:600}
+        .trust-item i{color:rgba(20,184,166,.6);font-size:.7rem}
+
+        /* ── Form panel ──────────────────────────── */
+        .form-panel{
+            flex:1;display:flex;flex-direction:column;
+            align-items:center;justify-content:center;
+            padding:2rem 1.5rem;overflow-y:auto;background:var(--bg);
+        }
+        .login-card{width:100%;max-width:440px}
+
+        .mobile-brand{display:none;text-align:center;margin-bottom:2rem}
+        .mobile-brand-logo{display:inline-flex;align-items:center;gap:10px;margin-bottom:.5rem}
+        .mobile-brand-icon{
+            width:44px;height:44px;
+            background:linear-gradient(135deg,var(--teal),var(--teal-bright));
+            border-radius:12px;display:inline-flex;align-items:center;justify-content:center;
+            color:#fff;font-size:1.25rem;box-shadow:0 8px 20px rgba(15,118,110,.25);
+        }
+        .mobile-brand-name{font-size:1.35rem;font-weight:800;color:var(--navy);letter-spacing:-.02em}
+        .mobile-brand p{font-size:.82rem;color:var(--muted);margin-top:.25rem}
+
+        .card-header{margin-bottom:2rem}
+        .card-header h2{font-size:1.65rem;font-weight:800;color:var(--navy);letter-spacing:-.03em;margin-bottom:.4rem}
+        .card-header p{font-size:.9rem;color:var(--muted);line-height:1.6}
+
+        .alert{
+            display:none;align-items:flex-start;gap:.6rem;
+            padding:.8rem 1rem;border-radius:var(--radius-md);
+            font-size:.82rem;font-weight:500;line-height:1.5;
+            margin-bottom:1.25rem;border:1px solid transparent;
+        }
+        .alert.show{display:flex}
+        .alert i{margin-top:2px;flex-shrink:0}
+        .alert-error{background:var(--danger-bg);color:var(--danger);border-color:rgba(220,38,38,.12)}
+        .alert-success{background:var(--success-bg);color:var(--success);border-color:rgba(5,150,105,.12)}
+        .alert-warning{background:var(--warning-bg);color:var(--warning);border-color:rgba(217,119,6,.12)}
+        .alert-info{background:var(--info-bg);color:var(--info);border-color:rgba(2,132,199,.12)}
+
+        .field{margin-bottom:1.1rem}
+        .field-label{
+            display:flex;align-items:center;gap:.4rem;
+            font-size:.78rem;font-weight:600;color:var(--ink);
+            letter-spacing:.01em;margin-bottom:.4rem;
+        }
+        .field-label .optional{font-size:.72rem;font-weight:500;color:var(--subtle)}
+        .field-wrap{position:relative}
+        .field-icon{
+            position:absolute;left:14px;top:50%;transform:translateY(-50%);
+            color:var(--subtle);font-size:.85rem;pointer-events:none;
+            transition:color var(--motion-fast);
+        }
+        .field-input{
+            width:100%;height:46px;padding:0 14px 0 42px;
+            background:var(--surface);border:1.5px solid var(--border);
+            border-radius:var(--radius-md);font-size:.9rem;font-weight:500;color:var(--ink);
+            transition:border-color var(--motion-fast),box-shadow var(--motion-fast);
+        }
+        .field-input::placeholder{color:var(--subtle);font-weight:400}
+        .field-input:hover{border-color:#cbd5e1}
+        .field-input:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 3px rgba(15,118,110,.08)}
+        .field-input:focus ~ .field-icon{color:var(--teal)}
+        .field-input.valid{border-color:var(--success)}
+        .field-input.valid ~ .field-icon{color:var(--success)}
+        .field-input.invalid{border-color:var(--danger)}
+        .field-hint{font-size:.72rem;color:var(--subtle);margin-top:.3rem;line-height:1.4}
+        .field-status{font-size:.72rem;margin-top:.3rem;font-weight:500}
+        .field-status.success{color:var(--success)}
+        .field-status.error{color:var(--danger)}
+
+        .field-action{
+            position:absolute;right:5px;top:50%;transform:translateY(-50%);
+            height:36px;padding:0 14px;background:var(--teal);
+            color:#fff;border:none;border-radius:var(--radius-sm);
+            font-size:.76rem;font-weight:700;cursor:pointer;white-space:nowrap;
+            display:flex;align-items:center;gap:6px;
+            transition:background var(--motion-fast);
+        }
+        .field-action:hover{background:var(--teal-dark)}
+        .field-action:disabled{opacity:.5;cursor:not-allowed}
+        .field-action.hidden{display:none}
+        .field-input.has-action{padding-right:125px}
+
+        .password-toggle{
+            position:absolute;right:14px;top:50%;transform:translateY(-50%);
+            background:none;border:none;cursor:pointer;
+            color:var(--subtle);font-size:.88rem;padding:4px;
+            transition:color var(--motion-fast);
+        }
+        .password-toggle:hover{color:var(--teal)}
+
+        .detect-badge{
+            display:inline-flex;align-items:center;gap:.3rem;
+            font-size:.68rem;font-weight:600;padding:2px 8px;border-radius:100px;
+            margin-left:auto;transition:opacity var(--motion-fast);
+        }
+        .detect-badge.phone{background:var(--teal-50);color:var(--teal)}
+
+        .divider{
+            display:flex;align-items:center;gap:.75rem;
+            margin:1.15rem 0;color:var(--subtle);font-size:.74rem;font-weight:600;
+            text-transform:uppercase;letter-spacing:.06em;
+        }
+        .divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--border)}
+
+        .otp-section{
+            display:none;padding:1.15rem;
+            background:var(--teal-50);border:1px solid rgba(15,118,110,.1);
+            border-radius:var(--radius-lg);margin-bottom:1.15rem;
+        }
+        .otp-section.show{display:block;animation:slideDown .25s ease}
+        @keyframes slideDown{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+        .otp-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.85rem}
+        .otp-header span{font-size:.82rem;font-weight:700;color:var(--teal-dark)}
+        .otp-header button{font-size:.72rem;font-weight:600;color:var(--teal);background:none;border:none;cursor:pointer;text-decoration:underline}
+        .otp-digits{display:flex;gap:8px;justify-content:center;margin-bottom:.85rem}
+        .otp-digit{
+            width:44px;height:50px;text-align:center;font-size:1.2rem;font-weight:700;
+            border:1.5px solid var(--border);border-radius:var(--radius-sm);
+            background:var(--surface);color:var(--ink);
+            transition:border-color var(--motion-fast),box-shadow var(--motion-fast);
+        }
+        .otp-digit:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 3px rgba(15,118,110,.1)}
+        .otp-digit.filled{border-color:var(--teal);background:rgba(15,118,110,.03)}
+        .otp-meta{display:flex;align-items:center;justify-content:space-between;font-size:.72rem}
+        .otp-meta span{color:var(--muted)}
+        .otp-meta button{background:none;border:none;cursor:pointer;color:var(--teal);font-weight:700;font-size:.72rem}
+        .otp-meta button:disabled{color:var(--subtle);cursor:not-allowed}
+
+        .form-row{
+            display:flex;align-items:center;justify-content:space-between;
+            font-size:.82rem;margin-bottom:1.35rem;
+        }
+        .checkbox-label{display:flex;align-items:center;gap:.45rem;font-weight:500;color:var(--muted);cursor:pointer}
+        .checkbox-label input[type="checkbox"]{width:16px;height:16px;cursor:pointer;accent-color:var(--teal)}
+        .forgot-link{color:var(--teal);font-weight:600;transition:color var(--motion-fast)}
+        .forgot-link:hover{color:var(--teal-dark);text-decoration:underline}
+
+        .btn-login{
+            width:100%;height:48px;
+            display:flex;align-items:center;justify-content:center;gap:.6rem;
+            background:var(--teal);color:#fff;border:none;border-radius:var(--radius-md);
+            font-size:.92rem;font-weight:700;cursor:pointer;position:relative;overflow:hidden;
+            box-shadow:0 1px 3px rgba(15,118,110,.2),0 4px 12px rgba(15,118,110,.15);
+            transition:background var(--motion-fast),box-shadow var(--motion-fast),transform var(--motion-fast);
+        }
+        .btn-login:hover{background:var(--teal-dark);box-shadow:0 2px 4px rgba(15,118,110,.25),0 8px 20px rgba(15,118,110,.2);transform:translateY(-1px)}
+        .btn-login:active{transform:translateY(0)}
+        .btn-login:disabled{opacity:.55;cursor:not-allowed;transform:none}
+        .btn-login .spinner{
+            width:18px;height:18px;border:2.5px solid rgba(255,255,255,.3);
+            border-top-color:#fff;border-radius:50%;
+            animation:spin .7s linear infinite;display:inline-block;
+        }
+        @keyframes spin{to{transform:rotate(360deg)}}
+
+        .card-footer{text-align:center;margin-top:1.5rem;padding-top:1.15rem;border-top:1px solid var(--border)}
+        .card-footer p{font-size:.84rem;color:var(--muted)}
+        .card-footer a{color:var(--teal);font-weight:700;transition:color var(--motion-fast)}
+        .card-footer a:hover{color:var(--teal-dark);text-decoration:underline}
+
+        .legal{text-align:center;margin-top:1.25rem;font-size:.7rem;color:var(--subtle);line-height:1.6}
+        .legal a{color:var(--muted);text-decoration:underline}
+
+        .social-login{margin-bottom:1.25rem}
+        .btn-google{
+            width:100%;height:48px;display:flex;align-items:center;justify-content:center;gap:.65rem;
+            background:var(--surface);color:var(--ink);border:1.5px solid var(--border);
+            border-radius:var(--radius-md);font-size:.9rem;font-weight:600;cursor:pointer;
+            transition:background var(--motion-fast),border-color var(--motion-fast),box-shadow var(--motion-fast);
+        }
+        .btn-google:hover{background:#f8fafc;border-color:#cbd5e1;box-shadow:var(--shadow-sm)}
+        .btn-google:active{transform:translateY(0)}
+        .btn-google svg{width:20px;height:20px;flex-shrink:0}
+
+        @media(max-width:960px){
+            .brand-panel{display:none}
+            .mobile-brand{display:block}
+            .form-panel{padding:2rem 1.25rem;background:radial-gradient(ellipse at 30% 0%,rgba(20,184,166,.06),transparent 50%),var(--bg)}
+        }
+        @media(max-width:420px){
+            .otp-digit{width:38px;height:44px;font-size:1rem}
+            .field-input{height:44px;font-size:.88rem}
+            .btn-login{height:46px;font-size:.88rem}
+            .card-header h2{font-size:1.4rem}
+        }
+        :focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+        input:focus-visible{outline:none}
+    </style>
 </head>
-<body class="auth-page">
-    <div class="auth-shell">
-        <section class="auth-panel brand-panel">
-            <div class="brand-chip">Fish ERP</div>
-            <h1 class="brand-title">Fish Trading SaaS</h1>
-            <p class="brand-subtitle">Manage trading, inventory, payments, and reports from one dashboard.</p>
-
-            <ul class="brand-points">
-                <li>Role-based dashboards for tenant teams</li>
-                <li>Company-level data isolation</li>
-                <li>Built-in subscription and access controls</li>
-            </ul>
-        </section>
-
-        <section class="auth-panel form-panel">
-            <div class="auth-header">
-                <div class="auth-logo">🐟</div>
-                <h2>FisherP Login</h2>
-                <p>Choose platform login or company login.</p>
+<body>
+<div class="login-split">
+    <div class="brand-panel" role="presentation">
+        <div class="brand-inner">
+            <div class="brand-logo">
+                <div class="brand-logo-icon"><i class="fas fa-fish-fins"></i></div>
+                <div class="brand-logo-text">FisherP</div>
             </div>
-
-
-
-            <form id="loginForm" class="auth-form">
-                <div class="form-group company-only">
-                    <label for="companyCode">Company Code</label>
-                    <input class="form-input" type="text" id="companyCode" name="companyCode" placeholder="Example: OCEAN01" autocomplete="organization">
-                </div>
-
-                <div class="form-group">
-                    <label for="username" id="usernameLabel">Email / Mobile / Username</label>
-                    <input class="form-input" type="text" id="username" name="username" required placeholder="Enter email, mobile, or username" autocomplete="username">
-                </div>
-
-                <div class="form-group">
-                    <label for="password">Password</label>
-                    <input class="form-input" type="password" id="password" name="password" required placeholder="Enter password" autocomplete="current-password">
-                </div>
-
-                <button type="submit" class="btn-login">
-                    <span class="btn-text" id="loginButtonText">Login</span>
-                    <span class="btn-loading">Signing in...</span>
-                </button>
-
-                <div class="error-message" id="errorMessage"></div>
-            </form>
-
-
-
-            <div class="credentials-box">
-                <p class="credentials-title">Demo Users</p>
-                <p>admin / admin123</p>
-                <p>accountant / accountant123</p>
-                <p>trader / trader123</p>
-                <p>store / store123</p>
+            <h1>Manage your <span>fish trade</span> with confidence</h1>
+            <p>The complete trading platform built for fish merchants. Manage purchases, sales, inventory, and payments — all in one place.</p>
+            <div class="features-grid">
+                <div class="feature-chip"><i class="fas fa-bolt"></i> Real-time inventory</div>
+                <div class="feature-chip"><i class="fas fa-chart-line"></i> P&amp;L reports</div>
+                <div class="feature-chip"><i class="fas fa-users"></i> Multi-user access</div>
+                <div class="feature-chip"><i class="fas fa-shield-halved"></i> OTP login</div>
+                <div class="feature-chip"><i class="fas fa-building"></i> Multi-company</div>
+                <div class="feature-chip"><i class="fas fa-credit-card"></i> Payment tracking</div>
             </div>
-        </section>
+            <div class="brand-trust">
+                <div class="trust-item"><i class="fas fa-lock"></i> 256-bit encryption</div>
+                <div class="trust-item"><i class="fas fa-check-circle"></i> SOC 2 ready</div>
+                <div class="trust-item"><i class="fas fa-globe"></i> 99.9% uptime</div>
+            </div>
+        </div>
     </div>
 
-    <script src="login.js"></script>
+    <div class="form-panel">
+        <div class="login-card">
+            <div class="mobile-brand">
+                <div class="mobile-brand-logo">
+                    <div class="mobile-brand-icon"><i class="fas fa-fish-fins"></i></div>
+                    <div class="mobile-brand-name">FisherP</div>
+                </div>
+                <p>Fish trading made simple</p>
+            </div>
+
+            <div class="card-header">
+                <h2>Welcome back</h2>
+                <p>Enter your details to access your workspace</p>
+            </div>
+
+            <div id="alert" class="alert" role="alert">
+                <i id="alertIcon" class="fas fa-circle-exclamation"></i>
+                <span id="alertText"></span>
+            </div>
+
+            <div class="social-login">
+                <button type="button" class="btn-google" id="googleLoginBtn">
+                    <svg viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59a14.5 14.5 0 0 1 0-9.18l-7.98-6.19a24.0 24.0 0 0 0 0 21.56l7.98-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+                    Sign in with Google
+                </button>
+            </div>
+
+            <div class="divider">or sign in with credentials</div>
+
+            <form id="loginForm" novalidate autocomplete="on">
+                <div class="field">
+                    <label class="field-label" for="companyName">
+                        Company Name <span class="optional">(optional)</span>
+                    </label>
+                    <div class="field-wrap">
+                        <i class="fas fa-building field-icon"></i>
+                        <input type="text" id="companyName" class="field-input" placeholder="e.g. Fresh Fish Traders" autocomplete="organization">
+                    </div>
+                    <div id="companyNameStatus" class="field-status"></div>
+                </div>
+
+                <div class="field">
+                    <label class="field-label" for="email">Email Address</label>
+                    <div class="field-wrap">
+                        <i class="fas fa-envelope field-icon"></i>
+                        <input type="email" id="email" class="field-input" placeholder="you@company.com" autocomplete="email" inputmode="email">
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label class="field-label" for="phone">
+                        Phone Number
+                        <span id="phoneDetect" class="detect-badge phone" style="display:none">
+                            <i class="fas fa-shield-halved"></i> OTP available
+                        </span>
+                    </label>
+                    <div class="field-wrap">
+                        <i class="fas fa-phone field-icon"></i>
+                        <input type="tel" id="phone" class="field-input" placeholder="+91 98765 43210" autocomplete="tel" inputmode="tel">
+                        <button type="button" id="sendOtpBtn" class="field-action hidden">
+                            <i class="fas fa-paper-plane"></i> Send OTP
+                        </button>
+                    </div>
+                    <div class="field-hint">Enter your registered mobile to enable OTP login</div>
+                </div>
+
+                <div id="otpSection" class="otp-section">
+                    <div class="otp-header">
+                        <span><i class="fas fa-key"></i>&nbsp; Verification code</span>
+                        <button type="button" id="cancelOtp">Use password instead</button>
+                    </div>
+                    <div class="otp-digits" id="otpDigits">
+                        <input type="text" class="otp-digit" maxlength="1" inputmode="numeric" autocomplete="one-time-code" aria-label="OTP digit 1">
+                        <input type="text" class="otp-digit" maxlength="1" inputmode="numeric" aria-label="OTP digit 2">
+                        <input type="text" class="otp-digit" maxlength="1" inputmode="numeric" aria-label="OTP digit 3">
+                        <input type="text" class="otp-digit" maxlength="1" inputmode="numeric" aria-label="OTP digit 4">
+                        <input type="text" class="otp-digit" maxlength="1" inputmode="numeric" aria-label="OTP digit 5">
+                        <input type="text" class="otp-digit" maxlength="1" inputmode="numeric" aria-label="OTP digit 6">
+                    </div>
+                    <div class="otp-meta">
+                        <span id="otpTimer">Expires in 5:00</span>
+                        <button type="button" id="resendOtp" disabled>Resend OTP</button>
+                    </div>
+                </div>
+
+                <div class="divider" id="passwordDivider">or continue with password</div>
+
+                <div class="field" id="passwordField">
+                    <label class="field-label" for="password">Password</label>
+                    <div class="field-wrap">
+                        <i class="fas fa-lock field-icon"></i>
+                        <input type="password" id="password" class="field-input" placeholder="Enter your password" autocomplete="current-password">
+                        <button type="button" class="password-toggle" id="passwordToggle" aria-label="Show password">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="rememberMe"> Remember me
+                    </label>
+                    <a href="#" class="forgot-link" id="forgotLink">Forgot password?</a>
+                </div>
+
+                <button type="submit" class="btn-login" id="loginBtn">
+                    <span id="loginBtnText">Sign In</span>
+                </button>
+            </form>
+
+            <div class="card-footer">
+                <p>Don&#8217;t have an account? <a href="/register.html">Create your workspace</a></p>
+            </div>
+            <div class="legal">
+                By signing in you agree to our <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    'use strict';
+
+    var form            = document.getElementById('loginForm');
+    var companyInput    = document.getElementById('companyName');
+    var companyStatus   = document.getElementById('companyNameStatus');
+    var emailInput      = document.getElementById('email');
+    var phoneInput      = document.getElementById('phone');
+    var passwordInput   = document.getElementById('password');
+    var loginBtn        = document.getElementById('loginBtn');
+    var loginBtnText    = document.getElementById('loginBtnText');
+    var passwordToggle  = document.getElementById('passwordToggle');
+    var passwordField   = document.getElementById('passwordField');
+    var passwordDivider = document.getElementById('passwordDivider');
+    var sendOtpBtn      = document.getElementById('sendOtpBtn');
+    var phoneDetect     = document.getElementById('phoneDetect');
+    var otpSection      = document.getElementById('otpSection');
+    var otpDigits       = document.querySelectorAll('.otp-digit');
+    var cancelOtp       = document.getElementById('cancelOtp');
+    var resendOtp       = document.getElementById('resendOtp');
+    var otpTimer        = document.getElementById('otpTimer');
+    var alertEl         = document.getElementById('alert');
+    var alertIcon       = document.getElementById('alertIcon');
+    var alertText       = document.getElementById('alertText');
+    var forgotLink      = document.getElementById('forgotLink');
+
+    var API_BASE        = window.location.origin + '/api';
+    var loginMode       = 'password';
+    var otpSent         = false;
+    var countdownTimer  = null;
+    var resendCountdown = 0;
+
+    if (localStorage.getItem('token') || localStorage.getItem('access_token')) {
+        window.location.href = localStorage.getItem('isPlatformUser') === 'true'
+            ? '/platform/dashboard.html' : '/dashboard.html';
+        return;
+    }
+
+    var savedEmail = localStorage.getItem('savedEmail');
+    if (savedEmail && localStorage.getItem('rememberMe') === 'true') {
+        emailInput.value = savedEmail;
+        document.getElementById('rememberMe').checked = true;
+    }
+
+    function isValidPhone(v) { return /^\+?[0-9][\d\s\-]{6,14}$/.test((v || '').trim()); }
+    function normalizePhone(v) { return (v || '').replace(/[^\d]/g, '').slice(-10); }
+    function hasCompanyName(v) { return (v || '').trim().length >= 2; }
+
+    function validateCompanyName() {
+        var val = companyInput.value.trim();
+        if (!val) { companyStatus.textContent = ''; companyStatus.className = 'field-status'; companyInput.classList.remove('valid','invalid'); return true; }
+        if (!hasCompanyName(val)) { companyStatus.textContent = 'Enter at least 2 characters'; companyStatus.className = 'field-status error'; companyInput.classList.add('invalid'); companyInput.classList.remove('valid'); return false; }
+        companyStatus.textContent = 'Company name looks valid'; companyStatus.className = 'field-status success'; companyInput.classList.add('valid'); companyInput.classList.remove('invalid'); return true;
+    }
+    companyInput.addEventListener('input', validateCompanyName);
+    companyInput.addEventListener('blur', validateCompanyName);
+
+    function showAlert(msg, type) {
+        type = type || 'error';
+        var icons = { error:'fa-circle-exclamation', success:'fa-circle-check', warning:'fa-triangle-exclamation', info:'fa-circle-info' };
+        alertIcon.className = 'fas ' + (icons[type] || icons.error);
+        alertText.textContent = msg;
+        alertEl.className = 'alert alert-' + type + ' show';
+    }
+    function hideAlert() { alertEl.className = 'alert'; }
+
+    function setLoading(on) {
+        loginBtn.disabled = on;
+        loginBtnText.innerHTML = on ? '<span class="spinner"></span>' : 'Sign In';
+    }
+
+    function buildIdentifier() {
+        var email = (emailInput.value || '').trim();
+        var phone = (phoneInput.value || '').trim();
+        var company = (companyInput.value || '').trim();
+        return email || phone || company || '';
+    }
+
+    phoneInput.addEventListener('input', function () {
+        var val = phoneInput.value.trim();
+        if (isValidPhone(val)) {
+            sendOtpBtn.classList.remove('hidden'); phoneInput.classList.add('has-action'); phoneDetect.style.display = 'inline-flex';
+        } else {
+            sendOtpBtn.classList.add('hidden'); phoneInput.classList.remove('has-action'); phoneDetect.style.display = 'none';
+            if (otpSent) resetOtp();
+        }
+    });
+
+    passwordToggle.addEventListener('click', function () {
+        var isPassword = passwordInput.type === 'password';
+        passwordInput.type = isPassword ? 'text' : 'password';
+        passwordToggle.innerHTML = isPassword ? '<i class="fas fa-eye-slash"></i>' : '<i class="fas fa-eye"></i>';
+        passwordToggle.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
+    });
+
+    sendOtpBtn.addEventListener('click', async function () {
+        hideAlert();
+        var phone = normalizePhone(phoneInput.value);
+        if (phone.length < 10) { showAlert('Enter a valid 10-digit phone number.', 'error'); phoneInput.focus(); return; }
+
+        sendOtpBtn.disabled = true;
+        sendOtpBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>&nbsp; Sending\u2026';
+
+        try {
+            var res = await fetch(API_BASE + '/send-otp/', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({phone:phone,purpose:'login'}) });
+            var data = await res.json();
+            if (!res.ok) { showAlert(data.error || data.detail || 'Unable to send OTP.', 'error'); return; }
+
+            otpSent = true; loginMode = 'otp';
+            otpSection.classList.add('show');
+            passwordField.style.display = 'none'; passwordDivider.style.display = 'none';
+            otpDigits[0].focus(); startCountdown(60);
+            showAlert('OTP sent to \u2022\u2022\u2022\u2022\u2022\u2022' + phone.slice(-4), 'success');
+        } catch (err) { console.error('Send OTP error:', err); showAlert('Connection failed. Please try again.', 'error');
+        } finally { sendOtpBtn.disabled = false; sendOtpBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Send OTP'; }
+    });
+
+    cancelOtp.addEventListener('click', function () { resetOtp(); passwordInput.focus(); });
+
+    function resetOtp() {
+        otpSent = false; loginMode = 'password';
+        otpSection.classList.remove('show');
+        passwordField.style.display = ''; passwordDivider.style.display = '';
+        clearOtpDigits(); stopCountdown();
+    }
+
+    otpDigits.forEach(function (digit, idx) {
+        digit.addEventListener('input', function () {
+            digit.value = digit.value.replace(/\D/g, '');
+            digit.classList.toggle('filled', digit.value !== '');
+            if (digit.value && idx < otpDigits.length - 1) otpDigits[idx + 1].focus();
+            if (getOtpValue().length === 6) form.dispatchEvent(new Event('submit', { cancelable: true }));
+        });
+        digit.addEventListener('keydown', function (e) { if (e.key === 'Backspace' && !digit.value && idx > 0) otpDigits[idx - 1].focus(); });
+        digit.addEventListener('paste', function (e) {
+            e.preventDefault();
+            var paste = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '');
+            for (var i = 0; i < otpDigits.length && i < paste.length; i++) { otpDigits[i].value = paste[i]; otpDigits[i].classList.add('filled'); }
+            otpDigits[Math.min(paste.length, otpDigits.length - 1)].focus();
+            if (paste.length >= 6) form.dispatchEvent(new Event('submit', { cancelable: true }));
+        });
+    });
+
+    function getOtpValue() { return Array.from(otpDigits).map(function (d) { return d.value; }).join(''); }
+    function clearOtpDigits() { otpDigits.forEach(function (d) { d.value = ''; d.classList.remove('filled'); }); }
+    resendOtp.addEventListener('click', function () { sendOtpBtn.click(); });
+
+    function startCountdown(seconds) {
+        stopCountdown(); resendCountdown = seconds; resendOtp.disabled = true; updateTimerDisplay();
+        countdownTimer = setInterval(function () {
+            resendCountdown--;  updateTimerDisplay();
+            if (resendCountdown <= 0) { stopCountdown(); resendOtp.disabled = false; resendOtp.textContent = 'Resend OTP'; otpTimer.textContent = 'Code expired'; }
+        }, 1000);
+    }
+    function stopCountdown() { if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; } }
+    function updateTimerDisplay() {
+        var m = Math.floor(resendCountdown / 60), s = resendCountdown % 60;
+        otpTimer.textContent = 'Expires in ' + m + ':' + (s < 10 ? '0' : '') + s;
+        resendOtp.textContent = 'Resend (' + resendCountdown + 's)';
+    }
+
+    forgotLink.addEventListener('click', function (e) { e.preventDefault(); showAlert('Password reset link will be sent to your email. Feature coming soon.', 'info'); });
+
+    /* ── Google Sign-In ─────────────────────── */
+    var googleLoginBtn = document.getElementById('googleLoginBtn');
+    googleLoginBtn.addEventListener('click', function () {
+        var company = (companyInput.value || '').trim();
+        var params = new URLSearchParams();
+        params.set('redirect_uri', window.location.origin + '/login.html');
+        if (company) params.set('company_name', company);
+        window.location.href = API_BASE + '/auth/google/login/?' + params.toString();
+    });
+
+    /* Handle Google OAuth callback */
+    (function handleGoogleCallback() {
+        var params = new URLSearchParams(window.location.search);
+        var googleToken = params.get('access_token') || params.get('token');
+        if (!googleToken) return;
+        /* Clean URL */
+        window.history.replaceState({}, document.title, window.location.pathname);
+        setLoading(true);
+        showAlert('Signing in with Google\u2026', 'info');
+        fetch(API_BASE + '/auth/google/callback/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ access_token: googleToken }),
+            credentials: 'include'
+        })
+        .then(function (res) { return res.json().then(function (d) { return { ok: res.ok, data: d }; }); })
+        .then(function (result) {
+            if (!result.ok) { showAlert(result.data.error || result.data.detail || 'Google sign-in failed.', 'error'); setLoading(false); return; }
+            handleSuccess(result.data);
+        })
+        .catch(function () { showAlert('Google sign-in failed. Please try again.', 'error'); setLoading(false); });
+    })();
+
+    form.addEventListener('submit', async function (e) {
+        e.preventDefault(); hideAlert();
+        if (!validateCompanyName()) { showAlert('Please check the company name.', 'error'); return; }
+        var identifier = buildIdentifier();
+        if (!identifier) { showAlert('Please enter your email, phone, or company name.', 'error'); emailInput.focus(); return; }
+        setLoading(true);
+
+        try {
+            if (loginMode === 'otp') {
+                var otp = getOtpValue();
+                if (otp.length !== 6) { showAlert('Enter the complete 6-digit OTP.', 'error'); otpDigits[0].focus(); setLoading(false); return; }
+                var phone = normalizePhone(phoneInput.value);
+                var res = await fetch(API_BASE + '/verify-otp/', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({phone:phone,otp:otp}), credentials:'include' });
+                var data = await res.json();
+                if (!res.ok) { showAlert(data.error || data.detail || 'OTP verification failed.', 'error'); clearOtpDigits(); otpDigits[0].focus(); setLoading(false); return; }
+                if (data.user_exists === false) { showAlert('Phone verified! No account found. Please register first.', 'warning'); setLoading(false); return; }
+                handleSuccess(data);
+            } else {
+                var password = passwordInput.value;
+                if (!password) { showAlert('Please enter your password.', 'error'); passwordInput.focus(); setLoading(false); return; }
+                var res2 = await fetch(API_BASE + '/login/', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({identifier:identifier,password:password}), credentials:'include' });
+                var data2 = await res2.json();
+                if (!res2.ok) {
+                    var errMsg = data2.error || data2.detail || data2.message || 'Invalid credentials.';
+                    if (isValidPhone(phoneInput.value) && res2.status === 401) errMsg += ' You can also try logging in with OTP.';
+                    showAlert(errMsg, 'error'); setLoading(false); return;
+                }
+                handleSuccess(data2);
+            }
+        } catch (err) { console.error('Login error:', err); showAlert('Unable to connect. Please check your connection.', 'error'); setLoading(false); }
+    });
+
+    function handleSuccess(data) {
+        if (document.getElementById('rememberMe').checked) { localStorage.setItem('savedEmail', emailInput.value.trim()); localStorage.setItem('rememberMe', 'true'); }
+        else { localStorage.removeItem('savedEmail'); localStorage.removeItem('rememberMe'); }
+
+        var accessToken = data.access || data.token;
+        localStorage.setItem('token', accessToken); localStorage.setItem('access_token', accessToken);
+        if (data.refresh) localStorage.setItem('refresh_token', data.refresh);
+
+        var user = data.user || data;
+        localStorage.setItem('username', user.username || '');
+        localStorage.setItem('user_id', user.id || '');
+        localStorage.setItem('userRole', user.role || 'tenant_admin');
+        localStorage.setItem('role', user.role || 'tenant_admin');
+
+        var isPlatform = Boolean(user.is_platform_user || user.is_platform_operator || user.is_platform_support || ['platform_operator','platform_support','platform_maintainer','platform_super_admin'].includes(user.role));
+        localStorage.setItem('isPlatformUser', isPlatform ? 'true' : 'false');
+        localStorage.setItem('two_factor_enabled', user.two_factor_enabled ? '1' : '0');
+
+        if (user.company) {
+            localStorage.setItem('company_name', user.company.name || '');
+            localStorage.setItem('company_id', user.company.id || '');
+            localStorage.setItem('company_slug', user.company.slug || '');
+            if (user.company.slug) localStorage.setItem('tenant_slug', user.company.slug);
+        }
+        if (companyInput.value.trim()) localStorage.setItem('company_name', companyInput.value.trim());
+
+        showAlert('Welcome back! Redirecting\u2026', 'success');
+        setTimeout(function () { window.location.href = isPlatform ? '/platform/dashboard.html' : '/dashboard.html'; }, 400);
+    }
+})();
+</script>
 </body>
 </html>

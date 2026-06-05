@@ -1,5 +1,13 @@
 // Fish ERP - UI Components
 
+function _debounce(fn, ms) {
+    let timer;
+    return function (...args) {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn.apply(this, args), ms);
+    };
+}
+
 const UI = {
     charts: {},
     modalLastFocused: null,
@@ -39,7 +47,9 @@ const UI = {
         if (logoutBtn) {
             logoutBtn.addEventListener('click', (e) => {
                 e.preventDefault();
-                window.Auth.logout();
+                if (window.Auth?.logout) { window.Auth.logout(); }
+                else if (window.App?.logout) { window.App.logout(); }
+                else { localStorage.clear(); window.location.href = '/'; }
             });
         }
     },
@@ -84,18 +94,19 @@ const UI = {
             results.innerHTML = '';
         };
 
-        const runSearch = window.Utils.debounce(async () => {
+        const runSearch = (window.Utils?.debounce || _debounce)(async () => {
             const query = input.value.trim();
             if (query.length < 2) {
                 hideResults();
                 return;
             }
 
+            const doGet = (url) => window.API ? window.API.get(url) : window.App.apiCall(url);
             const [fish, buyers, purchases, sales] = await Promise.all([
-                window.API.get(`/trading/fish/?search=${encodeURIComponent(query)}`),
-                window.API.get(`/trading/buyers/?search=${encodeURIComponent(query)}`),
-                window.API.get(`/trading/purchase-batches/?search=${encodeURIComponent(query)}`),
-                window.API.get(`/trading/sales/?search=${encodeURIComponent(query)}`),
+                doGet(`/trading/fish/?search=${encodeURIComponent(query)}`),
+                doGet(`/trading/buyers/?search=${encodeURIComponent(query)}`),
+                doGet(`/trading/purchase-batches/?search=${encodeURIComponent(query)}`),
+                doGet(`/trading/sales/?search=${encodeURIComponent(query)}`),
             ]);
 
             const items = [];
@@ -156,10 +167,11 @@ const UI = {
         if (!wrap || !button || !dropdown || !list || !count) return;
 
         const renderNotifications = async () => {
+            const api = window.API || { get: (url) => window.App?.apiCall?.(url.replace(/^\/api/, '')) };
             const [lowStock, pendingPayments, subscription] = await Promise.all([
-                window.API.get('/trading/inventory/?status=low_stock'),
-                window.API.get('/dashboard/pending-payments/'),
-                window.API.get('/subscriptions/current/'),
+                api.get('/trading/inventory/?status=low_stock').catch(() => []),
+                api.get('/dashboard/pending-payments/').catch(() => []),
+                api.get('/subscriptions/current/').catch(() => null),
             ]);
 
             const items = [];
@@ -325,10 +337,11 @@ const UI = {
     showAlert: (message, type = 'info') => {
         const alertDiv = document.createElement('div');
         alertDiv.className = `alert alert-${type}`;
-        alertDiv.innerHTML = `
-            <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'danger' ? 'exclamation-circle' : 'info-circle'}"></i>
-            ${message}
-        `;
+
+        const icon = document.createElement('i');
+        icon.className = `fas fa-${type === 'success' ? 'check-circle' : type === 'danger' ? 'exclamation-circle' : 'info-circle'}`;
+        alertDiv.appendChild(icon);
+        alertDiv.appendChild(document.createTextNode(' ' + message));
 
         const content = document.getElementById('mainContent');
         if (content) {
@@ -394,7 +407,10 @@ const UI = {
     },
 
     setupUserInfo: () => {
-        const user = window.Auth.getUser();
+        const user = window.Auth?.getUser?.() || {
+            username: localStorage.getItem('username') || 'User',
+            role: localStorage.getItem('userRole') || 'tenant_admin'
+        };
 
         const userName = document.getElementById('userName');
         const userAvatar = document.getElementById('userAvatar');
@@ -403,7 +419,7 @@ const UI = {
 
         if (userName) userName.textContent = user.username;
         if (userAvatar) userAvatar.textContent = user.username.charAt(0).toUpperCase();
-        if (userRole) userRole.textContent = window.Auth.getRoleName(user.role);
+        if (userRole) userRole.textContent = window.Auth?.getRoleName ? window.Auth.getRoleName(user.role) : (user.role || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
         if (companyTag) {
             companyTag.textContent = localStorage.getItem('company_name') || localStorage.getItem('tenant_slug') || 'Company Workspace';
         }

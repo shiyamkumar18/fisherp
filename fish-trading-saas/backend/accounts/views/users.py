@@ -18,8 +18,11 @@ from ..utils import (
     user_role_flags,
     normalize_tenant_role,
     validate_password_strength,
+    get_tokens_for_user,
+    get_user_role,
 )
 from ..models_audit import AuditLog
+from ..models import PhoneOTPChallenge
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -35,6 +38,148 @@ class UserRegistrationView(APIView):
 
     def post(self, request):  # noqa: C901
         from companies.models import Company
+        from django.utils.text import slugify
+
+        verification_token = request.data.get('verification_token')
+
+        if verification_token:
+            owner_name = request.data.get('name', '').strip()
+            shop_name = request.data.get('shop_name', '').strip()
+            phone = ''.join(char for char in str(request.data.get('phone', '')).strip() if char.isdigit())
+            location = request.data.get('location', '').strip()
+
+            if len(phone) == 12 and phone.startswith('91'):
+                phone = phone[2:]
+
+            if not owner_name or not shop_name or not phone:
+                return Response(
+                    {'error': 'Owner name, shop name, and phone number are required.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            if not re.match(PHONE_PATTERN, phone):
+                return Response(
+                    {'error': 'Phone must be 10 digits'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            otp_challenge = PhoneOTPChallenge.objects.filter(
+                token=verification_token,
+                phone=phone,
+                is_used=False,
+            ).first()
+
+            if not otp_challenge or otp_challenge.is_expired() or not otp_challenge.verified_at:
+                return Response(
+                    {'error': 'Phone verification expired. Please request a new OTP.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            if User.objects.filter(phone=phone).exists():
+                return Response(
+                    {'error': 'Phone number already registered'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            company_slug = slugify(shop_name)
+            base_slug = company_slug or f"shop-{phone[-4:]}"
+            company_slug = base_slug
+            counter = 1
+            while Company.objects.filter(slug=company_slug).exists():
+                company_slug = f"{base_slug}-{counter}"
+                counter += 1
+
+            username_base = f"owner_{phone}"
+            username = username_base
+            counter = 1
+            while User.objects.filter(username=username).exists():
+                username = f"{username_base}_{counter}"
+                counter += 1
+
+            try:
+                company = Company.objects.create(
+                    name=shop_name,
+                    slug=company_slug,
+                    city=location,
+                    phone=phone,
+                    is_active=True,
+                    is_verified=True,
+                    verification_date=timezone.now(),
+                )
+
+                user = User(
+                    username=username,
+                    phone=phone,
+                    company=company,
+                    role='tenant_admin',
+                    is_active=True,
+                    first_name=owner_name.split()[0] if owner_name else '',
+                    last_name=' '.join(owner_name.split()[1:]) if len(owner_name.split()) > 1 else '',
+                )
+                user.set_unusable_password()
+                user.save()
+
+                company.admin = user
+                company.save(update_fields=['admin'])
+
+                AuditLog.objects.create(
+                    user=user,
+                    tenant=company,
+                    action='create',
+                    model_name='User',
+                    object_id=user.id,
+                    object_repr=f"{user.username} ({user.role})",
+                    changes={'phone': user.phone, 'role': user.role, 'company': company.name},
+                    ip_address=get_client_ip(request) if hasattr(request, 'META') else None
+                )
+
+                from subscriptions.models import Subscription, SubscriptionTier
+                free_tier, _ = SubscriptionTier.objects.get_or_create(
+                    name='free',
+                    defaults={
+                        'max_users': 3,
+                        'max_storage_gb': 1,
+                        'price_monthly': 0,
+                        'price_yearly': 0,
+                        'allow_api_access': False,
+                        'allow_analytics': False,
+                    }
+                )
+
+                Subscription.objects.create(
+                    tenant=user,
+                    company=company,
+                    tier=free_tier,
+                    status='active',
+                    start_date=timezone.now(),
+                    expiry_date=timezone.now() + timedelta(days=14),
+                )
+
+                otp_challenge.is_used = True
+                otp_challenge.save(update_fields=['is_used', 'updated_at'])
+
+                tokens = get_tokens_for_user(user)
+                return Response({
+                    'message': 'Account created successfully',
+                    'user_id': user.id,
+                    'username': user.username,
+                    'phone': user.phone,
+                    'role': get_user_role(user),
+                    'role_display': user.get_role_display() if hasattr(user, 'get_role_display') else user.role,
+                    'tenant_slug': company.slug,
+                    'company_name': company.name,
+                    'schema_name': company.slug,
+                    **user_role_flags(user),
+                    'two_factor_enabled': user.two_factor_enabled,
+                    'redirect_url': '/dashboard.html',
+                    **tokens,
+                }, status=status.HTTP_201_CREATED)
+            except Exception as exc:
+                logger.error(f"OTP registration failed: {str(exc)}")
+                return Response(
+                    {'error': 'Registration failed. Please try again or contact support.'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
 
         company_name = request.data.get('company_name', '').strip()
         city = request.data.get('city', '').strip()
@@ -102,7 +247,6 @@ class UserRegistrationView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        from django.utils.text import slugify
         company_slug = slugify(company_name)
 
         base_slug = company_slug
@@ -218,13 +362,18 @@ class UserProfileView(APIView):
         return Response({
             'id': user.id,
             'username': user.username,
+            'first_name': user.first_name,
+            'last_name': user.last_name,
             'email': user.email,
             'phone': user.phone,
+            'phone_number': user.phone,
             'schema_name': user.company.slug if user.company else user.schema_name,
+            'company_name': user.company.name if user.company else None,
             'role': user.role,
             'role_display': user.get_role_display() if hasattr(user, 'get_role_display') else user.role,
             **user_role_flags(user),
             'is_active': user.is_active,
+            'two_factor_enabled': user.two_factor_enabled,
             'date_joined': user.date_joined,
         })
 
@@ -232,8 +381,10 @@ class UserProfileView(APIView):
         """Update user profile"""
         user = request.user
 
+        first_name = request.data.get('first_name', user.first_name)
+        last_name = request.data.get('last_name', user.last_name)
         email = request.data.get('email', user.email)
-        phone = request.data.get('phone', user.phone)
+        phone = request.data.get('phone', user.phone) or request.data.get('phone_number', user.phone)
 
         # Validate email format using Django's built-in validator
         if email:
@@ -260,15 +411,19 @@ class UserProfileView(APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
+        user.first_name = first_name
+        user.last_name = last_name
         user.email = email
         user.phone = phone
-        user.save(update_fields=['email', 'phone'])
+        user.save(update_fields=['first_name', 'last_name', 'email', 'phone'])
 
         return Response({
             'message': 'Profile updated successfully',
             'user': {
                 'id': user.id,
                 'username': user.username,
+                'first_name': user.first_name,
+                'last_name': user.last_name,
                 'email': user.email,
                 'phone': user.phone,
             }
@@ -296,9 +451,15 @@ class UserListView(APIView):
 
         users = queryset.order_by('id').values(
             'id', 'username', 'email', 'phone',
-            'is_active', 'date_joined', 'role'
+            'is_active', 'date_joined', 'role',
+            'company__name'
         )
-        return Response(list(users))
+        payload = []
+        for entry in users:
+            row = dict(entry)
+            row['company_name'] = row.pop('company__name', None)
+            payload.append(row)
+        return Response(payload)
 
 
 class TenantUserManagementView(APIView):
@@ -319,9 +480,15 @@ class TenantUserManagementView(APIView):
 
         users = User.objects.filter(company=request.user.company).values(
             'id', 'username', 'email', 'phone', 'role',
-            'is_active', 'date_joined', 'last_login'
+            'is_active', 'date_joined', 'last_login',
+            'company__name'
         )
-        return Response(list(users))
+        payload = []
+        for entry in users:
+            row = dict(entry)
+            row['company_name'] = row.pop('company__name', None)
+            payload.append(row)
+        return Response(payload)
 
     def post(self, request):
         """Create a new user within the tenant"""
@@ -514,6 +681,49 @@ class TenantUserManagementView(APIView):
             'message': 'User deleted successfully'
         }, status=status.HTTP_200_OK)
 
+
+class ChangePasswordView(APIView):
+    """Change user password"""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        old_password = request.data.get('old_password')
+        new_password = request.data.get('new_password')
+
+        if not old_password or not new_password:
+            return Response(
+                {'error': 'Both old_password and new_password are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Verify old password
+        if not user.check_password(old_password):
+            return Response(
+                {'error': 'Current password is incorrect'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+
+        # Validate new password strength
+        if len(new_password) < 8:
+            return Response(
+                {'error': 'New password must be at least 8 characters long'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if new_password == old_password:
+            return Response(
+                {'error': 'New password must be different from current password'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Set new password
+        user.set_password(new_password)
+        user.save(update_fields=['password'])
+
+        return Response({
+            'message': 'Password changed successfully'
+        })
 
 class CustomProfileRedirectView(LoginRequiredMixin, RedirectView):
     """

@@ -52,6 +52,12 @@
     box-shadow: 0 16px 32px rgba(15, 118, 110, 0.22);
 }
 
+.btn-primary:hover,
+.btn-save:hover {
+    box-shadow: 0 20px 40px rgba(15, 118, 110, 0.3);
+    background: linear-gradient(135deg, #115e59, #0f766e);
+}
+
 .btn-secondary {
     background: #e9f7f5;
     color: #0f766e;
@@ -60,16 +66,31 @@
 .btn-danger {
     background: linear-gradient(135deg, #dc2626, #ef4444);
     color: #fff;
+    box-shadow: 0 12px 24px rgba(220, 38, 38, 0.18);
+}
+
+.btn-danger:hover {
+    box-shadow: 0 16px 32px rgba(220, 38, 38, 0.28);
 }
 
 .btn-warning {
     background: linear-gradient(135deg, #f59e0b, #fbbf24);
     color: #1f2937;
+    box-shadow: 0 12px 24px rgba(245, 158, 11, 0.18);
+}
+
+.btn-warning:hover {
+    box-shadow: 0 16px 32px rgba(245, 158, 11, 0.28);
 }
 
 .btn-info {
     background: linear-gradient(135deg, #0284c7, #38bdf8);
     color: #fff;
+    box-shadow: 0 12px 24px rgba(2, 132, 199, 0.18);
+}
+
+.btn-info:hover {
+    box-shadow: 0 16px 32px rgba(2, 132, 199, 0.28);
 }
 
 .btn-light,
@@ -227,8 +248,12 @@ select.form-control,
     transition: background 160ms ease, transform 160ms ease;
 }
 
+.data-table tbody tr:nth-child(even) {
+    background: rgba(244, 250, 251, 0.5);
+}
+
 .data-table tbody tr:hover {
-    background: rgba(20, 184, 166, 0.05);
+    background: rgba(20, 184, 166, 0.06);
 }
 
 .status-badge,
@@ -370,4 +395,40 @@ select.form-control,
     background: rgba(14, 165, 233, 0.1);
     color: #0369a1;
     border-color: rgba(14, 165, 233, 0.14);
+}
+
+/* Checkbox styling */
+.data-table input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: #0f766e;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+/* Secondary button hover */
+.btn-secondary:hover {
+    background: #d4f0ec;
+    box-shadow: 0 8px 20px rgba(15, 118, 110, 0.12);
+}
+
+.btn-ghost:hover,
+.btn-light:hover {
+    background: #e8f7f5;
+    border-color: rgba(15, 118, 110, 0.12);
+}
+
+/* Table filter input improvements */
+.table-filter-bar .form-input,
+.table-filter-bar .form-select {
+    min-height: 42px;
+    padding: 0.6rem 0.85rem;
+    border-radius: 14px;
+    font-size: 0.88rem;
+}
+
+/* Trend badge icon spacing */
+.trend-badge i {
+    margin-right: 0.25rem;
+    font-size: 0.78rem;
 }

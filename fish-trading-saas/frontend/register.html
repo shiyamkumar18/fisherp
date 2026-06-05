@@ -3,280 +3,483 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fish ERP - Register Company</title>
-    <link rel="stylesheet" href="css/auth-modern.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <title>Fish ERP - Create Account</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .auth-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 420px;
+            padding: 40px;
+        }
+
+        .auth-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .auth-header h1 {
+            font-size: 28px;
+            color: #1a202c;
+            margin-bottom: 8px;
+        }
+
+        .auth-header p {
+            color: #718096;
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 6px;
+        }
+
+        input {
+            width: 100%;
+            padding: 11px 12px;
+            border: 1px solid #cbd5e0;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        input::placeholder {
+            color: #a0aec0;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .form-row .form-group {
+            margin-bottom: 0;
+        }
+
+        .password-wrapper {
+            position: relative;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #718096;
+            cursor: pointer;
+            font-size: 16px;
+            padding: 5px;
+        }
+
+        .password-toggle:hover {
+            color: #667eea;
+        }
+
+        .password-strength {
+            font-size: 12px;
+            margin-top: 4px;
+            height: 4px;
+            background: #e2e8f0;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .password-strength-bar {
+            height: 100%;
+            border-radius: 2px;
+            transition: all 0.2s;
+            width: 0%;
+        }
+
+        .error-text {
+            font-size: 12px;
+            color: #e53e3e;
+            margin-top: 4px;
+            display: none;
+        }
+
+        .error-text.show {
+            display: block;
+        }
+
+        input.error {
+            border-color: #fc8181;
+            background-color: #fff5f5;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: flex-start;
+            margin: 20px 0;
+            gap: 10px;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+            margin-top: 3px;
+            cursor: pointer;
+        }
+
+        .checkbox-group label {
+            margin: 0;
+            font-size: 13px;
+            font-weight: 400;
+            cursor: pointer;
+        }
+
+        .alert {
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .alert.show {
+            display: block;
+        }
+
+        .alert.success {
+            background-color: #f0fff4;
+            color: #22543d;
+            border: 1px solid #9ae6b4;
+        }
+
+        .alert.error {
+            background-color: #fff5f5;
+            color: #742a2a;
+            border: 1px solid #fc8181;
+        }
+
+        button {
+            width: 100%;
+            padding: 11px 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-text {
+            display: inline;
+        }
+
+        .btn-loading {
+            display: none;
+        }
+
+        button.loading .btn-text {
+            display: none;
+        }
+
+        button.loading .btn-loading {
+            display: inline;
+        }
+
+        .switch-link {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 13px;
+            color: #718096;
+        }
+
+        .switch-link a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .switch-link a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 480px) {
+            .auth-container {
+                padding: 30px 20px;
+            }
+
+            .auth-header h1 {
+                font-size: 24px;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
 </head>
-<body class="auth-page">
-    <div class="auth-bg-shape auth-bg-shape-a"></div>
-    <div class="auth-bg-shape auth-bg-shape-b"></div>
+<body>
+    <div class="auth-container">
+        <div class="auth-header">
+            <h1>Create Account</h1>
+            <p>Join Fish ERP and start managing your business</p>
+        </div>
 
-    <div class="auth-shell">
-        <section class="auth-panel brand-panel">
-            <div class="brand-chip">Launch Your Workspace</div>
-            <h1 class="brand-title">Start a structured fish trading operation in minutes.</h1>
-            <p class="brand-subtitle">Create your company workspace, onboard your first admin, and switch from fragmented spreadsheets to a real control layer.</p>
+        <div id="alertBox" class="alert"></div>
 
-            <ul class="brand-points">
-                <li>Purchases, inventory, sales, and payments in one place</li>
-                <li>Built-in team roles for admin, accountant, trader, and store staff</li>
-                <li>Reporting and subscription controls ready from day one</li>
-            </ul>
-
-            <div class="brand-metrics">
-                <article class="metric-card">
-                    <strong>2 min</strong>
-                    <span>Typical onboarding time</span>
-                </article>
-                <article class="metric-card">
-                    <strong>Secure</strong>
-                    <span>Tenant-isolated data model</span>
-                </article>
-            </div>
-        </section>
-
-        <section class="auth-panel form-panel">
-            <div class="auth-header">
-                <div class="auth-logo"><i class="fas fa-building"></i></div>
-                <h2>Create Company Workspace</h2>
-                <p>Provide company details and your primary administrator account.</p>
-            </div>
-
-            <div id="message"></div>
-
-            <div class="auth-steps" aria-label="Registration progress">
-                <div class="auth-step active" data-step-indicator="1"><span>1</span> Company</div>
-                <div class="auth-step" data-step-indicator="2"><span>2</span> Admin</div>
-                <div class="auth-step" data-step-indicator="3"><span>3</span> Confirm</div>
-            </div>
-
-            <form id="registerForm" class="auth-form">
-                <div class="register-grid">
-                    <section class="register-section register-step" data-step="1">
-                        <h3>Company Details</h3>
-
-                        <div class="form-group">
-                            <label for="company_name">Company Name *</label>
-                            <input class="form-input" type="text" id="company_name" required placeholder="BlueWave Fisheries Pvt Ltd">
-                        </div>
-                        <div class="form-group">
-                            <label for="city">City</label>
-                            <input class="form-input" type="text" id="city" placeholder="Chennai">
-                        </div>
-                        <div class="form-group">
-                            <label for="phone">Phone</label>
-                            <input class="form-input" type="text" id="phone" placeholder="+91 98765 43210">
-                        </div>
-                        <div class="form-group">
-                            <label for="gst_number">GST Number</label>
-                            <input class="form-input" type="text" id="gst_number" placeholder="22AAAAA0000A1Z5" spellcheck="false">
-                        </div>
-
-                        <div class="hero-actions" style="margin-top: 12px;">
-                            <button class="btn-login" type="button" onclick="goToStep(2)">
-                                <span class="btn-text">Continue to Admin</span>
-                            </button>
-                        </div>
-                    </section>
-
-                    <section class="register-section register-step" data-step="2" hidden>
-                        <h3>Admin Details</h3>
-
-                        <div class="form-group">
-                            <label for="full_name">Full Name</label>
-                            <input class="form-input" type="text" id="full_name" placeholder="Arun Kumar">
-                        </div>
-                        <div class="form-group">
-                            <label for="email">Email *</label>
-                            <input class="form-input" type="email" id="email" required placeholder="admin@bluewave.in" spellcheck="false" autocomplete="email">
-                        </div>
-                        <div class="form-group">
-                            <label for="admin_phone">Phone</label>
-                            <input class="form-input" type="text" id="admin_phone" placeholder="+91 91234 56789">
-                        </div>
-                        <div class="form-group">
-                            <label for="password">Password *</label>
-                            <input class="form-input" type="password" id="password" required autocomplete="new-password" minlength="8" placeholder="Minimum 8 characters">
-                            <div class="password-meter" aria-live="polite">
-                                <div class="password-meter-track">
-                                    <div class="password-meter-fill" id="passwordMeterFill"></div>
-                                </div>
-                                <div class="password-meter-text" id="passwordMeterText">Password strength: start typing</div>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label for="confirm_password">Confirm Password *</label>
-                            <input class="form-input" type="password" id="confirm_password" required autocomplete="new-password" minlength="8" placeholder="Re-enter password">
-                        </div>
-
-                        <div class="hero-actions" style="margin-top: 12px;">
-                            <button class="btn btn-secondary" type="button" onclick="goToStep(1)">Back</button>
-                            <button class="btn-login" type="button" onclick="goToStep(3)">
-                                <span class="btn-text">Review & Continue</span>
-                            </button>
-                        </div>
-                    </section>
-
-                    <section class="register-section register-step" data-step="3" hidden>
-                        <h3>Confirm & Create Workspace</h3>
-                        <p class="field-help">Review details, accept confirmation, and create your first login path.</p>
-
-                        <div class="state-panel" style="margin: 0.4rem 0 0; min-height: 130px;">
-                            <i class="fas fa-flag-checkered"></i>
-                            <strong>Success path</strong>
-                            <p>After registration you will be redirected to company login to complete first sign-in.</p>
-                        </div>
-
-                        <label class="consent-row">
-                            <input type="checkbox" id="consent" required>
-                            <span>I confirm that the provided business details are accurate.</span>
-                        </label>
-
-                        <div class="register-actions hero-actions">
-                            <button class="btn btn-secondary" type="button" onclick="goToStep(2)">Back</button>
-                            <button class="btn-login" type="submit">
-                                <span class="btn-text">Register Company</span>
-                                <span class="btn-loading">Registering...</span>
-                            </button>
-                        </div>
-                    </section>
+        <form id="registerForm">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="first_name">First Name *</label>
+                    <input type="text" id="first_name" name="first_name" placeholder="John" required>
+                    <div class="error-text"></div>
                 </div>
-            </form>
-
-            <div class="switch-link">
-                Already registered? <a href="/login.html">Sign in here</a>
+                <div class="form-group">
+                    <label for="last_name">Last Name *</label>
+                    <input type="text" id="last_name" name="last_name" placeholder="Doe" required>
+                    <div class="error-text"></div>
+                </div>
             </div>
-        </section>
+
+            <div class="form-group">
+                <label for="company_name">Company Name *</label>
+                <input type="text" id="company_name" name="company_name" placeholder="Your Company Ltd" required>
+                <div class="error-text"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="email">Email *</label>
+                <input type="email" id="email" name="email" placeholder="you@example.com" required>
+                <div class="error-text"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="phone">Phone *</label>
+                <input type="tel" id="phone" name="phone" placeholder="+1 (555) 000-0000" required>
+                <div class="error-text"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password *</label>
+                <div class="password-wrapper">
+                    <input type="password" id="password" name="password" placeholder="Minimum 8 characters" required minlength="8">
+                    <button type="button" class="password-toggle" data-target="password">👁️</button>
+                </div>
+                <div class="password-strength">
+                    <div class="password-strength-bar"></div>
+                </div>
+                <div class="error-text"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="password_confirm">Confirm Password *</label>
+                <div class="password-wrapper">
+                    <input type="password" id="password_confirm" name="password_confirm" placeholder="Re-enter password" required minlength="8">
+                    <button type="button" class="password-toggle" data-target="password_confirm">👁️</button>
+                </div>
+                <div class="error-text"></div>
+            </div>
+
+            <div class="checkbox-group">
+                <input type="checkbox" id="terms" name="terms" required>
+                <label for="terms">I agree to the Terms of Service and Privacy Policy</label>
+            </div>
+
+            <button type="submit">
+                <span class="btn-text">Create Account</span>
+                <span class="btn-loading">Creating...</span>
+            </button>
+        </form>
+
+        <div class="switch-link">
+            Already have an account? <a href="/login.html">Sign in</a>
+        </div>
     </div>
 
     <script>
-        const API_URL = `${window.location.origin}/api/auth/register/`;
         const form = document.getElementById('registerForm');
-        const submitBtn = form.querySelector('button[type="submit"].btn-login');
-        let activeStep = 1;
+        const alertBox = document.getElementById('alertBox');
+        const submitBtn = form.querySelector('button[type="submit"]');
 
-        function showMessage(text, type) {
-            const messageEl = document.getElementById('message');
-            messageEl.innerHTML = `<div class="message ${type}">${text}</div>`;
-        }
-
-        function collectData() {
-            return {
-                company_name: document.getElementById('company_name').value.trim(),
-                city: document.getElementById('city').value.trim(),
-                phone: document.getElementById('phone').value.trim(),
-                gst_number: document.getElementById('gst_number').value.trim(),
-                full_name: document.getElementById('full_name').value.trim(),
-                email: document.getElementById('email').value.trim(),
-                admin_phone: document.getElementById('admin_phone').value.trim(),
-                password: document.getElementById('password').value,
-                confirm_password: document.getElementById('confirm_password').value
-            };
-        }
-
-        function updateStepUI(step) {
-            activeStep = step;
-            document.querySelectorAll('.register-step').forEach((section) => {
-                section.hidden = Number(section.getAttribute('data-step')) !== step;
+        // Password visibility toggle
+        document.querySelectorAll('.password-toggle').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const targetId = btn.getAttribute('data-target');
+                const input = document.getElementById(targetId);
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    btn.textContent = '🙈';
+                } else {
+                    input.type = 'password';
+                    btn.textContent = '👁️';
+                }
             });
-            document.querySelectorAll('[data-step-indicator]').forEach((stepEl) => {
-                stepEl.classList.toggle('active', Number(stepEl.getAttribute('data-step-indicator')) === step);
-            });
-        }
-
-        function validateStep(step) {
-            if (step === 2) {
-                const company = document.getElementById('company_name').value.trim();
-                if (!company) {
-                    showMessage('Company name is required before continuing.', 'error');
-                    return false;
-                }
-            }
-
-            if (step === 3) {
-                const email = document.getElementById('email').value.trim();
-                const password = document.getElementById('password').value;
-                const confirm = document.getElementById('confirm_password').value;
-                if (!email || !password || !confirm) {
-                    showMessage('Complete admin details before review.', 'error');
-                    return false;
-                }
-                if (password !== confirm) {
-                    showMessage('Passwords do not match.', 'error');
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        window.goToStep = (step) => {
-            if (!validateStep(step)) return;
-            updateStepUI(step);
-            showMessage('', '');
-        };
-
-        const passwordInput = document.getElementById('password');
-        const meterFill = document.getElementById('passwordMeterFill');
-        const meterText = document.getElementById('passwordMeterText');
-
-        passwordInput.addEventListener('input', () => {
-            const value = passwordInput.value;
-            let score = 0;
-            if (value.length >= 8) score += 1;
-            if (/[A-Z]/.test(value)) score += 1;
-            if (/[0-9]/.test(value)) score += 1;
-            if (/[^A-Za-z0-9]/.test(value)) score += 1;
-
-            const widths = ['0%', '25%', '50%', '75%', '100%'];
-            const labels = ['Very weak', 'Weak', 'Fair', 'Good', 'Strong'];
-            const colors = ['#e57f54', '#d97706', '#ca8a04', '#16a34a', '#0f766e'];
-            const level = Math.min(score, 4);
-
-            meterFill.style.width = widths[level];
-            meterFill.style.background = colors[level];
-            meterText.textContent = `Password strength: ${labels[level]}`;
         });
 
-        updateStepUI(1);
+        // Password strength indicator
+        document.getElementById('password').addEventListener('input', (e) => {
+            const value = e.target.value;
+            let strength = 0;
 
-        form.addEventListener('submit', async (event) => {
-            event.preventDefault();
-            const data = collectData();
+            if (value.length >= 8) strength++;
+            if (/[a-z]/.test(value) && /[A-Z]/.test(value)) strength++;
+            if (/[0-9]/.test(value)) strength++;
+            if (/[^a-zA-Z0-9]/.test(value)) strength++;
 
-            if (!data.company_name || !data.email || !data.password || !data.confirm_password) {
-                showMessage('Please fill all required fields.', 'error');
-                return;
+            const bar = e.target.parentElement.nextElementSibling.querySelector('.password-strength-bar');
+            const widths = ['0%', '25%', '50%', '75%', '100%'];
+            const colors = ['#fc8181', '#f6ad55', '#f6e05e', '#68d391', '#38a169'];
+
+            bar.style.width = widths[strength];
+            bar.style.backgroundColor = colors[strength];
+        });
+
+        // Field validation
+        function validateField(fieldId) {
+            const field = document.getElementById(fieldId);
+            const errorDiv = field.parentElement.querySelector('.error-text');
+            let error = '';
+
+            if (!field.value.trim()) {
+                error = 'This field is required';
+            } else if (fieldId === 'email' && !isValidEmail(field.value)) {
+                error = 'Please enter a valid email address';
+            } else if (fieldId === 'phone' && !isValidPhone(field.value)) {
+                error = 'Please enter a valid phone number';
+            } else if (fieldId === 'password' && field.value.length < 8) {
+                error = 'Password must be at least 8 characters';
+            } else if (fieldId === 'password_confirm' && field.value !== document.getElementById('password').value) {
+                error = 'Passwords do not match';
             }
 
-            if (data.password !== data.confirm_password) {
-                showMessage('Passwords do not match.', 'error');
-                return;
+            if (error) {
+                field.classList.add('error');
+                errorDiv.textContent = error;
+                errorDiv.classList.add('show');
+                return false;
+            } else {
+                field.classList.remove('error');
+                errorDiv.classList.remove('show');
+                return true;
+            }
+        }
+
+        function isValidEmail(email) {
+            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+        }
+
+        function isValidPhone(phone) {
+            const cleaned = phone.replace(/\D/g, '');
+            return cleaned.length >= 10;
+        }
+
+        function showAlert(message, type) {
+            alertBox.textContent = message;
+            alertBox.className = `alert ${type} show`;
+        }
+
+        // Real-time validation on blur
+        ['first_name', 'last_name', 'company_name', 'email', 'phone', 'password', 'password_confirm'].forEach(fieldId => {
+            document.getElementById(fieldId).addEventListener('blur', () => validateField(fieldId));
+        });
+
+        // Form submission
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            // Validate all fields
+            let isValid = true;
+            ['first_name', 'last_name', 'company_name', 'email', 'phone', 'password', 'password_confirm'].forEach(fieldId => {
+                if (!validateField(fieldId)) {
+                    isValid = false;
+                }
+            });
+
+            if (!document.getElementById('terms').checked) {
+                showAlert('Please accept the terms and conditions', 'error');
+                isValid = false;
             }
 
+            if (!isValid) return;
+
+            // Submit form
             submitBtn.classList.add('loading');
             submitBtn.disabled = true;
 
             try {
-                const response = await fetch(API_URL, {
+                const response = await fetch('/api/register/', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        first_name: document.getElementById('first_name').value.trim(),
+                        last_name: document.getElementById('last_name').value.trim(),
+                        company_name: document.getElementById('company_name').value.trim(),
+                        email: document.getElementById('email').value.trim(),
+                        phone: document.getElementById('phone').value.trim(),
+                        password: document.getElementById('password').value,
+                        password_confirm: document.getElementById('password_confirm').value
+                    })
                 });
 
-                const result = await response.json();
+                const data = await response.json();
 
-                if (!response.ok) {
-                    showMessage(result.error || 'Registration failed. Please try again.', 'error');
-                    return;
+                if (response.ok) {
+                    showAlert('Account created successfully! Redirecting to login...', 'success');
+                    setTimeout(() => {
+                        window.location.href = '/login.html';
+                    }, 2000);
+                } else {
+                    showAlert(data.errors?.detail || data.message || 'Registration failed. Please try again.', 'error');
                 }
-
-                showMessage('Company registered successfully. Redirecting to first login...', 'success');
-                setTimeout(() => {
-                    window.location.href = '/login.html';
-                }, 1800);
             } catch (error) {
                 console.error('Registration error:', error);
-                showMessage('Unable to reach server. Check backend and try again.', 'error');
+                showAlert('Unable to connect to server. Please try again.', 'error');
             } finally {
                 submitBtn.classList.remove('loading');
                 submitBtn.disabled = false;

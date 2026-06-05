@@ -1,6 +1,9 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.core.exceptions import ValidationError
+from django.contrib.auth.hashers import check_password, make_password
+from django.utils import timezone
+import uuid
 
 # Canonical role choices for SaaS RBAC
 ROLE_CHOICES = [
@@ -74,7 +77,7 @@ class User(AbstractUser):
     failed_login_attempts = models.PositiveIntegerField(default=0, help_text="Failed login attempts count")
     locked_until = models.DateTimeField(null=True, blank=True, help_text="Account locked until")
     
-    # Required for django-tenants (commented out for SQLite)
+    # Required for django-tenants (not enabled yet)
     # auto_create_schema = True
     # auto_drop_schema = True
 
@@ -230,3 +233,38 @@ class User(AbstractUser):
     def can_delete_records(self):
         """Check if user can delete financial records"""
         return self.is_tenant_admin
+
+
+class PhoneOTPChallenge(models.Model):
+    PURPOSE_LOGIN = 'login'
+    PURPOSE_REGISTER = 'register'
+    PURPOSE_CHOICES = [
+        (PURPOSE_LOGIN, 'Login'),
+        (PURPOSE_REGISTER, 'Register'),
+    ]
+
+    phone = models.CharField(max_length=20, db_index=True)
+    purpose = models.CharField(max_length=20, choices=PURPOSE_CHOICES, default=PURPOSE_LOGIN)
+    token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    code_hash = models.CharField(max_length=255)
+    expires_at = models.DateTimeField()
+    verified_at = models.DateTimeField(null=True, blank=True)
+    is_used = models.BooleanField(default=False)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.phone} ({self.purpose})"
+
+    def set_code(self, raw_code):
+        self.code_hash = make_password(raw_code)
+
+    def check_code(self, raw_code):
+        return check_password(raw_code, self.code_hash)
+
+    def is_expired(self):
+        return timezone.now() >= self.expires_at

@@ -18,6 +18,11 @@ from .views import (
     RiskAlertsView,
     AdminDashboardView,
     
+    # Chart System MVP
+    ProfitLossReceivableView,
+    SoldVsRemainingView,
+    FishDemandTrendView,
+    
     # Legacy Views (for backward compatibility)
     TodaySummaryView,
     MonthlySummaryView,
@@ -50,6 +55,11 @@ urlpatterns = [
     path("dashboard/top-buyers/", TopBuyersView.as_view(), name="dashboard-top-buyers"),
     path("dashboard/top-fish/", TopFishView.as_view(), name="dashboard-top-fish"),
     path("dashboard/sales-by-payment/", SalesByPaymentMethodView.as_view(), name="dashboard-sales-by-payment"),
+    
+    # Chart System MVP
+    path("dashboard/profit-loss-receivable/", ProfitLossReceivableView.as_view(), name="dashboard-profit-loss-receivable"),
+    path("dashboard/sold-vs-remaining/", SoldVsRemainingView.as_view(), name="dashboard-sold-vs-remaining"),
+    path("dashboard/fish-demand-trend/", FishDemandTrendView.as_view(), name="dashboard-fish-demand-trend"),
     
     # ============================================================
     # NEW DASHBOARD APIs - PHASE 2 (FULL)

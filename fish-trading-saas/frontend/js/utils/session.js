@@ -10,6 +10,7 @@ const SessionManager = {
     // Timer references
     idleTimer: null,
     warningTimer: null,
+    _activityHandler: null,
     
     /**
      * Initialize session management
@@ -114,6 +115,7 @@ const SessionManager = {
      */
     logout: () => {
         SessionManager.clearTimers();
+        SessionManager.removeActivityListeners();
         window.Auth.logout();
     },
     
@@ -141,13 +143,29 @@ const SessionManager = {
      * Add activity listeners
      */
     addActivityListeners: () => {
+        // Remove any previous listeners to avoid duplicates
+        SessionManager.removeActivityListeners();
+
+        const handler = () => { SessionManager.resetTimer(); };
+        SessionManager._activityHandler = handler;
+
         const events = ['mousedown', 'keydown', 'scroll', 'touchstart'];
-        
         events.forEach(event => {
-            document.addEventListener(event, () => {
-                SessionManager.resetTimer();
-            });
+            document.addEventListener(event, handler);
         });
+    },
+
+    /**
+     * Remove activity listeners to prevent memory leaks
+     */
+    removeActivityListeners: () => {
+        if (SessionManager._activityHandler) {
+            const events = ['mousedown', 'keydown', 'scroll', 'touchstart'];
+            events.forEach(event => {
+                document.removeEventListener(event, SessionManager._activityHandler);
+            });
+            SessionManager._activityHandler = null;
+        }
     },
     
     /**
@@ -169,15 +187,28 @@ const SessionManager = {
         const existing = document.getElementById('impersonationBanner');
         if (existing) existing.remove();
         
-        const bannerHtml = `
-            <div id="impersonationBanner" class="impersonation-banner">
-                <i class="fas fa-user-secret"></i>
-                <span>You are impersonating <strong>${tenantName}</strong></span>
-                <button onclick="SessionManager.stopImpersonation()">Exit Impersonation</button>
-            </div>
-        `;
-        
-        document.body.insertAdjacentHTML('afterbegin', bannerHtml);
+        // Safely create banner without innerHTML to prevent XSS
+        const banner = document.createElement('div');
+        banner.id = 'impersonationBanner';
+        banner.className = 'impersonation-banner';
+
+        const icon = document.createElement('i');
+        icon.className = 'fas fa-user-secret';
+        banner.appendChild(icon);
+
+        const span = document.createElement('span');
+        span.textContent = ' You are impersonating ';
+        const strong = document.createElement('strong');
+        strong.textContent = tenantName;
+        span.appendChild(strong);
+        banner.appendChild(span);
+
+        const btn = document.createElement('button');
+        btn.textContent = 'Exit Impersonation';
+        btn.addEventListener('click', () => SessionManager.stopImpersonation());
+        banner.appendChild(btn);
+
+        document.body.insertBefore(banner, document.body.firstChild);
         
         // Add padding to body to account for banner
         document.body.style.paddingTop = '50px';

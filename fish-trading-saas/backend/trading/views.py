@@ -1,9 +1,10 @@
 # trading/views.py
 from rest_framework import viewsets, status, filters
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.views import APIView
 from django.core.exceptions import ValidationError
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Count, Prefetch
@@ -25,11 +26,14 @@ from .serializers import (
     SaleSerializer, PaymentSerializer, InventorySerializer
 )
 from services.trading import SaleService, InventoryService
+from services.purchase import PurchaseService
+from services.analytics import AnalyticsService
 from accounts.permissions import (
     IsTenantAdmin, CanEditSale, CanEditPurchase, CanEditPayment, HasAnyRole,
     QuerysetProtectionMixin, TenantObjectPermission, is_impersonating, get_impersonated_tenant
 )
 from .helpers import _user_company   # <-- new import
+from datetime import datetime, timedelta
 
 
 def _get_create_scope(request):
@@ -619,7 +623,6 @@ class InventoryViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def expiring_soon(self, request):
-        from datetime import datetime, timedelta
         soon = datetime.now().date() + timedelta(days=3)
         expiring = self.get_queryset().filter(
             expiry_date__lte=soon,
@@ -627,3 +630,437 @@ class InventoryViewSet(QuerysetProtectionMixin, viewsets.ModelViewSet):
         )
         serializer = self.get_serializer(expiring, many=True)
         return Response(serializer.data)
+
+
+# ========== Purchase Creation API ==========
+
+class CreatePurchaseView(APIView):
+    """
+    Create purchase with batch generation
+    POST /api/purchase/
+    """
+
+    def get_permissions(self):
+        return [IsAuthenticated(), HasAnyRole('is_tenant_admin', 'is_store')]
+
+    def post(self, request):
+        """Create new purchase with items"""
+        user = request.user
+        company = _user_company(user)
+        
+        if not company:
+            return Response(
+                {'error': 'No company associated with user'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Parse request data
+        supplier_id = request.data.get('supplier_id')
+        supplier_name = request.data.get('supplier_name')
+        items = request.data.get('items', [])
+        payment_method = request.data.get('payment_method', 'cash')
+        amount_paid = Decimal(str(request.data.get('amount_paid', 0)))
+        notes = request.data.get('notes', '')
+        
+        # Validate payment method
+        if payment_method not in ['cash', 'upi', 'credit']:
+            return Response(
+                {'error': 'Invalid payment method'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Create purchase
+        result = PurchaseService.create_purchase(
+            user=user,
+            company=company,
+            supplier_id=supplier_id,
+            supplier_name=supplier_name,
+            items=items,
+            payment_method=payment_method,
+            amount_paid=amount_paid,
+            notes=notes
+        )
+        
+        if not result['success']:
+            return Response(
+                {'errors': result['errors']},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        return Response({
+            'success': True,
+            'batches': result['batches'],
+            'total_amount': float(result['total_amount']),
+            'payment_status': {
+                'method': result['payment_status']['method'],
+                'paid': float(result['payment_status']['paid']),
+                'pending': float(result['payment_status']['pending'])
+            },
+            'message': f'Created {len(result["batches"])} batch(es)'
+        }, status=status.HTTP_201_CREATED)
+
+
+@api_view(['GET'])
+def get_price_history(request, fish_id):
+    """
+    Get last 3 purchase prices for a fish product
+    GET /api/price-history/{fish_id}/
+    """
+    user = request.user
+    company = _user_company(user)
+    
+    if not company:
+        return Response(
+            {'error': 'No company associated with user'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    try:
+        prices = PurchaseService.get_last_purchase_prices(company, fish_id)
+        return Response({
+            'fish_id': fish_id,
+            'prices': prices,
+            'average': sum(p['price'] for p in prices) / len(prices) if prices else 0
+        })
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET'])
+def check_duplicate_purchase(request, fish_id):
+    """
+    Check for recent duplicate purchase
+    GET /api/check-duplicate/{fish_id}/
+    """
+    user = request.user
+    company = _user_company(user)
+    
+    if not company:
+        return Response(
+            {'error': 'No company associated with user'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    duplicate = PurchaseService.get_duplicate_check(company, fish_id)
+    
+    return Response({
+        'fish_id': fish_id,
+        'duplicate_found': duplicate is not None,
+        'duplicate': duplicate
+    })
+
+
+@api_view(['GET'])
+def get_supplier_suggestions(request):
+    """
+    Get recent suppliers for quick selection
+    GET /api/suppliers-recent/
+    """
+    user = request.user
+    company = _user_company(user)
+    
+    if not company:
+        return Response([])
+    
+    suppliers = Supplier.objects.filter(
+        company=company,
+        is_deleted=False
+    ).order_by('-created_at')[:10].values('id', 'name', 'phone')
+    
+    return Response(list(suppliers))
+
+
+# ========== ANALYTICS / REPORTS ENDPOINTS ==========
+
+@api_view(['GET'])
+def get_profit_loss_chart(request):
+    """
+    GET /api/analytics/profit-loss/
+    ?start_date=2026-03-04&end_date=2026-04-03
+    
+    Returns daily profit/loss/receivable for chart
+    """
+    user = request.user
+    company = _user_company(user)
+    
+    if not company:
+        return Response({'error': 'No company'}, status=400)
+    
+    try:
+        start_date_str = request.query_params.get('start_date')
+        end_date_str = request.query_params.get('end_date')
+        
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date() if start_date_str else None
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date() if end_date_str else None
+        
+        analytics = AnalyticsService(company, user)
+        data = analytics.get_profit_loss_data(start_date, end_date)
+        
+        return Response({'success': True, 'data': data})
+    except Exception as e:
+        return Response({'error': str(e)}, status=400)
+
+
+@api_view(['GET'])
+def get_sold_vs_remaining_chart(request):
+    """
+    GET /api/analytics/sold-vs-remaining/
+    ?start_date=2026-03-04&end_date=2026-04-03
+    
+    Returns product-wise sold vs remaining qty
+    """
+    user = request.user
+    company = _user_company(user)
+    
+    if not company:
+        return Response({'error': 'No company'}, status=400)
+    
+    try:
+        start_date_str = request.query_params.get('start_date')
+        end_date_str = request.query_params.get('end_date')
+        
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date() if start_date_str else None
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date() if end_date_str else None
+        
+        analytics = AnalyticsService(company, user)
+        data = analytics.get_sold_vs_remaining(start_date, end_date)
+        
+        return Response({'success': True, 'data': data})
+    except Exception as e:
+        return Response({'error': str(e)}, status=400)
+
+
+@api_view(['GET'])
+def get_demand_trend_chart(request):
+    """
+    GET /api/analytics/demand-trend/
+    ?start_date=2026-03-04&end_date=2026-04-03&product=vanjaram
+    
+    Returns daily sales trend (what to buy tomorrow?)
+    """
+    user = request.user
+    company = _user_company(user)
+    
+    if not company:
+        return Response({'error': 'No company'}, status=400)
+    
+    try:
+        start_date_str = request.query_params.get('start_date')
+        end_date_str = request.query_params.get('end_date')
+        product = request.query_params.get('product')
+        
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date() if start_date_str else None
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date() if end_date_str else None
+        
+        analytics = AnalyticsService(company, user)
+        data = analytics.get_demand_trend(start_date, end_date, product)
+        
+        return Response({'success': True, 'data': data})
+    except Exception as e:
+        return Response({'error': str(e)}, status=400)
+
+
+@api_view(['GET'])
+def get_batch_performance_chart(request):
+    """
+    GET /api/analytics/batch-performance/
+    ?start_date=2026-03-04&end_date=2026-04-03&limit=20
+    
+    Returns batch-wise profit/loss performance
+    """
+    user = request.user
+    company = _user_company(user)
+    
+    if not company:
+        return Response({'error': 'No company'}, status=400)
+    
+    try:
+        start_date_str = request.query_params.get('start_date')
+        end_date_str = request.query_params.get('end_date')
+        limit = int(request.query_params.get('limit', 20))
+        
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date() if start_date_str else None
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date() if end_date_str else None
+        
+        analytics = AnalyticsService(company, user)
+        data = analytics.get_batch_performance(start_date, end_date, limit)
+        
+        return Response({'success': True, 'data': data})
+    except Exception as e:
+        return Response({'error': str(e)}, status=400)
+
+
+@api_view(['GET'])
+def get_loss_analysis_chart(request):
+    """
+    GET /api/analytics/loss-analysis/
+    ?start_date=2026-03-04&end_date=2026-04-03
+    
+    Returns loss-making batches/products
+    """
+    user = request.user
+    company = _user_company(user)
+    
+    if not company:
+        return Response({'error': 'No company'}, status=400)
+    
+    try:
+        start_date_str = request.query_params.get('start_date')
+        end_date_str = request.query_params.get('end_date')
+        
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date() if start_date_str else None
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date() if end_date_str else None
+        
+        analytics = AnalyticsService(company, user)
+        data = analytics.get_loss_analysis(start_date, end_date)
+        
+        return Response({'success': True, 'data': data})
+    except Exception as e:
+        return Response({'error': str(e)}, status=400)
+
+
+@api_view(['GET'])
+def get_payment_analysis_chart(request):
+    """
+    GET /api/analytics/payment-analysis/
+    ?start_date=2026-03-04&end_date=2026-04-03
+    
+    Returns payment method breakdown (donut chart)
+    """
+    user = request.user
+    company = _user_company(user)
+    
+    if not company:
+        return Response({'error': 'No company'}, status=400)
+    
+    try:
+        start_date_str = request.query_params.get('start_date')
+        end_date_str = request.query_params.get('end_date')
+        
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date() if start_date_str else None
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date() if end_date_str else None
+        
+        analytics = AnalyticsService(company, user)
+        data = analytics.get_payment_analysis(start_date, end_date)
+        
+        return Response({'success': True, 'data': data})
+    except Exception as e:
+        return Response({'error': str(e)}, status=400)
+
+
+@api_view(['GET'])
+def get_price_trend_chart(request):
+    """
+    GET /api/analytics/price-trend/
+    ?start_date=2026-03-04&end_date=2026-04-03&product=vanjaram
+    
+    Returns cost vs selling price trends
+    """
+    user = request.user
+    company = _user_company(user)
+    
+    if not company:
+        return Response({'error': 'No company'}, status=400)
+    
+    try:
+        start_date_str = request.query_params.get('start_date')
+        end_date_str = request.query_params.get('end_date')
+        product = request.query_params.get('product')
+        
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date() if start_date_str else None
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date() if end_date_str else None
+        
+        analytics = AnalyticsService(company, user)
+        data = analytics.get_price_trend(start_date, end_date, product)
+        
+        return Response({'success': True, 'data': data})
+    except Exception as e:
+        return Response({'error': str(e)}, status=400)
+
+
+@api_view(['GET'])
+def get_profit_trend_chart(request):
+    """
+    GET /api/analytics/profit-trend/
+    ?start_date=2026-03-04&end_date=2026-04-03&period=daily
+    
+    Returns daily/weekly/monthly profit trend
+    """
+    user = request.user
+    company = _user_company(user)
+    
+    if not company:
+        return Response({'error': 'No company'}, status=400)
+    
+    try:
+        start_date_str = request.query_params.get('start_date')
+        end_date_str = request.query_params.get('end_date')
+        period = request.query_params.get('period', 'daily')
+        
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date() if start_date_str else None
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date() if end_date_str else None
+        
+        analytics = AnalyticsService(company, user)
+        data = analytics.get_profit_trend(period, start_date, end_date)
+        
+        return Response({'success': True, 'data': data})
+    except Exception as e:
+        return Response({'error': str(e)}, status=400)
+
+
+@api_view(['GET'])
+def get_smart_insights(request):
+    """
+    GET /api/analytics/smart-insights/
+    ?start_date=2026-03-04&end_date=2026-04-03
+    
+    Returns AI-ready business insights
+    """
+    user = request.user
+    company = _user_company(user)
+    
+    if not company:
+        return Response({'error': 'No company'}, status=400)
+    
+    try:
+        start_date_str = request.query_params.get('start_date')
+        end_date_str = request.query_params.get('end_date')
+        
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date() if start_date_str else None
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date() if end_date_str else None
+        
+        analytics = AnalyticsService(company, user)
+        insights = analytics.get_smart_insights(start_date, end_date)
+        
+        return Response({'success': True, 'insights': insights})
+    except Exception as e:
+        return Response({'error': str(e)}, status=400)
+
+
+@api_view(['GET'])
+def get_dashboard_summary(request):
+    """
+    GET /api/analytics/dashboard-summary/
+    ?start_date=2026-03-04&end_date=2026-04-03
+    
+    Returns summary KPIs for dashboard header
+    """
+    user = request.user
+    company = _user_company(user)
+    
+    if not company:
+        return Response({'error': 'No company'}, status=400)
+    
+    try:
+        start_date_str = request.query_params.get('start_date')
+        end_date_str = request.query_params.get('end_date')
+        
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date() if start_date_str else None
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date() if end_date_str else None
+        
+        analytics = AnalyticsService(company, user)
+        summary = analytics.get_dashboard_summary(start_date, end_date)
+        
+        return Response({'success': True, 'summary': summary})
+    except Exception as e:
+        return Response({'error': str(e)}, status=400)

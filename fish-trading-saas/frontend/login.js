@@ -2,84 +2,51 @@
 // Uses centralized API and TokenManager from js/api.js
 
 function getRedirectURL(data) {
-    if (data.redirect_url) return data.redirect_url;
-
     const role = data.role || data.userRole;
     if (
+        data.is_platform_user ||
         data.is_platform_operator ||
         data.is_platform_support ||
         data.is_platform_super_admin ||
         data.is_platform_maintainer ||
         ['platform_maintainer', 'platform_operator', 'platform_support', 'platform_super_admin'].includes(role)
     ) {
-        return '/platform-admin/';
+        return '/platform/dashboard.html';
     }
 
-    if (data.tenant_slug) {
-        return `/dashboard/${data.tenant_slug}/`;
-    }
-    return '/dashboard/';
-}
-
-function getSelectedLoginType() {
-    const selected = document.querySelector('input[name="loginType"]:checked');
-    if (selected) return selected.value;
-    if (window.location.pathname.includes('_admin')) return 'platform';
-    return 'company';
-}
-
-function getCompanyLoginURL(companyCode) {
-    if (companyCode) {
-        return `/login/${encodeURIComponent(companyCode.toLowerCase())}/`;
-    }
-    return `/auth/login/`;
+    return '/dashboard.html';
 }
 
 document.addEventListener('DOMContentLoaded', function () {
+    const searchParams = new URLSearchParams(window.location.search);
     const loginForm = document.getElementById('loginForm');
     const errorMessage = document.getElementById('errorMessage');
     const loginBtn = document.querySelector('.btn-login');
-    const loginTypeInputs = document.querySelectorAll('input[name="loginType"]');
-    const companyOnlyFields = document.querySelectorAll('.company-only');
     const usernameLabel = document.getElementById('usernameLabel');
     const loginButtonText = document.getElementById('loginButtonText');
-    const companyCodeInput = document.getElementById('companyCode');
-    const companyCodeStatus = document.getElementById('companyCodeStatus');
+    const companyNameInput = document.getElementById('companyName');
+    const companyNameStatus = document.getElementById('companyNameStatus');
     const usernameInput = document.getElementById('username');
     const usernameStatus = document.getElementById('usernameStatus');
+    const passwordInput = document.getElementById('password');
+    const passwordToggle = document.getElementById('passwordToggle');
     const demoToggle = document.getElementById('demoToggle');
     const demoCredentials = document.getElementById('demoCredentials');
+    const presetCompanyName = searchParams.get('company_name') || localStorage.getItem('company_name') || '';
+    const presetUsername = searchParams.get('username') || '';
+    const initialError = searchParams.get('error');
 
     const token = localStorage.getItem('token');
     if (token) {
-        window.location.href = '/dashboard/';
+        window.location.href = localStorage.getItem('isPlatformUser') === 'true'
+            ? '/platform/dashboard.html'
+            : '/dashboard.html';
         return;
     }
 
-    const syncLoginTypeUI = () => {
-        const type = getSelectedLoginType();
-        const isCompany = type === 'company';
-
-        companyOnlyFields.forEach((field) => {
-            field.style.display = isCompany ? '' : 'none';
-        });
-
-        if (usernameLabel) {
-            usernameLabel.textContent = isCompany ? 'Email / Mobile / Username' : 'Email or Username';
-        }
-        if (loginButtonText) {
-            loginButtonText.textContent = isCompany ? 'Login' : 'Login to Platform';
-        }
-
-        if (companyCodeInput && !isCompany) {
-            companyCodeInput.classList.remove('valid', 'invalid');
-            if (companyCodeStatus) companyCodeStatus.textContent = '';
-        }
-    };
-
     const isLikelyEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
     const isLikelyPhone = (value) => /^\+?[0-9][0-9\s-]{7,}$/.test(value);
-    const isValidCompanyCode = (value) => /^[A-Za-z0-9]{3,12}$/.test(value);
+    const hasCompanyName = (value) => value.trim().length >= 2;
 
     const setFieldState = (field, statusEl, type, message) => {
         if (!field || !statusEl) return;
@@ -94,18 +61,18 @@ document.addEventListener('DOMContentLoaded', function () {
         statusEl.textContent = message;
     };
 
-    const validateCompanyCode = () => {
-        if (!companyCodeInput || !companyCodeStatus) return true;
-        const value = companyCodeInput.value.trim();
+    const validateCompanyName = () => {
+        if (!companyNameInput || !companyNameStatus) return true;
+        const value = companyNameInput.value.trim();
         if (!value) {
-            setFieldState(companyCodeInput, companyCodeStatus, '', '');
+            setFieldState(companyNameInput, companyNameStatus, '', 'Company users should enter their company name or code.');
             return true;
         }
-        if (!isValidCompanyCode(value)) {
-            setFieldState(companyCodeInput, companyCodeStatus, 'error', 'Use 3-12 letters or numbers only.');
+        if (!hasCompanyName(value)) {
+            setFieldState(companyNameInput, companyNameStatus, 'error', 'Enter at least 2 characters.');
             return false;
         }
-        setFieldState(companyCodeInput, companyCodeStatus, 'success', 'Looks good.');
+        setFieldState(companyNameInput, companyNameStatus, 'success', 'Company looks valid.');
         return true;
     };
 
@@ -127,14 +94,38 @@ document.addEventListener('DOMContentLoaded', function () {
         setFieldState(usernameInput, usernameStatus, '', 'Username format detected.');
     };
 
-    if (companyCodeInput) {
-        companyCodeInput.addEventListener('input', validateCompanyCode);
-        companyCodeInput.addEventListener('blur', validateCompanyCode);
+    if (companyNameInput) {
+        companyNameInput.addEventListener('input', validateCompanyName);
+        companyNameInput.addEventListener('blur', validateCompanyName);
     }
 
     if (usernameInput) {
         usernameInput.addEventListener('input', validateUsernameHint);
         usernameInput.addEventListener('blur', validateUsernameHint);
+    }
+
+    if (companyNameInput && presetCompanyName) {
+        companyNameInput.value = presetCompanyName;
+        validateCompanyName();
+    }
+
+    if (usernameInput && presetUsername) {
+        usernameInput.value = presetUsername;
+        validateUsernameHint();
+    }
+
+    if (passwordToggle && passwordInput) {
+        passwordToggle.addEventListener('click', () => {
+            const nextType = passwordInput.type === 'password' ? 'text' : 'password';
+            passwordInput.type = nextType;
+            const icon = passwordToggle.querySelector('i');
+            if (icon) {
+                icon.className = nextType === 'password' ? 'fas fa-eye' : 'fas fa-eye-slash';
+            } else {
+                passwordToggle.textContent = nextType === 'password' ? 'Show' : 'Hide';
+            }
+            passwordToggle.setAttribute('aria-label', nextType === 'password' ? 'Show password' : 'Hide password');
+        });
     }
 
     if (demoToggle && demoCredentials) {
@@ -163,24 +154,27 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    loginTypeInputs.forEach((input) => input.addEventListener('change', syncLoginTypeUI));
-    syncLoginTypeUI();
+    if (initialError) {
+        showError(initialError);
+    }
+
+    if (usernameLabel) usernameLabel.textContent = 'Username / Email / Mobile';
+    if (loginButtonText) loginButtonText.textContent = 'Login';
 
     loginForm.addEventListener('submit', async function (event) {
         event.preventDefault();
 
-        const loginType = getSelectedLoginType();
         const username = document.getElementById('username').value.trim();
         const password = document.getElementById('password').value;
-        const companyCode = document.getElementById('companyCode')?.value?.trim() || '';
+        const companyName = document.getElementById('companyName')?.value?.trim() || '';
 
         if (!username || !password) {
-            showError('Please enter username/email and password');
+            showError('Please enter your username and password.');
             return;
         }
 
-        if (loginType === 'company' && !validateCompanyCode()) {
-            showError('Please fix the company code format or leave it empty.');
+        if (!validateCompanyName()) {
+            showError('Please check the company name.');
             return;
         }
 
@@ -191,49 +185,19 @@ document.addEventListener('DOMContentLoaded', function () {
         errorMessage.textContent = '';
 
         try {
-            const requestBody = { username, password };
+            const requestBody = { username, password, company_name: companyName };
             const API_BASE_URL = `${window.location.origin}/api`;
 
-            let response;
-            if (loginType === 'platform') {
-                response = await fetch(`${API_BASE_URL}/platform/login/`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(requestBody),
-                    credentials: 'include'
-                });
-
-                // Backward-compatible fallback if older route is still configured in some environments.
-                if (response.status === 404) {
-                    response = await fetch(`${API_BASE_URL}/auth/platform-login/`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(requestBody),
-                        credentials: 'include'
-                    });
-                }
-            } else {
-                response = await fetch(`${API_BASE_URL}${getCompanyLoginURL(companyCode)}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(requestBody),
-                    credentials: 'include'
-                });
-
-                // If company-code route is unavailable, retry on unified endpoint.
-                if ((response.status === 404 || response.status === 400) && companyCode) {
-                    response = await fetch(`${API_BASE_URL}/auth/login/`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(requestBody),
-                        credentials: 'include'
-                    });
-                }
-            }
+            const response = await fetch(`${API_BASE_URL}/auth/login/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody),
+                credentials: 'include'
+            });
 
             const data = await response.json();
             if (!response.ok) {
-                showError(data.detail || data.message || 'Login failed. Please check your credentials.');
+                showError(data.error || data.detail || data.message || 'Login failed. Please check your credentials.');
                 return;
             }
 
@@ -247,16 +211,25 @@ document.addEventListener('DOMContentLoaded', function () {
                 localStorage.setItem('access_token', accessToken);
             }
             
-            localStorage.setItem('username', username);
+            localStorage.setItem('username', data.username || username);
             localStorage.setItem('userRole', data.role || 'tenant_admin');
             localStorage.setItem('role', data.role || 'tenant_admin');
+            const isPlatformUser = Boolean(
+                data.is_platform_user ||
+                data.is_platform_operator ||
+                data.is_platform_support ||
+                ['platform_operator', 'platform_support', 'platform_maintainer', 'platform_super_admin'].includes(data.role)
+            );
+            localStorage.setItem('isPlatformUser', isPlatformUser ? 'true' : 'false');
             if (data.user_id) localStorage.setItem('user_id', data.user_id);
             localStorage.setItem('two_factor_enabled', data.two_factor_enabled ? '1' : '0');
             if (data.tenant_slug) localStorage.setItem('tenant_slug', data.tenant_slug);
-            if (companyCode) localStorage.setItem('company_code', companyCode);
+            else localStorage.removeItem('tenant_slug');
+            if (companyName) localStorage.setItem('company_name', companyName);
+            else localStorage.removeItem('company_name');
             if (data.company_name) localStorage.setItem('company_name', data.company_name);
 
-            const redirectURL = getRedirectURL(data);
+            const redirectURL = data.redirect_url || getRedirectURL(data);
             window.location.href = redirectURL;
         } catch (error) {
             console.error('Login error:', error);

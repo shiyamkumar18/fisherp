@@ -1,22 +1,26 @@
 // Fish ERP - Dashboard Page Module
 
 const DashboardPage = {
+    _plrPeriod: 'day',
+
     // Initialize dashboard
     init: () => {
         DashboardPage.loadData();
+        DashboardPage._bindToggles();
     },
     
     // Load dashboard data
-loadData: async () => {
+    loadData: async () => {
         await Promise.all([
             DashboardPage.loadKPIs(),
+            DashboardPage.loadCharts(),
             DashboardPage.loadRecentSales(),
             DashboardPage.loadRecentPurchases()
         ]);
     },
     
     // Load KPI cards
-loadKPIs: async () => {
+    loadKPIs: async () => {
         const data = await window.TradingAPI.dashboard.tenant();
         if (data && data.kpi) {
             document.getElementById('sales-today').textContent = window.Utils.formatCurrency(data.kpi.today_sales);
@@ -26,77 +30,210 @@ loadKPIs: async () => {
         }
     },
     
-    // Load charts
+    // ============================================================
+    // CHART SYSTEM — MVP Charts
+    // ============================================================
+
     loadCharts: async () => {
-        // Sales trend chart
-        const salesTrend = await window.API.get('/dashboard/sales-trend/?days=7');
-        if (salesTrend) {
-            DashboardPage.renderSalesTrendChart(salesTrend);
-        }
-        
-        // Fish type chart
-        const fishTypeData = await window.API.get('/dashboard/top-fish/?limit=5');
-        if (fishTypeData) {
-            DashboardPage.renderFishTypeChart(fishTypeData);
-        }
+        await Promise.all([
+            DashboardPage.loadProfitLossChart(),
+            DashboardPage.loadSoldRemainingChart(),
+            DashboardPage.loadDemandTrendChart(),
+        ]);
     },
-    
-    // Render sales trend chart
-    renderSalesTrendChart: (data) => {
-        const labels = data.map(d => window.Utils.formatDate(d.date));
-        const revenues = data.map(d => parseFloat(d.revenue || 0));
+
+    // ---- Chart 1: Profit / Loss / Receivables (Stacked Bar) ----
+    loadProfitLossChart: async () => {
+        const period = DashboardPage._plrPeriod;
+        const days = period === 'month' ? 180 : period === 'week' ? 56 : 30;
+        const data = await window.API.get(`/dashboard/profit-loss-receivable/?days=${days}&period=${period}`);
+        if (!data || !data.length) {
+            DashboardPage._renderEmpty('profitLossChart', 'No profit/loss data yet');
+            return;
+        }
+        DashboardPage.renderProfitLossChart(data);
+    },
+
+    renderProfitLossChart: (data) => {
+        const labels = data.map(d => d.label);
         const profits = data.map(d => parseFloat(d.profit || 0));
-        
-        window.UI.renderChart('salesTrendChart', 'line', {
-            labels: labels,
+        const losses = data.map(d => parseFloat(d.loss || 0));
+        const receivables = data.map(d => parseFloat(d.receivable || 0));
+
+        window.UI.renderChart('profitLossChart', 'bar', {
+            labels,
             datasets: [
-                {
-                    label: 'Revenue',
-                    data: revenues,
-                    borderColor: '#0077b6',
-                    backgroundColor: 'rgba(0, 119, 182, 0.1)',
-                    fill: true,
-                    tension: 0.4
-                },
                 {
                     label: 'Profit',
                     data: profits,
-                    borderColor: '#28a745',
-                    backgroundColor: 'rgba(40, 167, 69, 0.1)',
-                    fill: true,
-                    tension: 0.4
+                    backgroundColor: '#22c55e',
+                    borderRadius: 4,
+                },
+                {
+                    label: 'Loss',
+                    data: losses,
+                    backgroundColor: '#ef4444',
+                    borderRadius: 4,
+                },
+                {
+                    label: 'Receivable',
+                    data: receivables,
+                    backgroundColor: '#f59e0b',
+                    borderRadius: 4,
                 }
             ]
         }, {
             scales: {
+                x: { stacked: true },
                 y: {
+                    stacked: true,
                     beginAtZero: true,
                     ticks: {
-                        callback: function(value) {
-                            return '₹' + value.toLocaleString();
-                        }
+                        callback: function(value) { return '₹' + value.toLocaleString(); }
+                    }
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(ctx) { return ctx.dataset.label + ': ₹' + ctx.parsed.y.toLocaleString(); }
                     }
                 }
             }
         });
     },
-    
-    // Render fish type chart
-    renderFishTypeChart: (data) => {
-        const labels = data.map(d => d.batch__fish__name || 'Unknown');
-        const revenues = data.map(d => parseFloat(d.total_revenue || 0));
-        
-        window.UI.renderChart('fishTypeChart', 'doughnut', {
-            labels: labels,
-            datasets: [{
-                data: revenues,
-                backgroundColor: [
-                    '#0077b6', '#00b4d8', '#48cae4', '#90e0ef', '#caf0f8'
-                ]
-            }]
+
+    // ---- Chart 2: Sold vs Remaining (Horizontal Stacked Bar) ----
+    loadSoldRemainingChart: async () => {
+        const data = await window.API.get('/dashboard/sold-vs-remaining/');
+        if (!data || !data.length) {
+            DashboardPage._renderEmpty('soldRemainingChart', 'No inventory data yet');
+            return;
+        }
+        DashboardPage.renderSoldRemainingChart(data);
+    },
+
+    renderSoldRemainingChart: (data) => {
+        const labels = data.map(d => d.product);
+        const sold = data.map(d => d.sold || 0);
+        const remaining = data.map(d => d.remaining || 0);
+
+        window.UI.renderChart('soldRemainingChart', 'bar', {
+            labels,
+            datasets: [
+                {
+                    label: 'Sold',
+                    data: sold,
+                    backgroundColor: '#0077b6',
+                    borderRadius: 4,
+                },
+                {
+                    label: 'Remaining',
+                    data: remaining,
+                    backgroundColor: '#90e0ef',
+                    borderRadius: 4,
+                }
+            ]
+        }, {
+            indexAxis: 'y',
+            scales: {
+                x: { stacked: true, beginAtZero: true },
+                y: { stacked: true }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(ctx) { return ctx.dataset.label + ': ' + ctx.parsed.x + ' pkg'; }
+                    }
+                }
+            }
         });
     },
-    
+
+    // ---- Chart 3: Fish Demand Trend (Multi-Line) ----
+    loadDemandTrendChart: async () => {
+        const data = await window.API.get('/dashboard/fish-demand-trend/?days=14&limit=5');
+        if (!data || !data.length) {
+            DashboardPage._renderEmpty('demandTrendChart', 'No demand data yet');
+            return;
+        }
+        DashboardPage.renderDemandTrendChart(data);
+    },
+
+    renderDemandTrendChart: (data) => {
+        // Pivot: group by product, build one dataset per fish
+        const palette = ['#0077b6', '#00b4d8', '#ff6b6b', '#f59e0b', '#8b5cf6'];
+        const productMap = {};
+        const dateSet = new Set();
+
+        data.forEach(row => {
+            dateSet.add(row.date);
+            if (!productMap[row.product]) productMap[row.product] = {};
+            productMap[row.product][row.date] = row.sold_qty;
+        });
+
+        const dates = Array.from(dateSet).sort();
+        const labels = dates.map(d => {
+            const dt = new Date(d);
+            return dt.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
+        });
+
+        const datasets = Object.keys(productMap).map((product, i) => ({
+            label: product,
+            data: dates.map(d => productMap[product][d] || 0),
+            borderColor: palette[i % palette.length],
+            backgroundColor: palette[i % palette.length] + '22',
+            fill: false,
+            tension: 0.4,
+            pointRadius: 3,
+        }));
+
+        window.UI.renderChart('demandTrendChart', 'line', { labels, datasets }, {
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: { display: true, text: 'Packages sold' }
+                }
+            },
+            plugins: {
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                }
+            }
+        });
+    },
+
+    // ---- Toggle Binding for Profit/Loss period ----
+    _bindToggles: () => {
+        document.querySelectorAll('.plr-toggle').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.plr-toggle').forEach(b => {
+                    b.style.background = 'transparent';
+                    b.style.color = 'var(--text,#0F172A)';
+                    b.classList.remove('active');
+                });
+                btn.style.background = 'var(--primary,#2563EB)';
+                btn.style.color = '#fff';
+                btn.classList.add('active');
+                DashboardPage._plrPeriod = btn.dataset.period;
+                DashboardPage.loadProfitLossChart();
+            });
+        });
+    },
+
+    // ---- Empty state helper ----
+    _renderEmpty: (canvasId, message) => {
+        window.UI.destroyChart(canvasId);
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.font = '14px Manrope, sans-serif';
+        ctx.fillStyle = '#94a3b8';
+        ctx.textAlign = 'center';
+        ctx.fillText(message, canvas.width / 2, canvas.height / 2);
+    },
     // Load recent sales
 loadRecentSales: async () => {
         const sales = await window.TradingAPI.sales.list({page_size: 5});
