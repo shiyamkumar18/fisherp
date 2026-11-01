@@ -8,7 +8,7 @@ from django.contrib.auth import get_user_model
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from companies.models import Company
+from saas_platform.companies.models import Company
 from tests.factories import SubscriptionFactory
 
 User = get_user_model()
@@ -204,7 +204,7 @@ class TestDeletePermissions:
         """Verify trader delete behavior on fish categories.
         FishCategory is not tenant-scoped, so any authenticated user can
         currently delete categories. This test documents that behavior."""
-        from trading.models import FishCategory
+        from business.trading.models import FishCategory
         import uuid
         trader = _make_user(role="trader")
         SubscriptionFactory(company=trader.company)
@@ -216,7 +216,7 @@ class TestDeletePermissions:
         assert resp.status_code == status.HTTP_204_NO_CONTENT
 
     def test_tenant_admin_can_delete_records(self):
-        from trading.models import FishCategory
+        from business.trading.models import FishCategory
         import uuid
         ta = _make_user(role="tenant_admin")
         SubscriptionFactory(company=ta.company)

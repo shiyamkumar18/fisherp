@@ -11,7 +11,7 @@ from django.contrib.auth import get_user_model
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from trading.models import PurchaseBatch
+from business.trading.models import PurchaseBatch
 from tests.factories import (
     UserFactory, FishFactory, BuyerFactory, PurchaseBatchFactory, InventoryFactory,
     SubscriptionFactory,

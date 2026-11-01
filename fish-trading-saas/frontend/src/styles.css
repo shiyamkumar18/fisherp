@@ -1,36 +1,258 @@
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&display=swap');
-@import "tailwindcss";
+@import "/home/odoo/fisherp-frontend-modules/node_modules/tailwindcss/index.css";
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap');
+@source "../index.html";
+@source "../src";
 
 @theme {
-  --color-primary: #2563eb;
-  --color-secondary: #06b6d4;
-  --color-background: #f8fafc;
-  --color-surface: #ffffff;
-  --color-text: #0f172a;
-  --color-muted: #64748b;
-  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --color-primary: var(--primary);
+  --color-primaryHover: var(--primary-hover);
+  --color-primary-hover: var(--primary-hover);
+  --color-secondary: var(--secondary);
+  --color-success: var(--success);
+  --color-danger: var(--danger);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-border: var(--border);
+  
+  /* Layered Backgrounds */
+  --color-sidebar: var(--bg-sidebar);
+  --color-card: var(--bg-card);
+  --color-elevated: var(--bg-elevated);
+  --color-hover: var(--bg-hover);
+  --color-modal: var(--bg-modal);
+  --color-tableHeader: var(--bg-table-header);
+  --color-input: var(--bg-input);
+
+  --color-textPrimary: var(--text-primary);
+  --color-text-primary: var(--text-primary);
+  --color-textSecondary: var(--text-secondary);
+  --color-text-secondary: var(--text-secondary);
+}
+
+:root {
+  /* Light Mode - Base */
+  --bg: #f8fafc;
+  --surface: #ffffff;
+  --border: #e2e8f0;
+  
+  /* Light Mode - Layered Surfaces */
+  --bg-sidebar: #ffffff;
+  --bg-card: #ffffff;
+  --bg-elevated: #ffffff;
+  --bg-hover: #f1f5f9;
+  --bg-modal: #ffffff;
+  --bg-table-header: rgba(226, 232, 240, 0.5); /* border/50 equivalent */
+  --bg-input: #ffffff;
+
+  /* Accents */
+  --primary: #0ea5e9;
+  --primary-hover: #0284c7;
+  --secondary: #0f172a;
+  --success: #10b981;
+  --danger: #ef4444;
+  --warning: #f59e0b;
+  --info: #06b6d4;
+  
+  /* Text */
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+
+  /* Glassmorphism primitives */
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(226, 232, 240, 0.6);
+  --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.04);
+  --glass-blur: 12px;
+}
+
+.dark {
+  /* Dark Mode - Base */
+  --bg: #030712;
+  --surface: #0b1727;
+  --border: rgba(255, 255, 255, 0.06);
+
+  /* Dark Mode - Layered Surfaces (from specs) */
+  --bg-sidebar: #07111F;
+  --bg-card: #0B1727;
+  --bg-elevated: #111C2D;
+  --bg-hover: #162335;
+  --bg-modal: #101A2C;
+  --bg-table-header: #0D1828;
+  --bg-input: #111D2E;
+
+  /* Dark Mode - Accents (Premium, not neon) */
+  --primary: #3b82f6;      /* Soft premium blue */
+  --primary-hover: #2563eb;
+  --secondary: #f8fafc;
+  --success: #10b981;      /* Muted green */
+  --danger: #ef4444;       /* Muted red */
+  --warning: #f59e0b;      /* Premium amber */
+  --info: #06b6d4;         /* Cyan accent */
+
+  /* Text */
+  --text-primary: #f9fafb;
+  --text-secondary: #94a3b8;
+
+  /* Glassmorphism primitives dark mode */
+  --glass-bg: rgba(11, 23, 39, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.06);
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+  --glass-blur: 16px;
 }
 
 @layer base {
-  body {
-    @apply bg-background text-text font-sans antialiased;
+  @reference "/home/odoo/fisherp-frontend-modules/node_modules/tailwindcss/index.css";
+
+  * {
+    box-sizing: border-box;
   }
 
-  h1, h2, h3, h4 {
-    @apply font-extrabold tracking-tight;
+  /* Temporary transition helper applied only during active theme toggles */
+  .theme-transition,
+  .theme-transition * {
+    transition: background-color 300ms ease, border-color 300ms ease, color 300ms ease, fill 300ms ease, stroke 300ms ease !important;
+    transition-delay: 0s !important;
+  }
+
+  html,
+  body,
+  #root {
+    min-height: 100vh;
+    background-color: var(--bg);
+    color: var(--text-primary);
+  }
+
+  body {
+    margin: 0;
+    font-family: 'Outfit', 'Manrope', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    color: var(--text-primary);
+    letter-spacing: -0.025em;
+    font-weight: 800;
   }
 
   p, span, label, input, button {
-    @apply font-medium;
+    font-weight: 500;
   }
 }
 
 @layer components {
-  .app-shell {
-    @apply min-h-screen bg-gradient-to-b from-white to-slate-100;
+  @reference "/home/odoo/fisherp-frontend-modules/node_modules/tailwindcss/index.css";
+
+  /* Glassmorphic panel layout */
+  .glass-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    transition: all 300ms ease;
+  }
+
+  .glass-card:hover {
+    box-shadow: 0 10px 30px -10px rgba(0,0,0,0.1);
+    border-color: var(--primary);
+  }
+
+  .glass-card-no-hover {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+    border-radius: 1rem;
+    padding: 1.5rem;
+  }
+
+  .glass-input {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    border-radius: 0.75rem;
+    padding: 0.625rem 1rem;
+    outline: none;
+    transition: all 200ms ease;
+  }
+
+  .glass-input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px rgba(2, 132, 199, 0.1);
+  }
+
+  .dark .glass-input {
+    background: rgba(0, 0, 0, 0.2);
   }
 
   .surface-card {
-    @apply rounded-xl bg-surface shadow-md border border-slate-200;
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    box-shadow: 0 1px 3px 0 rgba(0,0,0,0.05);
+  }
+
+  /* Custom animated scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 9999px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--primary);
+  }
+
+  /* Sidebar styling */
+  .sidebar-link-active {
+    background: linear-gradient(135deg, rgba(2, 132, 199, 0.15) 0%, rgba(2, 132, 199, 0.05) 100%);
+    color: var(--primary);
+    border-left: 4px solid var(--primary);
+  }
+
+  .sidebar-link {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-radius: 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    transition: all 200ms ease;
+    color: #475569;
+  }
+
+  .sidebar-link:hover {
+    background-color: rgb(241 245 249);
+    color: var(--primary);
+  }
+
+  .dark .sidebar-link {
+    color: #9ca3af;
+  }
+
+  .dark .sidebar-link:hover {
+    background-color: rgba(15, 23, 42, 0.5);
+    color: var(--primary);
+  }
+
+  /* Mobile bottom navigation spacing */
+  .mobile-bottom-safe {
+    padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
   }
 }

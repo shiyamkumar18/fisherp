@@ -45,3 +45,36 @@ omit = [
     "*/admin.py",
     "conftest.py",
 ]
+
+[tool.pylint.master]
+load-plugins = ["pylint_django"]
+django-settings-module = "config.settings_sqlite_test"
+jobs = 4
+
+[tool.pylint.messages_control]
+disable = [
+    "C0114",  # missing-module-docstring
+    "C0115",  # missing-class-docstring
+    "C0116",  # missing-function-docstring
+    "R0903",  # too-few-public-methods
+    "W0212",  # protected-access
+    "W0613",  # unused-argument
+    "W0703",  # broad-except
+    "E1136",  # unsubscriptable-object (false positive on Python 3.10 generics)
+]
+
+[tool.pylint.format]
+max-line-length = 120
+
+[tool.pylint.design]
+max-args = 10
+max-positional-arguments = 10
+max-locals = 20
+max-returns = 8
+max-branches = 15
+max-statements = 60
+max-public-methods = 25
+
+[tool.pylint.typecheck]
+generated-members = ["objects", "DoesNotExist", "MultipleObjectsReturned", "id"]
+

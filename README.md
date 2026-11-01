@@ -22,12 +22,12 @@ High-level runtime flow:
 
 1. Frontend pages (static HTML/CSS/JS)
 2. Django + Django REST Framework APIs
-3. SQLite by default (PostgreSQL option for production-like setup)
+3. PostgreSQL relational database for built-in development and production
 4. Redis + Celery for async/background jobs
 
 Current architecture characteristics:
 
-- Single database in current default configuration
+- Single PostgreSQL database
 - Company-based data isolation
 - Subscription enforcement middleware
 - Role-based permissions and group mapping
@@ -38,7 +38,7 @@ Current architecture characteristics:
 - API docs: drf-spectacular (Swagger and ReDoc)
 - Async: Celery with Redis broker/result backend
 - Frontend: Static HTML/CSS/JavaScript served with Django templates/static files
-- Database: SQLite (default), PostgreSQL (documented option in settings)
+- Database: PostgreSQL
 
 ## Repository Layout
 
@@ -61,7 +61,7 @@ fish-trading-saas/
 - Redis 6+ (required for documented local workflow)
 - `pip` and virtual environment tooling
 
-## Quick Start (SQLite First)
+## Quick Start
 
 From repository root:
 
@@ -79,12 +79,11 @@ SECRET_KEY=change-me-in-local
 DEBUG=True
 ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0
 
-# PostgreSQL variables are optional unless you switch DB config.
-DB_NAME=
-DB_USER=
-DB_PASSWORD=
-DB_HOST=
-DB_PORT=
+DB_NAME=fisherp_dev
+DB_USER=fisherp_user
+DB_PASSWORD=fisherp_pass
+DB_HOST=localhost
+DB_PORT=5432
 ```
 
 Initialize RBAC and data:
@@ -135,20 +134,15 @@ Frontend files live in `fish-trading-saas/frontend` and are used as static/templ
 
 No Node build step is currently required in this repository.
 
-## Database Options
+## Database
 
-### Option A: SQLite (default and fastest local setup)
+FisherP requires PostgreSQL for development and production. Ensure a running PostgreSQL instance is available and configured before starting the backend.
 
-No additional DB setup required. Current settings already use SQLite in `backend/db.sqlite3`.
+1. Create a PostgreSQL database and user.
+2. Set `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, and `DB_PORT` in `.env`.
+3. Run `python manage.py migrate` to initialize the schema.
 
-### Option B: PostgreSQL (production-like)
-
-Current `config/settings.py` includes a commented PostgreSQL block. To use PostgreSQL locally:
-
-1. Create PostgreSQL database and credentials.
-2. Fill `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT` in `.env`.
-3. Switch `DATABASES` configuration in `config/settings.py` from SQLite block to PostgreSQL block.
-4. Run migrations again.
+The repository includes Docker Compose stacks that wire the backend to PostgreSQL for local and production-ready deployment.
 
 ## Authentication, RBAC, and Seed Users
 

@@ -3,11 +3,34 @@ Django settings for config project.
 Phase 0 – SaaS Multi-Tenant Foundation
 """
 
-from pathlib import Path
-from dotenv import load_dotenv
-from datetime import timedelta
 import os
+from pathlib import Path
+from datetime import timedelta
+import enum
+import datetime
+from dotenv import load_dotenv
 import sys
+
+# --- Python 3.11+ Polyfills for Django 6.0 on Python 3.10 ---
+if not hasattr(enum, 'EnumType'):
+    enum.EnumType = type(enum.Enum)
+if not hasattr(enum, 'StrEnum'):
+    class StrEnum(str, enum.Enum): pass
+    enum.StrEnum = StrEnum
+if not hasattr(enum, 'property'):
+    enum.property = property
+if not hasattr(enum, 'nonmember'):
+    class nonmember:
+        def __init__(self, value): self.value = value
+        def __get__(self, instance, owner): return self.value
+    enum.nonmember = nonmember
+if not hasattr(datetime, 'UTC'):
+    datetime.UTC = datetime.timezone.utc
+# -----------------------------------------------------------
+
+# Use custom allauth adapter for Google login
+SOCIALACCOUNT_ADAPTER = "saas_platform.accounts.adapters.CustomSocialAccountAdapter"
+
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, os.path.join(BASE_DIR))
@@ -33,12 +56,13 @@ ALLOWED_HOSTS = DEFAULT_ALLOWED_HOSTS + [
 # =========================
 
 SHARED_APPS = [
-    "accounts",
-    "companies",
+    "saas_platform.accounts",
+    "saas_platform.companies",
 
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
+    "django.contrib.postgres",
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
@@ -46,18 +70,44 @@ SHARED_APPS = [
 
 TENANT_APPS = [
     "rest_framework",
+    "rest_framework.authtoken",
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
     "drf_spectacular",
     "corsheaders",
     "django_filters",
-    "trading",
-    "subscriptions",
-    "dashboard",
-    "saas_admin",  # Platform Manager App
+    "business.trading",
+    "core.voice",  # Voice Assistant
+    "saas_platform.subscriptions",
+    "business.dashboard",
+    "saas_platform.saas_admin",  # Platform Manager App
+    "saas_platform.platform_mgr", # New Operations Console
+    "saas_platform.permissions",  # New permissions app
+    "saas_platform.support",  # Support Center
+    "tenant_apps.organization",  # Organization & Staff Management
+    "core.notifications",  # Notification & Communication Engine
+    "core.audit",  # Enterprise Audit Trail
 ]
 
-INSTALLED_APPS = SHARED_APPS + TENANT_APPS
+INSTALLED_APPS = SHARED_APPS + TENANT_APPS + [
+    "django.contrib.sites",
+    "allauth",
+    "allauth.account",
+    "allauth.socialaccount",
+    "allauth.socialaccount.providers.google",
+    "dj_rest_auth",
+]
+
+SITE_ID = 1
+
+SOCIALACCOUNT_PROVIDERS = {
+    "google": {
+        "APP": {
+            "client_id": os.getenv("GOOGLE_CLIENT_ID", "YOUR_GOOGLE_CLIENT_ID"),
+            "secret": os.getenv("GOOGLE_CLIENT_SECRET", "YOUR_GOOGLE_SECRET"),
+        }
+    }
+}
 
 # =========================
 # MIDDLEWARE
@@ -65,16 +115,19 @@ INSTALLED_APPS = SHARED_APPS + TENANT_APPS
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "allauth.account.middleware.AccountMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
-    "accounts.middleware.ImpersonationMiddleware",
+    "saas_platform.accounts.middleware.ImpersonationMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "saas_platform.permissions.middleware.PermissionCheckMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "subscriptions.middleware.SubscriptionEnforcementMiddleware",
+    "saas_platform.subscriptions.middleware.SubscriptionEnforcementMiddleware",
     "config.middleware_security.SecurityHeadersMiddleware",
+    "core.audit.middleware.AuditContextMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -101,31 +154,41 @@ TEMPLATES = [
 WSGI_APPLICATION = "config.wsgi.application"
 
 # =========================
-# DATABASE (PostgreSQL only)
+# DATABASE
 # =========================
 
-_db_name = os.getenv("DB_NAME", "fisherp_dev")
-_db_user = os.getenv("DB_USER", "fisherp_user")
-_db_password = os.getenv("DB_PASSWORD", "fisherp_pass")
+if DEBUG:
+    _db_name = os.getenv("DB_NAME", "fisherp_dev")
+    _db_user = os.getenv("DB_USER", "fisherp_user")
+    _db_password = os.getenv("DB_PASSWORD", "fisherp_pass")
+    _db_host = os.getenv("DB_HOST", "localhost")
+else:
+    _db_name = os.getenv("DB_NAME")
+    _db_user = os.getenv("DB_USER")
+    _db_password = os.getenv("DB_PASSWORD")
+    _db_host = os.getenv("DB_HOST")
 
-_missing_db_env_vars = [
-    var_name
-    for var_name, var_value in [
-        ("DB_NAME", _db_name),
-        ("DB_USER", _db_user),
-        ("DB_PASSWORD", _db_password),
+_db_port = os.getenv("DB_PORT", "5432")
+
+if not DEBUG:
+    _missing_db_env_vars = [
+        var_name
+        for var_name, var_value in [
+            ("DB_NAME", _db_name),
+            ("DB_USER", _db_user),
+            ("DB_PASSWORD", _db_password),
+            ("DB_HOST", _db_host),
+        ]
+        if not var_value
     ]
-    if not var_value
-]
-
-if _missing_db_env_vars:
-    raise ValueError(
-        "Missing required database environment variable(s) for PostgreSQL: "
-        + ", ".join(_missing_db_env_vars)
-    )
+    if _missing_db_env_vars:
+        raise ValueError(
+            "Missing required database environment variable(s) for PostgreSQL: "
+            + ", ".join(_missing_db_env_vars)
+        )
 
 # When routing through PgBouncer in transaction mode, persistent connections
-# must be disabled (CONN_MAX_AGE=0); honour the USE_PGBOUNCER flag here.
+# must be disabled (CONN_MAX_AGE=0).
 _use_pgbouncer = os.getenv("USE_PGBOUNCER", "").lower() in ("1", "true", "yes")
 _conn_max_age = 0 if _use_pgbouncer else int(os.getenv("DB_CONN_MAX_AGE", "600"))
 
@@ -135,8 +198,8 @@ DATABASES = {
         "NAME": _db_name,
         "USER": _db_user,
         "PASSWORD": _db_password,
-        "HOST": os.getenv("DB_HOST", "localhost"),
-        "PORT": os.getenv("DB_PORT", "5432"),
+        "HOST": _db_host,
+        "PORT": _db_port,
         "CONN_MAX_AGE": _conn_max_age,
         "OPTIONS": {
             "connect_timeout": int(os.getenv("DB_CONNECT_TIMEOUT", "10")),
@@ -168,7 +231,7 @@ LOGIN_URL = "/api-auth/login/"
 
 # Custom authentication backend: accepts email or username
 AUTHENTICATION_BACKENDS = [
-    "accounts.authentication.EmailOrUsernameBackend",
+    "saas_platform.accounts.authentication.EmailOrUsernameBackend",
     "django.contrib.auth.backends.ModelBackend",
 ]
 
@@ -184,6 +247,25 @@ if not DEBUG and not _testing:
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
     SECURE_SSL_REDIRECT = True
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# =========================
+# CACHING
+# =========================
+if DEBUG and not os.getenv('REDIS_URL'):
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'fisherp-dev-cache',
+        }
+    }
+else:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+            'LOCATION': os.getenv('REDIS_URL', 'redis://localhost:6379/1'),
+        }
+    }
 
 # Secure Cookies
 SESSION_COOKIE_SECURE = not DEBUG
@@ -207,20 +289,35 @@ USE_TZ = True
 # =========================
 
 STATIC_URL = '/static/'
-# Only include frontend in STATICFILES_DIRS if it exists (may not in Docker)
-# In Docker, frontend is mounted at /app/frontend, outside Docker at BASE_DIR.parent / "frontend"
+# Only include frontend build assets in STATICFILES_DIRS if they exist.
+# In Docker, frontend is mounted at /app/frontend, outside Docker at BASE_DIR.parent / "frontend".
 _frontend_paths = [
-    BASE_DIR / "frontend",  # Docker path
-    BASE_DIR.parent / "frontend",  # Local development path
+    BASE_DIR / "frontend" / "dist",
+    BASE_DIR.parent / "frontend" / "dist",
+    BASE_DIR / "frontend",
+    BASE_DIR.parent / "frontend",
 ]
-STATICFILES_DIRS = [path for path in _frontend_paths if path.exists()]
+import os
+for path in _frontend_paths:
+    if "dist" in str(path) and not path.exists():
+        os.makedirs(path, exist_ok=True)
+
+STATICFILES_DIRS = _frontend_paths
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # =========================
-# CORS (DEV ONLY)
+# CORS & CSRF (DEV ONLY)
 # =========================
 
 CORS_ALLOW_ALL_ORIGINS = False
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -230,7 +327,7 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticated",
     ],
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "saas_platform.accounts.custom_jwt.CustomJWTAuthentication",
         "rest_framework.authentication.SessionAuthentication",
     ],
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
@@ -296,12 +393,15 @@ CORS_ALLOW_HEADERS = [
     'user-agent',
     'x-csrftoken',
     'x-requested-with',
+    'x-impersonate-tenant',
 ]
 
 # Celery Configuration
-REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
-CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', REDIS_URL)
-CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', CELERY_BROKER_URL)
+REDIS_URL = os.getenv('REDIS_URL') or ('redis://localhost:6379/0' if not DEBUG else 'memory://')
+CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL') or REDIS_URL
+CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND') or CELERY_BROKER_URL
+if DEBUG and not os.getenv('REDIS_URL'):
+    CELERY_TASK_ALWAYS_EAGER = True
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
@@ -309,7 +409,7 @@ CELERY_TIMEZONE = 'UTC'
 CELERY_TASK_TRACK_STARTED = True
 CELERY_BEAT_SCHEDULE = {
     'check-overdue-suppliers': {
-        'task': 'trading.tasks.check_overdue_suppliers',
+        'task': 'business.trading.tasks.check_overdue_suppliers',
         'schedule': 3600.0,  # Hourly
     },
 }
@@ -320,7 +420,7 @@ SPECTACULAR_SETTINGS = {
     'TITLE': 'Fish Trading SaaS API',
     'DESCRIPTION': 'API for fish trading and supply chain management',
     'VERSION': '1.0.0',
-    'SERVE_PERMISSIONS': ['rest_framework.permissions.IsAuthenticated'],
+    'SERVE_PERMISSIONS': ['rest_framework.permissions.AllowAny'],
     'SERVERS': [
         {
             'url': 'http://localhost:8000',
@@ -392,3 +492,31 @@ LOGGING = {
         },
     },
 }
+
+# =========================
+# THROTTLING SETTINGS
+# =========================
+REST_FRAMEWORK['DEFAULT_THROTTLE_CLASSES'] = [
+    'rest_framework.throttling.AnonRateThrottle',
+    'rest_framework.throttling.UserRateThrottle'
+]
+REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'] = {
+    'anon': '100/day',
+    'user': '1000/day',
+    'otp': '5/minute',
+    'login': '10/minute',
+    'impersonate': '2/hour',
+}
+
+# =========================
+# SECURITY HEADERS
+# =========================
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = 'DENY'
+# For HTTPS (in production)
+# SECURE_SSL_REDIRECT = True
+# SECURE_HSTS_SECONDS = 31536000
+# SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+# SECURE_HSTS_PRELOAD = True
+TEST_RUNNER = 'fix_test_runner.CustomTestRunner'

@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { apiClient } from "@/services/apiClient";
 
 const getStoredSession = () => {
   try {
@@ -19,21 +20,64 @@ const persistSession = (session) => {
 
 export const useAuthStore = create((set, get) => ({
   session: getStoredSession(),
+  user: getStoredSession()?.user || null,
+  token: getStoredSession()?.access || null,
+  impersonation: getStoredSession()?.impersonation || null,
+  entitlements: [],
   isHydrated: false,
-  hydrate: () => set({ session: getStoredSession(), isHydrated: true }),
+  hydrate: () => {
+    const s = getStoredSession();
+    set({ session: s, user: s?.user || null, token: s?.access || null, impersonation: s?.impersonation || null, isHydrated: true });
+    if (s?.access) {
+      get().fetchEntitlements();
+    }
+  },
   login: (session) => {
     persistSession(session);
-    set({ session, isHydrated: true });
+    set({ session, user: session?.user || null, token: session?.access || null, isHydrated: true });
+    get().fetchEntitlements();
   },
   logout: () => {
     persistSession(null);
-    set({ session: null, isHydrated: true });
+    set({ session: null, user: null, token: null, impersonation: null, entitlements: [], isHydrated: true });
   },
   updateAccessToken: (access) => {
     const current = get().session;
     if (!current) return;
     const next = { ...current, access };
     persistSession(next);
-    set({ session: next });
+    set({ session: next, token: access });
+  },
+  fetchEntitlements: async () => {
+    try {
+      const res = await apiClient.get("/subscriptions/my-entitlements/");
+      set({ entitlements: res.data.entitlements || [] });
+    } catch (e) {
+      console.error("Failed to fetch entitlements", e);
+      set({ entitlements: [] });
+    }
+  },
+  setImpersonation: (data) => {
+    const current = get().session;
+    if (!current) return;
+    const next = { ...current, impersonation: data };
+    persistSession(next);
+    set({ session: next, impersonation: data });
+  },
+  endImpersonation: async () => {
+    try {
+      const { impersonation } = get();
+      const log_id = impersonation?.log_id;
+      await apiClient.delete('/impersonate/', { data: { log_id } });
+    } catch (e) {
+      // Ignore API errors on cleanup
+    }
+    const current = get().session;
+    if (!current) return;
+    const next = { ...current };
+    delete next.impersonation;
+    persistSession(next);
+    set({ session: next, impersonation: null });
+    window.location.reload();
   },
 }));

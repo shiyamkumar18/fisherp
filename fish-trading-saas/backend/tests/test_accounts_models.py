@@ -5,7 +5,7 @@ Focuses on model-level behaviour: creation, roles, properties, validation.
 import pytest
 from django.contrib.auth import get_user_model
 
-from accounts.models import ROLE_HIERARCHY
+from saas_platform.accounts.models import ROLE_HIERARCHY
 from tests.factories import UserFactory, CompanyFactory
 
 User = get_user_model()

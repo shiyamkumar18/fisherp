@@ -1,8 +1,9 @@
+from decimal import Decimal
 from django.db import transaction
 from django.utils import timezone
 from datetime import timedelta
 from ..base import BaseService
-from trading.models import Inventory
+from business.trading.models import Inventory
 
 
 class InventoryService(BaseService):
@@ -16,8 +17,9 @@ class InventoryService(BaseService):
         For multi‑tenant apps, this usually includes company/tenant and created_by.
         """
         scope = {}
-        if hasattr(self.user, 'company') and self.user.company:
-            scope['company'] = self.user.company
+        company = getattr(self.user, 'company', None)
+        if company:
+            scope['company'] = company
         scope['tenant'] = self.user
         # Optionally set created_by if your model has such a field.
         if hasattr(Inventory, 'created_by'):
@@ -32,11 +34,13 @@ class InventoryService(BaseService):
         purchase_batch = data.get('purchase_batch')
         initial_packages = data.get('initial_packages')
         remaining_packages = data.get('remaining_packages', initial_packages)
+        
         if purchase_batch and initial_packages is not None:
+            package_weight = getattr(purchase_batch, 'package_weight', None) or Decimal("0.00")
             if data.get('initial_weight_kg') is None:
-                data['initial_weight_kg'] = initial_packages * purchase_batch.package_weight
+                data['initial_weight_kg'] = Decimal(str(initial_packages)) * package_weight
             if data.get('remaining_weight_kg') is None and remaining_packages is not None:
-                data['remaining_weight_kg'] = remaining_packages * purchase_batch.package_weight
+                data['remaining_weight_kg'] = Decimal(str(remaining_packages)) * package_weight
         return Inventory.objects.create(**data)
 
     @transaction.atomic
@@ -46,6 +50,78 @@ class InventoryService(BaseService):
             raise ValueError("packages_delta must be non-negative")
         instance.update_stock(packages_delta)
         return instance
+
+    @transaction.atomic
+    def deduct_stock_for_sale(self, sale):
+        """Deduct inventory stock when a Sale is created or finalized."""
+        from business.trading.models import Inventory, StockMovement
+        from business.trading.tasks import inventory_low_stock_whatsapp_task
+        
+        try:
+            inventory = Inventory.objects.select_for_update().get(purchase_batch=sale.batch)
+        except Inventory.DoesNotExist:
+            return None
+
+        pkg_sold = sale.number_of_packages_sold
+        weight_sold = pkg_sold * sale.selling_weight_per_package
+        
+        inventory.adjust_stock(-pkg_sold, -weight_sold, movement_type='sale')
+        
+        if inventory.remaining_packages <= inventory.reorder_level:
+            inventory_id = getattr(inventory, 'id', None)
+            if inventory_id:
+                inventory_low_stock_whatsapp_task.delay(inventory_id)
+        
+        fish = getattr(sale.batch, 'fish', None)
+        StockMovement.objects.create(
+            fish=fish,
+            purchase_batch=sale.batch,
+            inventory=inventory,
+            movement_type='sale',
+            quantity_packages=-pkg_sold,
+            weight_kg=-weight_sold,
+            notes=f"Sales invoice {sale.invoice_number}",
+            company=sale.company,
+            tenant=sale.tenant
+        )
+        return inventory
+
+    @transaction.atomic
+    def restore_stock_for_sale(self, sale, movement_type='return'):
+        """Restore inventory stock when a Sale is cancelled, returned, or deleted."""
+        from business.trading.models import Inventory, StockMovement
+        
+        try:
+            inventory = Inventory.objects.select_for_update().get(purchase_batch=sale.batch)
+        except Inventory.DoesNotExist:
+            return None
+
+        pkg_sold = sale.number_of_packages_sold
+        weight_sold = pkg_sold * sale.selling_weight_per_package
+        
+        inventory.adjust_stock(pkg_sold, weight_sold, movement_type=movement_type)
+        
+        notes = f"Cancelled/Returned invoice {sale.invoice_number}"
+        if movement_type == 'return':
+            notes = f"Returned invoice {sale.invoice_number}. Reason: {getattr(sale, 'return_reason', 'None')}"
+        elif getattr(sale, 'is_deleted', False):
+            notes = f"Soft deleted invoice {sale.invoice_number}"
+        elif sale.status == 'cancelled':
+            notes = f"Cancelled invoice {sale.invoice_number}"
+
+        fish = getattr(sale.batch, 'fish', None)
+        StockMovement.objects.create(
+            fish=fish,
+            purchase_batch=sale.batch,
+            inventory=inventory,
+            movement_type=movement_type,
+            quantity_packages=pkg_sold,
+            weight_kg=weight_sold,
+            notes=notes,
+            company=sale.company,
+            tenant=sale.tenant
+        )
+        return inventory
 
     def update_temperature(self, instance, temperature):
         """Update temperature log."""
@@ -61,20 +137,30 @@ class InventoryService(BaseService):
         if rack_num:
             instance.rack_number = rack_num
         instance.last_moved_at = timezone.now()
-        instance.last_moved_by = self.user.get_full_name()
+        
+        moved_by = "System"
+        if self.user:
+            try:
+                moved_by = self.user.get_full_name() or self.user.username
+            except AttributeError:
+                pass
+        instance.last_moved_by = moved_by
         instance.save()
 
     def get_low_stock(self):
         """Low stock query."""
-        return Inventory.objects.for_user(self.user).filter(status='low_stock')
+        manager = getattr(Inventory, 'objects')
+        return manager.for_user(self.user).filter(status='low_stock')
 
     def get_expiring_soon(self, days=3):
         """Expiring items."""
         soon = timezone.now().date() + timedelta(days=days)
-        return Inventory.objects.for_user(self.user).filter(
+        manager = getattr(Inventory, 'objects')
+        return manager.for_user(self.user).filter(
             expiry_date__lte=soon,
             expiry_date__gte=timezone.now().date()
         )
 
     def get_queryset(self):
-        return Inventory.objects.for_user(self.user)
+        manager = getattr(Inventory, 'objects')
+        return manager.for_user(self.user)

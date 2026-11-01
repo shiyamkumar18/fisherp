@@ -3,8 +3,8 @@ from django.utils import timezone
 from django.db import transaction
 from django.core.exceptions import ValidationError
 from ..base import BaseService
-from trading.models import Sale, Payment
-from trading.helpers import _user_company
+from business.trading.models import Sale, Payment, Inventory
+from business.trading.helpers import _user_company
 
 class SaleService(BaseService):
     def __init__(self, user):
@@ -12,19 +12,68 @@ class SaleService(BaseService):
     
     @transaction.atomic
     def create_sale(self, data):
-        """Create sale with scoping."""
-        data.update({
-            'tenant': self.user,
-            'company': _user_company(self.user),
-        })
-        return Sale.objects.create(**data)
+        """Create sale with scoping and atomic guarantees."""
+        company = data.get('company')
+        if not company:
+            from business.trading.helpers import _user_company
+            company = _user_company(self.user)
+            data['company'] = company
+            data['tenant'] = self.user
+
+        # Extract non-model fields if any
+        data.pop('inventory_id', None)
+        data.pop('qty', None)
+        
+        sale = Sale(**data)
+        sale.full_clean()
+        sale.save()
+        
+        # Trigger explicit stock deduction if applicable
+        ACTIVE_STATES = ['approved', 'paid', 'partial', 'overdue']
+        if sale.status in ACTIVE_STATES and not getattr(sale, 'is_deleted', False):
+            from services.trading.inventory_service import InventoryService
+            InventoryService(self.user).deduct_stock_for_sale(sale)
+            
+        # Recalculate credit metrics
+        if sale.buyer and sale.tenant:
+            from services.trading.credit_service import CreditService
+            CreditService(sale.tenant).calculate_buyer_metrics(sale.buyer)
+            
+        return sale
     
     @transaction.atomic
     def update_sale(self, instance, data):
-        """Atomic update."""
+        """Atomic update with stock synchronization."""
+        old_status = instance.status
+        old_is_deleted = getattr(instance, 'is_deleted', False)
+        
         for field, value in data.items():
             setattr(instance, field, value)
+        instance.full_clean()
         instance.save()
+        
+        # Determine stock movement needs
+        ACTIVE_STATES = ['approved', 'paid', 'partial', 'overdue']
+        new_status = instance.status
+        new_is_deleted = getattr(instance, 'is_deleted', False)
+        
+        was_active = old_status in ACTIVE_STATES and not old_is_deleted
+        is_active = new_status in ACTIVE_STATES and not new_is_deleted
+        
+        from services.trading.inventory_service import InventoryService
+        inv_service = InventoryService(self.user)
+        
+        if not was_active and is_active:
+            inv_service.deduct_stock_for_sale(instance)
+        elif was_active and not is_active:
+            movement_type = 'return' if new_status == 'returned' else 'correction'
+            inv_service.restore_stock_for_sale(instance, movement_type=movement_type)
+            
+        # Recalculate credit metrics
+        if instance.buyer and instance.tenant:
+            from services.trading.credit_service import CreditService
+            CreditService(instance.tenant).calculate_buyer_metrics(instance.buyer)
+            
         return instance
     
     @transaction.atomic
@@ -62,7 +111,16 @@ class SaleService(BaseService):
         """Mark as delivered."""
         sale.delivery_status = 'delivered'
         sale.delivery_confirmed_at = timezone.now()
-        sale.delivered_by = delivered_by or self.user.get_full_name()
+        
+        if not delivered_by:
+            delivered_by = "System"
+            if self.user:
+                try:
+                    delivered_by = self.user.get_full_name() or self.user.username
+                except AttributeError:
+                    pass
+        
+        sale.delivered_by = delivered_by
         sale.save()
     
     def process_return(self, sale, return_date, reason, refund_amount=0):
@@ -75,5 +133,6 @@ class SaleService(BaseService):
     
     def get_queryset(self):
         """Scoped sales for user."""
-        from trading.models import Sale
-        return Sale.objects.for_user(self.user)
+        from business.trading.models import Sale
+        manager = getattr(Sale, 'objects')
+        return manager.for_user(self.user)

@@ -2,7 +2,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from rest_framework.test import APIClient
 
-from companies.models import Company
+from saas_platform.companies.models import Company
 
 
 User = get_user_model()
@@ -27,10 +27,10 @@ class UnifiedLoginCompanyTests(TestCase):
             role="platform_operator",
         )
 
-    def test_tenant_login_requires_company_name(self):
+    def test_tenant_login_succeeds_without_company_name(self):
         response = self.client.post("/api/auth/login/", {"username": self.user.username, "password": "pass1234"}, format="json")
-        self.assertEqual(response.status_code, 400)
-        self.assertIn("Company name is required", response.json().get("error", ""))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json().get("company_name"), self.company.name)
 
     def test_tenant_login_with_matching_company_name_succeeds(self):
         response = self.client.post(

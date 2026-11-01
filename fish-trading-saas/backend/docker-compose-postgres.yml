@@ -110,8 +110,8 @@ services:
   # -------------------------------------------------------------------------
   backend:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: backend/Dockerfile
     restart: unless-stopped
     environment:
       DJANGO_SETTINGS_MODULE: config.settings_postgres
@@ -158,8 +158,8 @@ services:
   # -------------------------------------------------------------------------
   celery:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: backend/Dockerfile
     restart: unless-stopped
     environment:
       DJANGO_SETTINGS_MODULE: config.settings_postgres
@@ -186,8 +186,8 @@ services:
   # -------------------------------------------------------------------------
   celerybeat:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: backend/Dockerfile
     restart: unless-stopped
     environment:
       DJANGO_SETTINGS_MODULE: config.settings_postgres
