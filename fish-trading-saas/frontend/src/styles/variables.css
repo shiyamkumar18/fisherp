@@ -1,0 +1,22 @@
+:root {
+  /* Tailwind theme color tokens */
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --success: #16a34a;
+  --danger: #dc2626;
+  --warning: #f59e42;
+  --info: #0ea5e9;
+  --surface: #fff;
+  --bg: #f8fafc;
+  --border: #e5e7eb;
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+
+  /* Optional: legacy color tokens */
+  --color-primary: #2563eb;
+  --color-secondary: #1e293b;
+  --color-success: #16a34a;
+  --color-danger: #dc2626;
+
+  --radius: 12px;
+}

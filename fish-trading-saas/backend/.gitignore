@@ -30,6 +30,11 @@ venv/
 env/
 ENV/
 
+# --- Node / frontend ---
+node_modules/
+.package-lock.json
+.vite/
+
 # --- Django ---
 db.sqlite3
 *.sqlite3

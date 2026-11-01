@@ -1,0 +1,119 @@
+[MASTER]
+# Load pylint-django so Pylint understands Django's metaclass magic:
+#   - Model.objects  (Manager added by Django metaclass)
+#   - Model.DoesNotExist / MultipleObjectsReturned
+#   - self.style.SUCCESS / WARNING / ERROR  (BaseCommand.Style)
+#   - ForeignKey reverse relations
+load-plugins =
+    pylint_django,
+    pylint.extensions.docparams
+
+# Point to the test settings so models are correctly resolved
+django-settings-module = config.settings_sqlite_test
+
+# Run in parallel for speed
+jobs = 4
+
+# Pickle collected data for incremental analysis
+persistent = yes
+
+# Never lint auto-generated Django migrations or build artefacts
+ignore-paths =
+    .*/migrations/.*,
+    .*/node_modules/.*,
+    .*/staticfiles/.*,
+    .*/venv/.*,
+    .*/.venv/.*
+
+[MESSAGES CONTROL]
+# Disable categories/codes we intentionally allow:
+#
+# C0114 missing-module-docstring  – not required for every module
+# C0115 missing-class-docstring   – not required for every class
+# C0116 missing-function-docstring– not required for every function
+# R0903 too-few-public-methods    – fine for simple data/config classes
+# W0212 protected-access          – sometimes necessary in tests/services
+# W0613 unused-argument           – common in Django view/signal args
+# W0703 broad-except              – handled per-case with broad-exception-caught
+# E1136 unsubscriptable-object    – false positive with TypeAlias/generics on 3.10
+disable =
+    C0114,
+    C0115,
+    C0116,
+    R0903,
+    W0212,
+    W0613,
+    W0703,
+    E1136
+
+[FORMAT]
+# Match the project's black/flake8 line length
+max-line-length = 120
+
+# Indent with 4 spaces
+indent-string = '    '
+
+[DESIGN]
+# Reasonable limits for production Django views/services
+max-args = 10
+max-positional-arguments = 10
+max-locals = 20
+max-returns = 8
+max-branches = 15
+max-statements = 60
+max-parents = 10
+max-attributes = 15
+max-bool-expr = 6
+max-public-methods = 25
+
+[BASIC]
+# Allow common short variable names used in Django/Python idioms
+good-names =
+    i, j, k, n,
+    ex, e,
+    pk, qs,
+    db, ip,
+    id,
+    _
+
+[SIMILARITIES]
+# Ignore imports when looking for code duplication
+ignore-imports = yes
+ignore-comments = yes
+min-similarity-lines = 8
+
+[TYPECHECK]
+# Tell Pylint about attributes added dynamically by Django's ORM
+# (belt-and-suspenders alongside pylint-django)
+ignored-classes =
+    optparse.Values,
+    thread._local,
+    _thread._local,
+    django.db.models.fields.related.ForeignObject,
+    django.db.models.fields.related.ManyToManyField,
+
+# Modules whose members Pylint should not flag as missing
+ignored-modules =
+    django.db.models,
+    django.db.models.manager,
+    django.conf,
+    django.utils.functional
+
+generated-members =
+    REQUEST,
+    acl_users,
+    aq_parent,
+    objects,
+    DoesNotExist,
+    MultipleObjectsReturned,
+    id
+
+[IMPORTS]
+# Allow style imports that look unusual in Django management commands
+allow-any-import-level = no
+
+[REPORTS]
+# Machine-readable output for CI pipelines
+output-format = text
+reports = no
+score = yes

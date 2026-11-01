@@ -1,5 +1,13 @@
-import { cn } from "@/utils/cn";
+import React from "react";
+import clsx from "clsx";
 
-export function Card({ className, ...props }) {
-  return <section className={cn("surface-card p-4 md:p-6", className)} {...props} />;
+export default function Card({ children, className = "", hoverEffect = true, ...props }) {
+  const hoverClasses = hoverEffect 
+    ? "hover:bg-elevated hover:-translate-y-[1px] hover:shadow-md transition-all duration-300" 
+    : "transition-all duration-300";
+  return (
+    <div className={clsx("bg-card border border-border rounded-xl shadow-sm p-6", hoverClasses, className)} {...props}>
+      {children}
+    </div>
+  );
 }

@@ -17,7 +17,7 @@ class TestConcurrentRecordCreation:
     """Two users can create records simultaneously without data corruption."""
 
     def test_two_buyers_created_concurrently_have_unique_ids(self):
-        from trading.models import Buyer
+        from business.trading.models import Buyer
 
         tenant = UserFactory(role="tenant_admin")
         results = []
@@ -47,7 +47,7 @@ class TestConcurrentRecordCreation:
         assert len(results) == len(set(results))
 
     def test_two_fish_categories_created_concurrently_are_unique(self):
-        from trading.models import FishCategory
+        from business.trading.models import FishCategory
         import uuid
 
         results = []
@@ -125,7 +125,7 @@ class TestAtomicTransactionRollback:
 
     def test_failed_batch_creation_does_not_leave_orphan(self):
         from django.db import transaction
-        from trading.models import PurchaseBatch
+        from business.trading.models import PurchaseBatch
 
         tenant = UserFactory(role="tenant_admin")
         count_before = PurchaseBatch.objects.filter(company=tenant.company).count()
@@ -153,7 +153,7 @@ class TestAtomicTransactionRollback:
 
     def test_purchase_batch_in_atomic_block_commits(self):
         from django.db import transaction
-        from trading.models import PurchaseBatch
+        from business.trading.models import PurchaseBatch
 
         tenant = UserFactory(role="tenant_admin")
         count_before = PurchaseBatch.objects.filter(company=tenant.company).count()

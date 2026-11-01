@@ -36,9 +36,12 @@
 import { apiClient } from "@/services/apiClient";
 
 export const loginUser = async ({ email, password, company_name }) => {
+  // The unified endpoint expects 'email' or 'username' in the body
   const body = { email, password };
-  if (company_name?.trim()) body.company_name = company_name.trim();
-
+  if (company_name) {
+    body.company_name = company_name;
+  }
+  
   const response = await apiClient.post("/auth/login/", body);
   const data = response.data;
 
@@ -46,12 +49,12 @@ export const loginUser = async ({ email, password, company_name }) => {
     access: data.access,
     refresh: data.refresh,
     user: {
-      id: data.user_id,
-      email: data.email,
-      username: data.username,
-      role: data.role || "customer",
-      company_name: data.company_name,
-      tenant_slug: data.tenant_slug,
+      id: data.user_id || data.user?.id,
+      email: data.email || data.user?.email,
+      username: data.username || data.user?.username,
+      role: data.role || data.user?.role || "customer",
+      company_name: data.company_name || data.user?.company?.name || null,
+      tenant_slug: data.tenant_slug || data.user?.company?.slug || null,
     },
   };
 };

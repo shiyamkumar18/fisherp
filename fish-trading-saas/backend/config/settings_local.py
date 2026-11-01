@@ -8,8 +8,6 @@ WARNING: Never use these settings in production.
 """
 
 from datetime import timedelta  # noqa: E402
-import os
-
 from .settings import *  # noqa: F401, F403
 
 # -------------------------
@@ -25,15 +23,12 @@ ALLOWED_HOSTS = ["localhost", "127.0.0.1", "0.0.0.0", "[::1]"]
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 
-# Use PostgreSQL for local development (matches production)
+# Use SQLite only for local development to avoid PostgreSQL dependency.
+# This is temporary and keeps PostgreSQL production configuration intact.
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("DB_NAME", "fisherp_dev"),
-        "USER": os.getenv("DB_USER", "fisherp_user"),
-        "PASSWORD": os.getenv("DB_PASSWORD", "fisherp_pass"),
-        "HOST": os.getenv("DB_HOST", "localhost"),
-        "PORT": os.getenv("DB_PORT", "5432"),
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db.sqlite3",  # noqa: F405
     }
 }
 

@@ -1,13 +1,19 @@
 import { apiClient } from "@/services/apiClient";
-import { config } from "@/config";
-import { orderMockPage } from "@/services/mocks/orderMock";
-import { normalizeOrderPage } from "@/services/transformers/orderTransformer";
 
-export const fetchOrders = async ({ page = 1, search = "" } = {}) => {
-  if (config.useMocks) {
-    return normalizeOrderPage(orderMockPage);
+export const fetchOrders = async ({ page = 1, search = "", filters = {} } = {}) => {
+  const params = { page, search };
+  
+  if (filters.deliveryStatus && filters.deliveryStatus !== "all") {
+    params.delivery_status = filters.deliveryStatus;
   }
-
-  const response = await apiClient.get("/sales/", { params: { page, search } });
-  return normalizeOrderPage(response.data);
+  
+  if (filters.paymentStatus && filters.paymentStatus !== "all") {
+    // Map 'partially_paid' to 'partial' to match Django backend expectations
+    params.payment_status = filters.paymentStatus === "partially_paid" ? "partial" : filters.paymentStatus;
+  }
+  
+  const response = await apiClient.get("/sales/", { params });
+  return response.data;
 };
+
+

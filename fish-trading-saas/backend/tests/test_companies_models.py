@@ -5,7 +5,7 @@ Covers creation, uniqueness, soft-delete, relationships, str, and business field
 import pytest
 from django.db import IntegrityError
 
-from companies.models import Company
+from saas_platform.companies.models import Company
 from tests.factories import CompanyFactory, UserFactory
 
 pytestmark = pytest.mark.django_db

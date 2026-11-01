@@ -1,0 +1,1 @@
+export default function RecentOrdersTable() { return <div>Recent Orders Table (stub)</div>; }

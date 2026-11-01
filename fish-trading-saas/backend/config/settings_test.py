@@ -30,6 +30,51 @@ from config.settings import *  # noqa: E402, F401, F403  # keep after env defaul
 DEBUG = True
 SECRET_KEY = os.environ["SECRET_KEY"]
 
+# Allow Django's test client host.
+ALLOWED_HOSTS = ["localhost", "127.0.0.1", "testserver"]
+
+# Use PostgreSQL for tests to match production database behavior.
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.environ["DB_NAME"],
+        "USER": os.environ["DB_USER"],
+        "PASSWORD": os.environ["DB_PASSWORD"],
+        "HOST": os.environ["DB_HOST"],
+        "PORT": os.environ["DB_PORT"],
+        "CONN_MAX_AGE": 0,
+        "OPTIONS": {
+            "connect_timeout": 10,
+            "application_name": "fisherp_test",
+        },
+    }
+}
+PASSWORD_HASHERS = [
+    "django.contrib.auth.hashers.MD5PasswordHasher",
+]
+
+# Disable throttling for test execution to avoid intermittent 429 failures.
+REST_FRAMEWORK = {
+    "EXCEPTION_HANDLER": "rest_framework.views.exception_handler",
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "rest_framework.authentication.SessionAuthentication",
+    ],
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 25,
+    "DEFAULT_THROTTLE_CLASSES": [],
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "50/hour",
+        "user": "500/hour",
+        "login": "5/min",
+        "impersonate": "100000/hour",
+    },
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+}
+
 # Disable SSL enforcement so HTTP test clients don't get 301 redirects
 SECURE_SSL_REDIRECT = False
 SECURE_HSTS_SECONDS = 0
@@ -37,3 +82,4 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS = False
 SECURE_HSTS_PRELOAD = False
 SESSION_COOKIE_SECURE = False
 CSRF_COOKIE_SECURE = False
+DEBUG_PROPAGATE_EXCEPTIONS = True

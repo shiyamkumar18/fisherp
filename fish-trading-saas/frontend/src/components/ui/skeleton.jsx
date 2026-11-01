@@ -1,3 +1,10 @@
-export function Skeleton({ className = "h-4 w-full" }) {
-  return <div className={`animate-pulse rounded-xl bg-slate-200 ${className}`} />;
+import React from "react";
+
+export default function Skeleton({ className = "", ...props }) {
+  return (
+    <div
+      className={`animate-pulse bg-gray-200 dark:bg-gray-700 rounded ${className}`}
+      {...props}
+    />
+  );
 }

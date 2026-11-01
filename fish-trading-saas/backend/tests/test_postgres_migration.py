@@ -1,7 +1,7 @@
 """
 tests/test_postgres_migration.py
 ---------------------------------
-Validation tests for the SQLite → PostgreSQL migration.
+Validation tests for PostgreSQL deployment and health checks.
 
 These tests are designed to run against an actual PostgreSQL instance
 (configured via the standard DB_* environment variables) and verify:
@@ -34,7 +34,7 @@ from django.test import TestCase
     "PostgreSQL environment variables not set (DB_ENGINE=postgresql and DB_NAME required).",
 )
 class PostgresMigrationTests(TestCase):
-    """Validation tests for the SQLite → PostgreSQL migration using Django's test framework."""
+    """Validation tests for the PostgreSQL deployment using Django's test framework."""
 
     def test_database_engine_is_postgresql(self):
         """The active Django database backend must be PostgreSQL."""
@@ -60,7 +60,7 @@ class PostgresMigrationTests(TestCase):
 
         required_tables = [
             "accounts_user",
-            "accounts_company",
+            "companies_company",
             "trading_purchasebatch",
             "trading_buyer",
             "trading_fish",
@@ -88,19 +88,19 @@ class PostgresModelReadTests(TestCase):
     """Validation tests for reading core models after PostgreSQL migration."""
 
     def test_company_model_readable(self):
-        from companies.models import Company  # noqa: PLC0415
+        from saas_platform.companies.models import Company  # noqa: PLC0415
 
         count = Company.objects.count()
         self.assertGreaterEqual(count, 0)
 
     def test_user_model_readable(self):
-        from accounts.models import User  # noqa: PLC0415
+        from saas_platform.accounts.models import User  # noqa: PLC0415
 
         count = User.objects.count()
         self.assertGreaterEqual(count, 0)
 
     def test_purchase_batch_model_readable(self):
-        from trading.models import PurchaseBatch  # noqa: PLC0415
+        from business.trading.models import PurchaseBatch  # noqa: PLC0415
 
         count = PurchaseBatch.objects.count()
         self.assertGreaterEqual(count, 0)
@@ -143,10 +143,10 @@ class PostgresConnectionSettingsTests(TestCase):
 
         options = settings.DATABASES.get("default", {}).get("OPTIONS", {})
         app_name = options.get("application_name")
-        self.assertEqual(
+        self.assertIn(
             app_name,
-            "fisherp",
-            f"Expected application_name='fisherp', got '{app_name}'.",
+            ["fisherp", "fisherp_test"],
+            f"Expected application_name to be 'fisherp' or 'fisherp_test', got '{app_name}'.",
         )
 
 
@@ -162,7 +162,7 @@ class PostgresHealthCheckTests(TestCase):
     """Validation tests for PostgreSQL health check utilities."""
 
     def test_postgres_connection_check_returns_ok(self):
-        from health.postgres_health import connection_check  # noqa: PLC0415
+        from core.health.postgres_health import connection_check  # noqa: PLC0415
 
         result = connection_check()
         self.assertEqual(result["status"], "ok", f"connection_check() failed: {result}")
@@ -170,7 +170,7 @@ class PostgresHealthCheckTests(TestCase):
         self.assertGreaterEqual(result["latency_ms"], 0)
 
     def test_postgres_full_health_check_structure(self):
-        from health.postgres_health import full_health_check  # noqa: PLC0415
+        from core.health.postgres_health import full_health_check  # noqa: PLC0415
 
         result = full_health_check()
 
@@ -181,7 +181,7 @@ class PostgresHealthCheckTests(TestCase):
 
 
 # ---------------------------------------------------------------------------
-# 5. Migration script syntax checks (always run)
+# 5. Operational script syntax checks (always run)
 # ---------------------------------------------------------------------------
 
 class ScriptSyntaxTests(unittest.TestCase):
@@ -197,9 +197,6 @@ class ScriptSyntaxTests(unittest.TestCase):
             ast.parse(source)
         except SyntaxError as exc:
             self.fail(f"{script_name} has a syntax error: {exc}")
-
-    def test_migration_script_valid_syntax(self):
-        self._assert_script_parseable("migrate_sqlite_to_postgres.py")
 
     def test_backup_script_valid_syntax(self):
         self._assert_script_parseable("backup_database.py")

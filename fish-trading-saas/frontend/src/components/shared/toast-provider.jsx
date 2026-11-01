@@ -35,7 +35,7 @@ export function ToastProvider({ children }) {
             className={`flex items-start gap-2 rounded-xl border px-4 py-3 shadow-md ${
               toast.variant === "error"
                 ? "border-red-200 bg-red-50 text-red-700"
-                : "border-slate-200 bg-white text-slate-800"
+                : "border-border bg-white text-textPrimary"
             }`}
           >
             <span className="flex-1">{toast.message}</span>
